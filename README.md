@@ -12,7 +12,7 @@ Owner: team-bumblebee.
 - Kubernetes ≥ 1.33 on the install target.
 - Gateway API v1 CRDs (`gateways.gateway.networking.k8s.io`, `httproutes.gateway.networking.k8s.io`, `gatewayclasses.gateway.networking.k8s.io`) installed cluster-wide. The umbrella does **not** install them.
 - A `GatewayClass` named `agentgateway` reconciled by the agentgateway controller — this chart's `Chart.yaml` pulls the upstream agentgateway controller chart which creates the `GatewayClass`.
-- Cilium CNI if `networkPolicy.type: cilium` (default). Set `networkPolicy.enabled: false` on non-Cilium clusters.
+- Cilium CNI if `networkPolicy.flavor: cilium` (default). Set `networkPolicy.enabled: false` on non-Cilium clusters.
 
 ## Installing
 
@@ -52,7 +52,7 @@ Top-level values surfaced by the umbrella:
 | `gateway.listeners` | `[{name: http, port: 8080, protocol: HTTP}]` | Listener spec passed verbatim. |
 | `gateway.parameters.enabled` | `true` | Render the `AgentgatewayParameters` overlay. |
 | `gateway.parameters.{pod,container}SecurityContext` | restricted-PSS compatible | Injected into the data-plane Deployment via strategic merge patch. |
-| `networkPolicy.enabled` / `.type` | `true` / `cilium` | Render the umbrella's `CiliumNetworkPolicy`. |
+| `networkPolicy.enabled` / `.flavor` | `true` / `cilium` | Render the umbrella's `CiliumNetworkPolicy`. |
 | `muster.*` | passes through to the muster subchart | See [muster chart README](https://github.com/giantswarm/muster/blob/main/helm/muster/README.md). |
 | `agentgateway.*` | passes through to the upstream agentgateway chart | See [agentgateway docs](https://agentgateway.dev). |
 

@@ -34,7 +34,8 @@ gateway:
 
 networkPolicy:
   enabled: true
-  type: cilium
+  # Set to "none" on non-Cilium clusters.
+  flavor: cilium
 
 muster:
   image:
@@ -46,6 +47,8 @@ muster:
   gatewayAPI:
     httpRoute:
       enabled: true
+      # parentRefs[0].name MUST equal .gateway.name above — the HTTPRoute
+      # attaches to the Gateway this umbrella renders.
       parentRefs:
         - name: agentgateway
 

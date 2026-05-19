@@ -6,6 +6,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "labels.common" . | nindent 4 }}
+# spec.deployment.spec is a strategic-merge patch the controller applies over
+# the data-plane Deployment it generates. The container name must match the
+# one stamped by the controller (`agentgateway`); a mismatch silently no-ops
+# the security overrides.
 spec:
   deployment:
     spec:

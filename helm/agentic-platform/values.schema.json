@@ -47,7 +47,7 @@
       "additionalProperties": false,
       "properties": {
         "enabled": { "type": "boolean" },
-        "type": { "type": "string", "enum": ["cilium", "none"] }
+        "flavor": { "type": "string", "enum": ["cilium", "none"] }
       }
     }
   }

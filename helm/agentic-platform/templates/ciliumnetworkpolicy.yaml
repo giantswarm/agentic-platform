@@ -1,4 +1,4 @@
-{{- if and .Values.networkPolicy.enabled (eq .Values.networkPolicy.type "cilium") }}
+{{- if and .Values.networkPolicy.enabled (eq .Values.networkPolicy.flavor "cilium") }}
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -7,6 +7,9 @@ metadata:
   labels:
     {{- include "labels.common" . | nindent 4 }}
 spec:
+  # The data-plane pod is rendered by the agentgateway controller from the
+  # Gateway CR — its labels are not under Helm's control. The controller
+  # consistently stamps app.kubernetes.io/name=agentgateway on the pod.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: agentgateway
