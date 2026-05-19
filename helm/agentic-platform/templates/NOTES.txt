@@ -1,0 +1,19 @@
+{{ .Chart.Name }} {{ .Chart.Version }} installed in namespace {{ .Release.Namespace }}.
+
+Gateway:        {{ .Values.gateway.name }} (class {{ .Values.gateway.gatewayClassName }})
+Listener port:  {{ (index .Values.gateway.listeners 0).port }}
+
+Prerequisite check:
+  kubectl get crd gateways.gateway.networking.k8s.io
+
+The umbrella does not install Gateway API CRDs — they must exist before {{ .Release.Name }}.
+
+Verify the data-plane Deployment renders after the controller picks up the Gateway:
+  kubectl -n {{ .Release.Namespace }} get gateway,deployment -l app.kubernetes.io/name=agentgateway
+
+CRD lifecycle note:
+  `helm uninstall {{ .Release.Name }}` will delete the agentgateway CRDs because
+  upstream does not annotate them with `helm.sh/resource-policy: keep`. Any
+  AgentgatewayParameters / AgentgatewayBackend / AgentgatewayPolicy CRs will be
+  cascade-deleted. Set `agentgateway-crds.enabled=false` and manage the CRDs
+  out-of-band if you need uninstall safety.

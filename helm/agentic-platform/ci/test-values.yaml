@@ -1,0 +1,7 @@
+global:
+  registry: gsoci.azurecr.io
+
+gateway:
+  enabled: true
+  name: agentgateway
+  gatewayClassName: agentgateway

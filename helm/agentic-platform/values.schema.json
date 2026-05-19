@@ -1,25 +1,54 @@
 {
-    "$schema": "http://json-schema.org/schema#",
-    "type": "object",
-    "properties": {
-        "image": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "tag": {
-                    "type": "string"
-                }
-            }
-        },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/giantswarm/agentic-platform/helm/agentic-platform/values.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "global": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
         "registry": {
-            "type": "object",
-            "properties": {
-                "domain": {
-                    "type": "string"
-                }
-            }
+          "type": "string",
+          "description": "Default container image registry. Customers in air-gapped clusters point this at their zot mirror."
+        },
+        "imagePullSecrets": {
+          "type": "array",
+          "items": { "type": "object" }
         }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "required": ["name", "gatewayClassName"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "name": { "type": "string", "minLength": 1 },
+        "gatewayClassName": { "type": "string", "minLength": 1 },
+        "listeners": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "name": { "type": "string" },
+            "podSecurityContext": { "type": "object" },
+            "containerSecurityContext": { "type": "object" }
+          }
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "type": { "type": "string", "enum": ["cilium", "none"] }
+      }
     }
+  }
 }

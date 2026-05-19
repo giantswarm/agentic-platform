@@ -1,12 +1,86 @@
-# This file is a Helm values file for the agentic-platform chart.
-#
-# To learn more about how to configure your app on your cluster
-# and override the default values in here, visit:
-#
-#   https://docs.giantswarm.io/tutorials/fleet-management/app-platform/app-configuration/#basic-values-merging-example
-#
-image:
-  name: "giantswarm/agentic-platform"
-  tag: ""
-registry:
-  domain: gsoci.azurecr.io
+global:
+  registry: gsoci.azurecr.io
+  imagePullSecrets: []
+
+gateway:
+  enabled: true
+  name: agentgateway
+  gatewayClassName: agentgateway
+  listeners:
+    - name: http
+      port: 8080
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+  # AgentgatewayParameters is referenced from Gateway.spec.infrastructure.parametersRef.
+  # The umbrella owns this resource because upstream's agentgateway chart does not render it
+  # and the data-plane pod template is hardcoded inside the controller binary.
+  parameters:
+    enabled: true
+    name: ""
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+
+networkPolicy:
+  enabled: true
+  type: cilium
+
+muster:
+  image:
+    registry: gsoci.azurecr.io
+  ciliumNetworkPolicy:
+    enabled: true
+  podAnnotations:
+    application.giantswarm.io/team: bumblebee
+  gatewayAPI:
+    httpRoute:
+      enabled: true
+      parentRefs:
+        - name: agentgateway
+
+agentgateway-crds:
+  enabled: true
+
+agentgateway:
+  # Upstream cr.agentgateway.dev — GS retag pipeline does not currently mirror
+  # these images. Customers on air-gapped clusters must mirror them into their
+  # zot directly.
+  image:
+    registry: cr.agentgateway.dev
+    tag: v1.2.1
+  proxy:
+    image:
+      registry: cr.agentgateway.dev
+      tag: v1.2.1
+  podAnnotations:
+    application.giantswarm.io/team: bumblebee
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
