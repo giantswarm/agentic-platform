@@ -74,7 +74,7 @@ Top-level values surfaced by the umbrella:
 
 Full schema: [`helm/agentic-platform/values.schema.json`](./helm/agentic-platform/values.schema.json).
 
-## Air-gapped / private registries
+## Private registry overrides
 
 All images default to `gsoci.azurecr.io/giantswarm/*`:
 
@@ -84,25 +84,25 @@ All images default to `gsoci.azurecr.io/giantswarm/*`:
 | `gsoci.azurecr.io/giantswarm/agentgateway-controller:v1.2.1` | `cr.agentgateway.dev/controller` |
 | `gsoci.azurecr.io/giantswarm/agentgateway:v1.2.1` | `cr.agentgateway.dev/agentgateway` |
 
-To pull from a customer zot mirror, override the registry on every image (neither subchart exposes a `global.registry` that propagates to all images):
+To pull from a private mirror, override the registry on every image (neither subchart exposes a `global.registry` that propagates to all images):
 
 ```yaml
 global:
-  registry: zot.example.com
+  registry: registry.example.com
 
 muster:
   image:
-    registry: zot.example.com
+    registry: registry.example.com
 
 agentgateway:
   image:
-    registry: zot.example.com
+    registry: registry.example.com
   proxy:
     image:
-      registry: zot.example.com
+      registry: registry.example.com
 ```
 
-The customer's zot must mirror these paths verbatim: `giantswarm/muster`, `giantswarm/agentgateway-controller`, `giantswarm/agentgateway`.
+The mirror must serve these paths verbatim: `giantswarm/muster`, `giantswarm/agentgateway-controller`, `giantswarm/agentgateway`.
 
 ## Security
 
