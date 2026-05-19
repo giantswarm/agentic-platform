@@ -60,13 +60,13 @@ Full schema: [`helm/agentic-platform/values.schema.json`](./helm/agentic-platfor
 
 ## Air-gapped / private registries
 
-| Image | Default registry | Source |
-|---|---|---|
-| `giantswarm/muster:0.1.193` | `gsoci.azurecr.io` | GS retag of `giantswarm/muster` |
-| `controller:v1.2.1` | `cr.agentgateway.dev` | upstream (not currently GS-retagged) |
-| `agentgateway:v1.2.1` | `cr.agentgateway.dev` | upstream (not currently GS-retagged) |
+All images default to `gsoci.azurecr.io/giantswarm/*`:
 
-The agentgateway images are not yet mirrored into the GS retag pipeline. Track this as a follow-up before recommending the chart for fully air-gapped customers.
+| Image | Source (mirrored by GS retagger) |
+|---|---|
+| `gsoci.azurecr.io/giantswarm/muster:0.1.193` | `gsoci.azurecr.io/giantswarm/muster` (native GS image) |
+| `gsoci.azurecr.io/giantswarm/agentgateway-controller:v1.2.1` | `cr.agentgateway.dev/controller` |
+| `gsoci.azurecr.io/giantswarm/agentgateway:v1.2.1` | `cr.agentgateway.dev/agentgateway` |
 
 To pull from a customer zot mirror, override the registry on every image (neither subchart exposes a `global.registry` that propagates to all images):
 
@@ -86,7 +86,7 @@ agentgateway:
       registry: zot.example.com
 ```
 
-The customer's zot must mirror these paths verbatim: `giantswarm/muster`, `controller`, `agentgateway`.
+The customer's zot must mirror these paths verbatim: `giantswarm/muster`, `giantswarm/agentgateway-controller`, `giantswarm/agentgateway`.
 
 ## Security
 

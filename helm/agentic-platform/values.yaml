@@ -53,15 +53,16 @@ agentgateway-crds:
   enabled: true
 
 agentgateway:
-  # Upstream cr.agentgateway.dev — GS retag pipeline does not currently mirror
-  # these images. Customers on air-gapped clusters must mirror them into their
-  # zot directly.
   image:
-    registry: cr.agentgateway.dev
+    registry: gsoci.azurecr.io
     tag: v1.2.1
+  controller:
+    image:
+      repository: giantswarm/agentgateway-controller
   proxy:
     image:
-      registry: cr.agentgateway.dev
+      registry: gsoci.azurecr.io
+      repository: giantswarm/agentgateway
       tag: v1.2.1
   podAnnotations:
     application.giantswarm.io/team: bumblebee
