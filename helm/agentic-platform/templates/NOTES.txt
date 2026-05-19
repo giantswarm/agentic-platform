@@ -6,7 +6,7 @@ Listener port:  {{ (index .Values.gateway.listeners 0).port }}
 Prerequisite check:
   kubectl get crd gateways.gateway.networking.k8s.io
 
-The umbrella does not install Gateway API CRDs — they must exist before {{ .Release.Name }}.
+This chart does not install Gateway API CRDs — they must exist before {{ .Release.Name }}.
 
 Verify the data-plane Deployment renders after the controller picks up the Gateway:
   kubectl -n {{ .Release.Namespace }} get gateway,deployment -l app.kubernetes.io/name=agentgateway
