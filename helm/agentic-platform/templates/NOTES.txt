@@ -3,17 +3,30 @@
 Gateway:        {{ .Values.gateway.name }} (class {{ .Values.gateway.gatewayClassName }})
 Listener port:  {{ (index .Values.gateway.listeners 0).port }}
 
-Prerequisite check:
+Prerequisite check (run BEFORE installing the agentic platform):
   kubectl get crd gateways.gateway.networking.k8s.io
+  kubectl get crd agentgatewayparameters.agentgateway.dev
+  kubectl get crd mcpservers.muster.giantswarm.io
 
-This chart does not install Gateway API CRDs — they must exist before {{ .Release.Name }}.
+This chart does NOT install any CRDs. Required CRDs are owned by sibling
+releases that must exist first:
+
+  Giant Swarm App platform — encode ordering on each App CR:
+    spec:
+      dependsOn:
+        - name: agentgateway-crds
+        - name: muster-crds
+
+  Raw helm:
+    helm install agentgateway-crds \
+      oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.2.1 \
+      -n {{ .Release.Namespace }} --create-namespace
+    helm install muster-crds \
+      oci://giantswarmpublic.azurecr.io/giantswarm-catalog/muster-crds \
+      --version <muster-crds-version> -n {{ .Release.Namespace }}
+    helm install {{ .Release.Name }} \
+      oci://giantswarmpublic.azurecr.io/giantswarm-catalog/agentic-platform \
+      --version <agentic-platform-version> -n {{ .Release.Namespace }}
 
 Verify the data-plane Deployment renders after the controller picks up the Gateway:
   kubectl -n {{ .Release.Namespace }} get gateway,deployment -l app.kubernetes.io/name=agentgateway
-
-CRD lifecycle note:
-  `helm uninstall {{ .Release.Name }}` will delete the agentgateway CRDs because
-  upstream does not annotate them with `helm.sh/resource-policy: keep`. Any
-  AgentgatewayParameters / AgentgatewayBackend / AgentgatewayPolicy CRs will be
-  cascade-deleted. Set `agentgateway-crds.enabled=false` and manage the CRDs
-  out-of-band if you need uninstall safety.

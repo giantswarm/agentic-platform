@@ -9,7 +9,7 @@ metadata:
 # spec.deployment.spec is a strategic-merge patch the controller applies over
 # the data-plane Deployment it generates. The container name must match the
 # one stamped by the controller (`agentgateway`); a mismatch silently no-ops
-# the security overrides.
+# the overrides.
 spec:
   deployment:
     spec:
@@ -21,4 +21,8 @@ spec:
             - name: agentgateway
               securityContext:
                 {{- toYaml .Values.gateway.parameters.containerSecurityContext | nindent 16 }}
+              {{- with .Values.gateway.parameters.dataPlaneEnv }}
+              env:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
 {{- end }}

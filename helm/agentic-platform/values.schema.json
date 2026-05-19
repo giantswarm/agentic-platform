@@ -37,7 +37,12 @@
             "enabled": { "type": "boolean" },
             "name": { "type": "string" },
             "podSecurityContext": { "type": "object" },
-            "containerSecurityContext": { "type": "object" }
+            "containerSecurityContext": { "type": "object" },
+            "dataPlaneEnv": {
+              "type": "array",
+              "items": { "type": "object" },
+              "description": "Strategic-merge env entries appended to the data-plane container. Each item is a corev1.EnvVar."
+            }
           }
         }
       }

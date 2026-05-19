@@ -31,6 +31,14 @@ gateway:
         drop: [ALL]
       seccompProfile:
         type: RuntimeDefault
+    # Strategic-merge `env` for the data-plane container. Use this to push
+    # OTel exporter config or any other env-driven knob onto the dynamically
+    # rendered Deployment without forking the controller.
+    # Example:
+    #   dataPlaneEnv:
+    #     - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    #       value: http://tempo-distributor.tempo.svc:4317
+    dataPlaneEnv: []
 
 networkPolicy:
   enabled: true
@@ -42,6 +50,12 @@ muster:
     registry: gsoci.azurecr.io
   ciliumNetworkPolicy:
     enabled: true
+    # Required when Dex / OIDC providers / MCPServers are fronted by an
+    # in-cluster Gateway (envoy-gateway-system, agentgateway, etc.). The
+    # default in the muster sub-chart is `false`, which only allows world
+    # egress and breaks production Giant Swarm installs that resolve OIDC
+    # via in-cluster ingress LoadBalancer / ClusterIP IPs.
+    allowClusterIngress: true
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   gatewayAPI:
@@ -51,9 +65,13 @@ muster:
       # attaches to the Gateway the agentic platform renders.
       parentRefs:
         - name: agentgateway
-
-agentgateway-crds:
-  enabled: true
+  # The muster sub-chart's `crds.install` is a deprecated no-op since
+  # muster split CRDs into the sibling `muster-crds` chart. Pinning to
+  # false here is a safety declaration — without it, an older `muster`
+  # chart whose `templates/crds.yaml` still globbed `crds/*` would render
+  # ownership-less CRDs on every umbrella install.
+  crds:
+    install: false
 
 agentgateway:
   image:
