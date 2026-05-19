@@ -10,7 +10,7 @@
       "properties": {
         "registry": {
           "type": "string",
-          "description": "Default container image registry. Customers in air-gapped clusters point this at their zot mirror."
+          "description": "Default container image registry. Override to point at a private mirror."
         },
         "imagePullSecrets": {
           "type": "array",
