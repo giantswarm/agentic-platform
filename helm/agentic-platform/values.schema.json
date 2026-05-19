@@ -42,6 +42,16 @@
               "type": "array",
               "items": { "type": "object" },
               "description": "Strategic-merge env entries appended to the data-plane container. Each item is a corev1.EnvVar."
+            },
+            "dataPlaneVolumes": {
+              "type": "array",
+              "items": { "type": "object" },
+              "description": "Strategic-merge volumes on the data-plane pod template. Each item is a corev1.Volume."
+            },
+            "dataPlaneVolumeMounts": {
+              "type": "array",
+              "items": { "type": "object" },
+              "description": "Strategic-merge volumeMounts on the data-plane container. Each item is a corev1.VolumeMount."
             }
           }
         }

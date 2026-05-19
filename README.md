@@ -13,7 +13,7 @@ Owner: team-bumblebee.
 - Gateway API v1 CRDs (`gateways.gateway.networking.k8s.io`, `httproutes.gateway.networking.k8s.io`, `gatewayclasses.gateway.networking.k8s.io`) installed cluster-wide. The agentic platform does **not** install them.
 - `agentgateway-crds` chart installed (provides `AgentgatewayParameters`, `AgentgatewayBackend`, `AgentgatewayPolicy`, `Gateway` extensions). Not bundled — see [CRD lifecycle](#crd-lifecycle).
 - `muster-crds` chart installed (provides `MCPServer`, `Workflow`). Not bundled — see [CRD lifecycle](#crd-lifecycle).
-- A `GatewayClass` named `agentgateway` reconciled by the agentgateway controller — this chart's `Chart.yaml` pulls the upstream agentgateway controller chart which creates the `GatewayClass`.
+- A Gateway API `GatewayClass` CR named `agentgateway` is a prerequisite for the `Gateway` this chart renders. The bundled upstream `agentgateway` controller subchart creates that `GatewayClass` on install, so a default install satisfies the prereq. Operators who manage the controller out-of-band (cluster-scoped install in `agentgateway-system`, for example) must ensure the `GatewayClass` exists separately. Verify with `kubectl get gatewayclass agentgateway -o yaml` — `status.conditions[type=Accepted]` must be `True` before this chart's `Gateway` will program.
 - Cilium CNI if `networkPolicy.flavor: cilium` (default). Set `networkPolicy.enabled: false` on non-Cilium clusters.
 
 ## Installing
@@ -110,6 +110,26 @@ Top-level values surfaced by the agentic platform:
 | `agentgateway.*` | passes through to the upstream agentgateway chart | See [agentgateway docs](https://agentgateway.dev). |
 
 Full schema: [`helm/agentic-platform/values.schema.json`](./helm/agentic-platform/values.schema.json).
+
+### Public HTTPRoute (required for OAuth)
+
+The umbrella renders a Gateway for the **data plane** only — that Gateway is not exposed publicly and is not the right parent for the muster control-plane HTTPRoute. Muster's HTTPRoute must attach to the cluster's public Gateway (typically the envoy-gateway-system one) with hostnames that match the OAuth callback URL operators advertise via `muster.oauth.mcpClient.publicUrl`.
+
+The muster sub-chart's `parentRefs is required when gatewayAPI.enabled is true` guard blocks install until both `parentRefs` and `hostnames` are set explicitly:
+
+```yaml
+muster:
+  gatewayAPI:
+    enabled: true
+    httpRoute:
+      parentRefs:
+        - name: giantswarm-default
+          namespace: envoy-gateway-system
+          group: gateway.networking.k8s.io
+          kind: Gateway
+      hostnames:
+        - muster.<cluster>.<base-domain>
+```
 
 ## Private registry overrides
 

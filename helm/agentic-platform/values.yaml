@@ -4,6 +4,12 @@ global:
 
 gateway:
   enabled: true
+  # Data-plane Gateway. Reconciled by the `agentgateway` controller; the
+  # `agentgateway` GatewayClass is a cluster-level prerequisite. Two
+  # release instances in the same cluster must override `gateway.name`
+  # (Gateway is namespaced, so different release namespaces are fine).
+  # muster's public HTTPRoute attaches to a separate, operator-owned
+  # public Gateway — not to this one. See `muster.gatewayAPI.httpRoute`.
   name: agentgateway
   gatewayClassName: agentgateway
   listeners:
@@ -59,12 +65,31 @@ muster:
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   gatewayAPI:
+    enabled: true
     httpRoute:
       enabled: true
-      # parentRefs[0].name MUST equal .gateway.name above — the HTTPRoute
-      # attaches to the Gateway the agentic platform renders.
-      parentRefs:
-        - name: agentgateway
+      # The umbrella does NOT default the HTTPRoute to its internal
+      # `agentgateway` Gateway — that Gateway is for the data-plane and is
+      # not exposed publicly. Operators must point the HTTPRoute at the
+      # cluster's public Gateway (typically the envoy-gateway-system one)
+      # and set `hostnames` so the OAuth callback URLs built against
+      # `muster.oauth.mcpClient.publicUrl` resolve. The muster sub-chart's
+      # fail-guard rejects install when `parentRefs` is empty and
+      # `gatewayAPI.enabled` is true.
+      # Example:
+      #   muster:
+      #     gatewayAPI:
+      #       enabled: true
+      #       httpRoute:
+      #         parentRefs:
+      #           - name: giantswarm-default
+      #             namespace: envoy-gateway-system
+      #             group: gateway.networking.k8s.io
+      #             kind: Gateway
+      #         hostnames:
+      #           - muster.<cluster>.<base-domain>
+      parentRefs: []
+      hostnames: []
   # The muster sub-chart's `crds.install` is a deprecated no-op since
   # muster split CRDs into the sibling `muster-crds` chart. Pinning to
   # false here is a safety declaration — without it, an older `muster`
