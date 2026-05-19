@@ -1,0 +1,12 @@
+# This file is a Helm values file for the {APP-NAME} chart.
+#
+# To learn more about how to configure your app on your cluster
+# and override the default values in here, visit:
+#
+#   https://docs.giantswarm.io/tutorials/fleet-management/app-platform/app-configuration/#basic-values-merging-example
+#
+image:
+  name: "giantswarm/{APP-NAME}"
+  tag: ""
+registry:
+  domain: gsoci.azurecr.io

@@ -1,0 +1,31 @@
+# See https://docs.giantswarm.io/reference/platform-api/chart-metadata/
+# for details and background.
+
+apiVersion: v2
+
+# Version of the packaged app
+appVersion: 0.0.1
+
+# Make sure your name DOES NOT end in "app" or "-app".
+name: {APP-NAME}
+
+# Please describe what the app provides in a sentence or two.
+description: Please add description
+
+# URL of the GitHub repository that is the source of this Chart.yaml file.
+home: https://github.com/giantswarm/{APP-NAME}
+
+# If you have an icon/logo, you should add it to https://github.com/giantswarm/web-assets
+# and set the final URL here.
+icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
+
+sources:
+- https://github.com/some-org/some-repo
+version: 0.0.0-dev
+annotations:
+  # Adapt to 'giantswarm' if this application is not to be deployed by customers
+  io.giantswarm.application.audience: all
+  # Adapt to 'true' if Giant Swarm takes responsibility for this app where it's deplyed
+  io.giantswarm.application.managed: "false"
+  # used through .Chart.Annotations . Please replace TEAM-NAME with your team's short name, e. g. 'shield'  for team-shield
+  io.giantswarm.application.team: TEAM-NAME
