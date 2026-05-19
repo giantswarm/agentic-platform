@@ -11,9 +11,7 @@ home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
   - https://github.com/giantswarm/agentic-platform
-# Track the bundled muster sub-chart so operator dashboards that query
-# `app.kubernetes.io/version` get a meaningful value.
-appVersion: "0.1.193"
+appVersion: "0.1.0"
 version: 0.0.0-dev
 annotations:
   io.giantswarm.application.audience: all
