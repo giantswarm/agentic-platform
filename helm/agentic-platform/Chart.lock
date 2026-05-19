@@ -5,5 +5,8 @@ dependencies:
 - name: agentgateway
   repository: oci://cr.agentgateway.dev/charts
   version: v1.2.1
-digest: sha256:7eb79c7594d0ab4831b42c145c5b3c84aa95edd3017a566a2105adf4d5d73297
-generated: "2026-05-20T01:03:30.39241626+02:00"
+- name: valkey
+  repository: https://charts.bitnami.com/bitnami
+  version: 5.6.5
+digest: sha256:d5846ab8991081004e7cafd289548fbd1fd07f733343cfd8d71bedc2fd81c2b4
+generated: "2026-05-20T01:15:44.942469559+02:00"

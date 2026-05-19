@@ -111,6 +111,55 @@ Top-level values surfaced by the agentic platform:
 
 Full schema: [`helm/agentic-platform/values.schema.json`](./helm/agentic-platform/values.schema.json).
 
+### OAuth secrets
+
+The umbrella does NOT auto-generate OAuth credentials. Two options:
+
+1. **Inline values.** Set the Dex client secret and registration token directly in `muster.muster.oauth.server.*` and let the muster sub-chart render a Secret. Suitable for GitOps repos that already encrypt values (sops, Sealed Secrets, etc.).
+2. **`existingSecret`.** Pre-create a Secret with the muster-expected keys and point the chart at it:
+
+   ```bash
+   kubectl create secret generic muster-oauth \
+     --namespace muster \
+     --from-literal=dex-client-secret=<value> \
+     --from-literal=registration-token=$(openssl rand -hex 32) \
+     --from-literal=oauth-encryption-key=$(openssl rand -base64 32) \
+     --from-literal=valkey-password=<value>
+   ```
+
+   ```yaml
+   muster:
+     muster:
+       oauth:
+         server:
+           existingSecret: muster-oauth
+   ```
+
+Random auto-generation via Helm `lookup` is intentionally avoided — every `helm upgrade` would regenerate the values and invalidate every issued token. See [#4](https://github.com/giantswarm/agentic-platform/issues/4).
+
+### Bundled Valkey
+
+Set `valkey.enabled: true` to include a Valkey instance (bitnami chart, persistent storage on by default) for muster's OAuth session storage. The chart pins `fullnameOverride: muster-valkey` so the primary Service resolves at `muster-valkey-primary.<namespace>.svc:6379` — match muster's expectation by setting:
+
+```yaml
+valkey:
+  enabled: true
+  auth:
+    existingSecret: muster-oauth
+
+muster:
+  muster:
+    oauth:
+      server:
+        storage:
+          type: valkey
+          valkey:
+            url: muster-valkey-primary.<namespace>.svc:6379
+            existingSecret: muster-oauth
+```
+
+Operators with an out-of-band Valkey (shared across namespaces, managed by another release) should leave `valkey.enabled: false` and configure `muster.muster.oauth.server.storage.valkey.*` directly.
+
 ### Public HTTPRoute (required for OAuth)
 
 The umbrella renders a Gateway for the **data plane** only — that Gateway is not exposed publicly and is not the right parent for the muster control-plane HTTPRoute. Muster's HTTPRoute must attach to the cluster's public Gateway (typically the envoy-gateway-system one) with hostnames that match the OAuth callback URL operators advertise via `muster.oauth.mcpClient.publicUrl`.

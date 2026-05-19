@@ -19,3 +19,12 @@ dependencies:
   - name: agentgateway
     version: v1.2.1
     repository: oci://cr.agentgateway.dev/charts
+  # Bundled Valkey for muster's OAuth session storage. Opt-in: enable when
+  # the muster sub-chart's oauth.server.storage.type is set to "valkey".
+  # `valkey.fullnameOverride: muster-valkey` keeps the primary Service at
+  # `muster-valkey-primary` so the muster default URL matches without a
+  # cross-subchart values override.
+  - name: valkey
+    version: 5.6.5
+    repository: https://charts.bitnami.com/bitnami
+    condition: valkey.enabled

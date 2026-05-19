@@ -98,6 +98,35 @@ muster:
   crds:
     install: false
 
+# Bundled Valkey for muster's OAuth session storage. Opt-in: set
+# `valkey.enabled: true` together with `muster.muster.oauth.server.storage.type: valkey`
+# and `muster.muster.oauth.server.storage.valkey.url: muster-valkey-primary.<release-namespace>.svc:6379`.
+# Operators with an out-of-band Valkey (e.g. shared across namespaces) should
+# leave `valkey.enabled: false` and configure the muster sub-chart's
+# `oauth.server.storage.valkey` block directly.
+valkey:
+  enabled: false
+  # Keep the primary Service at `muster-valkey-primary` so muster's default
+  # URL convention matches without a cross-subchart values rewrite.
+  fullnameOverride: muster-valkey
+  auth:
+    enabled: true
+    # `existingSecret` should reference a Secret with key `valkey-password`.
+    # The same Secret is consumed by muster (set
+    # `muster.muster.oauth.server.storage.valkey.existingSecret` to match).
+    existingSecret: ""
+  primary:
+    persistence:
+      enabled: true
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
 agentgateway:
   image:
     registry: gsoci.azurecr.io
