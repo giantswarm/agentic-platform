@@ -12,7 +12,6 @@ annotations:
   io.giantswarm.application.audience: all
   io.giantswarm.application.managed: "true"
   io.giantswarm.application.team: bumblebee
-  io.giantswarm.application.app-type: bundle
 dependencies:
   - name: muster
     version: 0.1.193
