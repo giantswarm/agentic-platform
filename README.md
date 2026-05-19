@@ -3,14 +3,14 @@
 
 # agentic-platform
 
-Giant Swarm umbrella chart that ships [muster](https://github.com/giantswarm/muster) (MCP gateway / aggregator) and [agentgateway](https://github.com/agentgateway/agentgateway) (MCP data plane) as one deploy unit, plus the `Gateway`, `AgentgatewayParameters`, and `CiliumNetworkPolicy` resources that wire them together.
+The agentic platform is Giant Swarm's MCP gateway deploy unit. It ships [muster](https://github.com/giantswarm/muster) (MCP gateway / aggregator) and [agentgateway](https://github.com/agentgateway/agentgateway) (MCP data plane) together, plus the `Gateway`, `AgentgatewayParameters`, and `CiliumNetworkPolicy` resources that wire them up.
 
 Owner: team-bumblebee.
 
 ## Prerequisites
 
 - Kubernetes ≥ 1.33 on the install target.
-- Gateway API v1 CRDs (`gateways.gateway.networking.k8s.io`, `httproutes.gateway.networking.k8s.io`, `gatewayclasses.gateway.networking.k8s.io`) installed cluster-wide. The umbrella does **not** install them.
+- Gateway API v1 CRDs (`gateways.gateway.networking.k8s.io`, `httproutes.gateway.networking.k8s.io`, `gatewayclasses.gateway.networking.k8s.io`) installed cluster-wide. The agentic platform does **not** install them.
 - A `GatewayClass` named `agentgateway` reconciled by the agentgateway controller — this chart's `Chart.yaml` pulls the upstream agentgateway controller chart which creates the `GatewayClass`.
 - Cilium CNI if `networkPolicy.flavor: cilium` (default). Set `networkPolicy.enabled: false` on non-Cilium clusters.
 
@@ -44,7 +44,7 @@ spec:
   install:
     createNamespace: true
   values:
-    # override umbrella values here
+    # override agentic-platform values here
 ```
 
 Direct Helm install (development / kind):
@@ -58,7 +58,7 @@ helm install agentic-platform \
 
 ## Configuration
 
-Top-level values surfaced by the umbrella:
+Top-level values surfaced by the agentic platform:
 
 | Key | Default | Purpose |
 |---|---|---|
@@ -68,7 +68,7 @@ Top-level values surfaced by the umbrella:
 | `gateway.listeners` | `[{name: http, port: 8080, protocol: HTTP}]` | Listener spec passed verbatim. |
 | `gateway.parameters.enabled` | `true` | Render the `AgentgatewayParameters` overlay. |
 | `gateway.parameters.{pod,container}SecurityContext` | restricted-PSS compatible | Injected into the data-plane Deployment via strategic merge patch. |
-| `networkPolicy.enabled` / `.flavor` | `true` / `cilium` | Render the umbrella's `CiliumNetworkPolicy`. |
+| `networkPolicy.enabled` / `.flavor` | `true` / `cilium` | Render the agentic-platform `CiliumNetworkPolicy`. |
 | `muster.*` | passes through to the muster subchart | See [muster chart README](https://github.com/giantswarm/muster/blob/main/helm/muster/README.md). |
 | `agentgateway.*` | passes through to the upstream agentgateway chart | See [agentgateway docs](https://agentgateway.dev). |
 
@@ -106,7 +106,7 @@ The mirror must serve these paths verbatim: `giantswarm/muster`, `giantswarm/age
 
 ## Security
 
-The agentgateway data-plane pod template is rendered at runtime by the controller, not by Helm. To inject restricted-PSS-compatible `securityContext` fields, the umbrella ships an `AgentgatewayParameters` resource referenced from `Gateway.spec.infrastructure.parametersRef`. The controller applies it as a strategic merge patch over the generated Deployment.
+The agentgateway data-plane pod template is rendered at runtime by the controller, not by Helm. To inject restricted-PSS-compatible `securityContext` fields, the agentic platform ships an `AgentgatewayParameters` resource referenced from `Gateway.spec.infrastructure.parametersRef`. The controller applies it as a strategic merge patch over the generated Deployment.
 
 The data-plane pod template hardcodes `sysctls: [net.ipv4.ip_unprivileged_port_start=0]`. This is a **namespaced-safe** sysctl (does not require `allowedUnsafeSysctls` on the kubelet). On clusters with built-in Pod Security Admission `restricted` enforced, the sysctl will be rejected — label the install namespace with `pod-security.kubernetes.io/enforce: baseline` (or allowlist the sysctl in Kyverno's `restrict-sysctls` policy as Giant Swarm workload clusters already do).
 
