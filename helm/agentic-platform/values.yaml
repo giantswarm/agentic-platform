@@ -1,4 +1,4 @@
-# This file is a Helm values file for the {APP-NAME} chart.
+# This file is a Helm values file for the agentic-platform chart.
 #
 # To learn more about how to configure your app on your cluster
 # and override the default values in here, visit:
@@ -6,7 +6,7 @@
 #   https://docs.giantswarm.io/tutorials/fleet-management/app-platform/app-configuration/#basic-values-merging-example
 #
 image:
-  name: "giantswarm/{APP-NAME}"
+  name: "giantswarm/agentic-platform"
   tag: ""
 registry:
   domain: gsoci.azurecr.io

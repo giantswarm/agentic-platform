@@ -7,13 +7,13 @@ apiVersion: v2
 appVersion: 0.0.1
 
 # Make sure your name DOES NOT end in "app" or "-app".
-name: {APP-NAME}
+name: agentic-platform
 
 # Please describe what the app provides in a sentence or two.
 description: Please add description
 
 # URL of the GitHub repository that is the source of this Chart.yaml file.
-home: https://github.com/giantswarm/{APP-NAME}
+home: https://github.com/giantswarm/agentic-platform
 
 # If you have an icon/logo, you should add it to https://github.com/giantswarm/web-assets
 # and set the final URL here.
