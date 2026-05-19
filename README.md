@@ -137,6 +137,28 @@ The umbrella does NOT auto-generate OAuth credentials. Two options:
 
 Random auto-generation via Helm `lookup` is intentionally avoided — every `helm upgrade` would regenerate the values and invalidate every issued token. See [#4](https://github.com/giantswarm/agentic-platform/issues/4).
 
+### Dex / OIDC client registration
+
+`muster.muster.oauth.server.dex.{issuerUrl,clientId}` and the matching `dex-client-secret` must correspond to a client registered against the cluster's Dex (or another OIDC issuer). The agentic platform does NOT register the client — that's the IdP operator's job. On Giant Swarm workload clusters running `dex-operator`, register via a `DexIdentityProvider` CR alongside the umbrella App CR:
+
+```yaml
+apiVersion: dex.giantswarm.io/v1alpha1
+kind: DexIdentityProvider
+metadata:
+  name: muster
+  namespace: <dex-operator-namespace>
+spec:
+  type: github           # or "ldap", "oidc", "saml" depending on the cluster's federation
+  name: GitHub
+  connectorConfig:
+    # provider-specific config
+    clientID: <github-app-id>
+    clientSecret: <github-app-secret>
+    redirectURI: https://muster.<cluster>.<base-domain>/oauth/callback
+```
+
+The `redirectURI` must equal `<muster.oauth.server.baseUrl>/oauth/callback`. For raw Dex (no `dex-operator`), edit the Dex `ConfigMap` to add the staticClients entry with the same `id` / `secret` / `redirectURIs`.
+
 ### Bundled Valkey
 
 Set `valkey.enabled: true` to include a Valkey instance (bitnami chart, persistent storage on by default) for muster's OAuth session storage. The chart pins `fullnameOverride: muster-valkey` so the primary Service resolves at `muster-valkey-primary.<namespace>.svc:6379` — match muster's expectation by setting:

@@ -1,12 +1,19 @@
 apiVersion: v2
 name: agentic-platform
 type: application
-description: Giant Swarm agentic platform — MCP gateway deploy unit bundling muster and agentgateway.
+description: |
+  Giant Swarm agentic platform — MCP gateway consumer-side deploy unit. Bundles
+  muster (MCP aggregator control plane) and the agentgateway controller +
+  data-plane proxy, plus an opt-in bitnami/valkey for muster's OAuth session
+  storage. Required CRDs (agentgateway-crds, muster-crds) and the Gateway API
+  GatewayClass are cluster-level prerequisites — see README.
 home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
   - https://github.com/giantswarm/agentic-platform
-appVersion: "0.1.0"
+# Track the bundled muster sub-chart so operator dashboards that query
+# `app.kubernetes.io/version` get a meaningful value.
+appVersion: "0.1.193"
 version: 0.0.0-dev
 annotations:
   io.giantswarm.application.audience: all

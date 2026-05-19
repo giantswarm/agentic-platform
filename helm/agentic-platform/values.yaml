@@ -46,6 +46,27 @@ gateway:
     #       value: http://tempo-distributor.tempo.svc:4317
     dataPlaneEnv: []
 
+# Bootstrap helpers for first-install on a fresh cluster. Opt-in.
+bootstrap:
+  # Bootstrap the muster OAuth Secret if it doesn't exist. Random values
+  # are generated for `registration-token`, `oauth-encryption-key`, and
+  # `valkey-password` on first install; subsequent installs re-emit the
+  # existing values via Helm `lookup`. `helm.sh/resource-policy: keep`
+  # protects the Secret from `helm uninstall`. Caveats are documented in
+  # templates/oauth-bootstrap-secret.yaml — do not use rendered Helm
+  # output as a GitOps source of truth for these fields.
+  #
+  # Set `muster.muster.oauth.server.existingSecret: muster-oauth` to
+  # consume the bootstrapped Secret.
+  oauth:
+    enabled: false
+    # Name of the Secret to create / re-emit.
+    name: muster-oauth
+    # MUST match the secret registered against the cluster's Dex /
+    # OIDC issuer (the agentic platform does not register clients;
+    # see README "Dex / OIDC client registration").
+    dexClientSecret: ""
+
 networkPolicy:
   enabled: true
   # Set to "none" on non-Cilium clusters.
