@@ -16,19 +16,35 @@ Owner: team-bumblebee.
 
 ## Installing
 
-Install via the Giant Swarm app platform (preferred):
+Install via the Giant Swarm platform — Flux `OCIRepository` + `HelmRelease`:
 
 ```yaml
-apiVersion: application.giantswarm.io/v1alpha1
-kind: App
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
 metadata:
   name: agentic-platform
-  namespace: <org-namespace>
+  namespace: flux-system
 spec:
-  catalog: giantswarm
+  interval: 5m
+  url: oci://giantswarmpublic.azurecr.io/giantswarm-catalog/agentic-platform
+  ref:
+    tag: <chart-version>
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
   name: agentic-platform
   namespace: muster
-  version: <chart-version>
+spec:
+  interval: 10m
+  chartRef:
+    kind: OCIRepository
+    name: agentic-platform
+    namespace: flux-system
+  install:
+    createNamespace: true
+  values:
+    # override umbrella values here
 ```
 
 Direct Helm install (development / kind):
