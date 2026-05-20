@@ -2,16 +2,10 @@ global:
   registry: gsoci.azurecr.io
   imagePullSecrets: []
 
+# Data-plane Gateway. Reconciled by the agentgateway controller. Muster's
+# public HTTPRoute attaches to a separate Gateway (see muster.gatewayAPI).
 gateway:
   enabled: true
-  # Data-plane Gateway. Reconciled by the `agentgateway` controller; the
-  # `agentgateway` GatewayClass is a cluster-level prerequisite. Two
-  # release instances in the same cluster must override `gateway.name`
-  # (Gateway is namespaced, so different release namespaces are fine).
-  # The Gateway resource itself is standard `gateway.networking.k8s.io/v1`;
-  # only `AgentgatewayParameters` is vendor-specific.
-  # muster's public HTTPRoute attaches to a separate, operator-owned
-  # public Gateway — not to this one. See `muster.gatewayAPI.httpRoute`.
   name: agentgateway
   gatewayClassName: agentgateway
   listeners:
@@ -21,16 +15,11 @@ gateway:
       allowedRoutes:
         namespaces:
           from: Same
-  # AgentgatewayParameters is referenced from Gateway.spec.infrastructure.parametersRef.
-  # The agentic platform owns this resource because the upstream agentgateway chart does not
-  # render it and the data-plane pod template is hardcoded inside the controller binary.
   parameters:
     enabled: true
     name: ""
-    # Data-plane Service type. The controller hardcodes LoadBalancer; the
-    # umbrella forces ClusterIP via AgentgatewayParameters.spec.service so
-    # the data plane stays internal — envoy-gateway-system fronts public
-    # traffic. Override to LoadBalancer when there is no front Gateway.
+    # Controller hardcodes LoadBalancer; this overlay forces ClusterIP.
+    # Override to LoadBalancer when no front Gateway exposes the data plane.
     serviceType: ClusterIP
     podSecurityContext:
       runAsNonRoot: true
@@ -44,10 +33,7 @@ gateway:
         drop: [ALL]
       seccompProfile:
         type: RuntimeDefault
-    # Strategic-merge `env` for the data-plane container. Use this to push
-    # OTel exporter config or any other env-driven knob onto the dynamically
-    # rendered Deployment without forking the controller.
-    # Example:
+    # Strategic-merge env appended to the data-plane container. Example:
     #   dataPlaneEnv:
     #     - name: OTEL_EXPORTER_OTLP_ENDPOINT
     #       value: http://tempo-distributor.tempo.svc:4317
@@ -57,36 +43,25 @@ gateway:
 
 networkPolicy:
   enabled: true
-  # cilium  → render CiliumNetworkPolicy (uses entity selectors + FQDN egress)
-  # kubernetes → render vanilla networking.k8s.io/v1 NetworkPolicy
-  #              (best-effort: no entity selectors, no FQDN egress; `additionalEgressFQDNs` is ignored)
-  # Opt out entirely with `networkPolicy.enabled: false`.
+  # cilium     — CiliumNetworkPolicy (entity selectors + FQDN egress)
+  # kubernetes — vanilla networking.k8s.io/v1 NetworkPolicy
   #
-  # NOTE: this switch only governs the agentgateway policies the umbrella
-  # owns. The muster sub-chart's `ciliumNetworkPolicy.enabled` is independent —
-  # set `muster.ciliumNetworkPolicy.enabled: false` when running the
-  # `kubernetes` flavor or any non-Cilium cluster.
+  # Only governs the agentgateway policies owned by this chart. Muster's
+  # ciliumNetworkPolicy is independent — set muster.ciliumNetworkPolicy.enabled
+  # to false when running the kubernetes flavor.
   flavor: cilium
-  # CIDR-based egress for endpoints the `cluster` and `world` selectors miss
-  # (cilium flavor) or to broaden world egress (kubernetes flavor). The most
-  # common case: OIDC discovery (Dex) resolves to an envoy-gateway LoadBalancer
-  # VIP whose Cilium identity doesn't match either selector.
+  # Extra CIDR egress for in-cluster Gateway VIPs the entity selectors miss.
   # Example:
   #   additionalEgressCIDRs:
-  #     - 10.223.16.0/24   # envoy-gateway VIP range on glean
+  #     - 10.223.16.0/24
   additionalEgressCIDRs: []
-  # FQDN-based egress for DNS-resolved upstreams (Dex / OIDC public endpoints,
-  # hosted MCPServers). cilium flavor only — vanilla NetworkPolicy has no
-  # equivalent. Requires the cluster to ship a Cilium DNS visibility policy
-  # (typically a CiliumClusterwideNetworkPolicy on GS workload clusters).
-  # Example:
+  # FQDN egress (cilium flavor only — requires a cluster Cilium DNS visibility
+  # policy). Example:
   #   additionalEgressFQDNs:
-  #     - matchName: dex.glean.azuretest.gigantic.io
+  #     - matchName: dex.example.gigantic.io
   additionalEgressFQDNs: []
-  # CIDR overrides for the `kubernetes` flavor. Vanilla NetworkPolicy can't
-  # use entity selectors so these CIDRs replace `cluster` / `world` /
-  # `kube-apiserver` egress with explicit ranges. Defaults are GS workload
-  # cluster defaults; override per installation.
+  # CIDR replacements for the kubernetes flavor. Vanilla NetworkPolicy has no
+  # entity selectors.
   kubernetes:
     apiServerCIDR: 0.0.0.0/0
     worldExcludedCIDRs:
@@ -95,15 +70,8 @@ networkPolicy:
       - 192.168.0.0/16
       - 169.254.0.0/16
 
-# extraObjects renders arbitrary manifests alongside the umbrella's
-# templates. Useful for non-Flux operators who want a single Helm release
-# to ship the muster OAuth Secret + values together. Each entry is passed
-# through `tpl` so Helm template functions work inside the manifest.
-#
-# Combine with muster.muster.oauth.server.existingSecret to point muster
-# at the Secret this list renders.
-#
-# Example:
+# Arbitrary manifests rendered through `tpl` alongside the chart. Useful for
+# shipping the muster OAuth Secret in the same Helm release. Example:
 #   extraObjects:
 #     - apiVersion: v1
 #       kind: Secret
@@ -122,11 +90,8 @@ muster:
     registry: gsoci.azurecr.io
   ciliumNetworkPolicy:
     enabled: true
-    # Required when Dex / OIDC providers / MCPServers are fronted by an
-    # in-cluster Gateway (envoy-gateway-system, agentgateway, etc.). The
-    # default in the muster sub-chart is `false`, which only allows world
-    # egress and breaks production Giant Swarm installs that resolve OIDC
-    # via in-cluster ingress LoadBalancer / ClusterIP IPs.
+    # Reaches Dex / OIDC / MCPServers fronted by in-cluster ingress.
+    # Muster's sub-chart default is false.
     allowClusterIngress: true
   podAnnotations:
     application.giantswarm.io/team: bumblebee
@@ -134,18 +99,11 @@ muster:
     enabled: true
     httpRoute:
       enabled: true
-      # The umbrella does NOT default the HTTPRoute to its internal
-      # `agentgateway` Gateway — that Gateway is for the data-plane and is
-      # not exposed publicly. Operators must point the HTTPRoute at the
-      # cluster's public Gateway (typically the envoy-gateway-system one)
-      # and set `hostnames` so the OAuth callback URLs built against
-      # `muster.oauth.mcpClient.publicUrl` resolve. The muster sub-chart's
-      # fail-guard rejects install when `parentRefs` is empty and
-      # `gatewayAPI.enabled` is true.
-      # Example:
+      # Attach to the cluster's public Gateway (not the umbrella's data-plane
+      # Gateway). Both fields are required; the muster sub-chart fails install
+      # otherwise. Example:
       #   muster:
       #     gatewayAPI:
-      #       enabled: true
       #       httpRoute:
       #         parentRefs:
       #           - name: giantswarm-default
@@ -159,14 +117,9 @@ muster:
   crds:
     install: false
 
-# Bundled Valkey for muster's OAuth session storage. Opt-in: set
-# `valkey.enabled: true` together with `muster.muster.oauth.server.storage.type: valkey`
-# and `muster.muster.oauth.server.storage.valkey.url: muster-valkey-primary.<release-namespace>.svc:6379`.
-# Note the `-primary` suffix — bitnami's primary/replica topology exposes
-# the writable endpoint at `<fullname>-primary`.
-# Operators with an out-of-band Valkey (e.g. shared across namespaces) should
-# leave `valkey.enabled: false` and configure the muster sub-chart's
-# `oauth.server.storage.valkey` block directly.
+# Bundled bitnami valkey for muster's OAuth session storage. With
+# fullnameOverride: muster-valkey the writable primary is at
+# muster-valkey-primary.<namespace>.svc:6379 (note the `-primary` suffix).
 valkey:
   enabled: false
   fullnameOverride: muster-valkey
@@ -174,9 +127,8 @@ valkey:
     tag: "9.0.4"
   auth:
     enabled: true
-    # `existingSecret` should reference a Secret with key `valkey-password`.
-    # The same Secret is consumed by muster (set
-    # `muster.muster.oauth.server.storage.valkey.existingSecret` to match).
+    # Referenced Secret must contain key `valkey-password`. Match the value
+    # under muster.muster.oauth.server.storage.valkey.existingSecret.
     existingSecret: ""
   primary:
     persistence:

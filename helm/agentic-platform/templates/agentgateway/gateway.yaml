@@ -11,8 +11,6 @@ spec:
   listeners:
     {{- toYaml .Values.gateway.listeners | nindent 4 }}
   {{- if .Values.gateway.parameters.enabled }}
-  # parametersRef wires the AgentgatewayParameters CR into the data-plane
-  # Deployment the controller will render from this Gateway.
   infrastructure:
     parametersRef:
       group: agentgateway.dev
