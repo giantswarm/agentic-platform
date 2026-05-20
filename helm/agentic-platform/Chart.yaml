@@ -4,9 +4,9 @@ type: application
 description: |
   Giant Swarm agentic platform — MCP gateway consumer-side deploy unit. Bundles
   muster (MCP aggregator control plane) and the agentgateway controller +
-  data-plane proxy, plus an opt-in bitnami/valkey for muster's OAuth session
-  storage. Required CRDs (agentgateway-crds, muster-crds) and the Gateway API
-  GatewayClass are cluster-level prerequisites — see README.
+  data-plane proxy, plus an opt-in giantswarm/valkey-app for muster's OAuth
+  session storage. Required CRDs (agentgateway-crds, muster-crds) and the
+  Gateway API GatewayClass are cluster-level prerequisites — see README.
 home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
@@ -19,19 +19,16 @@ annotations:
   io.giantswarm.application.team: bumblebee
 dependencies:
   - name: muster
-    version: 0.1.193
+    version: 0.1.197
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v1.2.1
     repository: oci://cr.agentgateway.dev/charts
-  # Bundled Valkey for muster's OAuth session storage. Opt-in: enable when
-  # the muster sub-chart's oauth.server.storage.type is set to "valkey".
-  # `valkey.fullnameOverride: muster-valkey` keeps the primary Service at
-  # `muster-valkey-primary` so the muster default URL matches without a
-  # cross-subchart values override.
+  # Bundled Valkey (giantswarm/valkey-app — wraps upstream valkey-io/valkey-helm)
+  # for muster's OAuth session storage. Single-pod Deployment with PVC; primary
+  # Service at `muster-valkey.<namespace>.svc:6379` (no `-primary` suffix).
+  # Opt-in via `valkey.enabled`; pairs with muster's default storage.type=valkey.
   - name: valkey
-    version: 5.6.5
-    # OCI form: ABS's chart-testing pipeline does not pre-register the
-    # bitnami HTTP repo, but OCI deps don't need `helm repo add`.
-    repository: oci://registry-1.docker.io/bitnamicharts
+    version: 0.1.2
+    repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
     condition: valkey.enabled

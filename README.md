@@ -14,7 +14,7 @@ Owner: team-bumblebee.
 - `agentgateway-crds` chart installed (provides `AgentgatewayParameters`, `AgentgatewayBackend`, `AgentgatewayPolicy`). Not bundled — upstream `agentgateway` ships the controller and CRDs as separate charts; see [CRD lifecycle](#crd-lifecycle).
 - Muster's `MCPServer` and `Workflow` CRDs are installed by the bundled `muster` sub-chart's `templates/crds.yaml` (gated by `muster.crds.install`, default `true`).
 - A `GatewayClass` CR named `agentgateway` (`status.conditions[type=Accepted]=True`). The bundled `agentgateway` sub-chart creates it on install; operators managing the controller out-of-band must ensure the `GatewayClass` exists.
-- Cilium CNI for `networkPolicy.flavor: cilium` (default). Vanilla Kubernetes clusters: set `networkPolicy.flavor: kubernetes` **AND** `muster.ciliumNetworkPolicy.enabled: false` (the muster sub-chart still emits a CiliumNetworkPolicy for its own pod; the umbrella's flavor switch only governs the agentgateway policies — see [#TBD](https://github.com/giantswarm/muster/issues) for the muster-side alignment). Opt out entirely with `networkPolicy.enabled: false` + `muster.ciliumNetworkPolicy.enabled: false`.
+- Cilium CNI for `networkPolicy.flavor: cilium` (default). Vanilla Kubernetes clusters: set `networkPolicy.flavor: kubernetes` **AND** `muster.networkPolicy.flavor: kubernetes` **AND** `valkey.ciliumNetworkPolicy.enabled: false` (the bundled valkey wrapper's CNP has no kubernetes-flavor counterpart). Opt out entirely with `networkPolicy.enabled: false` + `muster.networkPolicy.enabled: false` + `valkey.ciliumNetworkPolicy.enabled: false`.
 
 ## Installing
 
@@ -94,7 +94,10 @@ helm install agentic-platform \
 | `extraObjects` | `[]` | Arbitrary manifests rendered through `tpl` alongside the chart. |
 | `muster.*` | passes through to muster | See [muster chart README](https://github.com/giantswarm/muster/blob/main/helm/muster/README.md). |
 | `agentgateway.*` | passes through to upstream agentgateway | See [agentgateway docs](https://agentgateway.dev). |
-| `valkey.enabled` | `false` | Bundle bitnami/valkey for muster OAuth session storage. |
+| `valkey.enabled` | `true` | Bundle [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) for muster OAuth session storage. |
+| `muster.muster.oauth.server.enabled` | `true` | OAuth resource-server protection on the muster API. Requires `baseUrl`, `dex.{issuerUrl,clientId}`, and a Secret carrying `dex-client-secret` / `registration-token` / `oauth-encryption-key` / `valkey-password`. |
+| `muster.muster.oauth.server.storage.type` | `valkey` | Muster storage backend default. Pairs with `valkey.enabled: true`; flip to `memory` for dev. |
+| `muster.muster.oauth.server.storage.valkey.url` | `muster-valkey:6379` | Bundled-valkey Service. Override to point at an out-of-band Valkey. |
 
 Full schema: [`helm/agentic-platform/values.schema.json`](./helm/agentic-platform/values.schema.json).
 
@@ -148,26 +151,29 @@ Random auto-generation via Helm `lookup` is intentionally not supported — ever
 
 ### Bundled Valkey
 
-`valkey.enabled: true` bundles a bitnami valkey instance with persistent storage. `fullnameOverride: muster-valkey` plus bitnami's primary/replica topology exposes the writable endpoint at `muster-valkey-primary.<namespace>.svc:6379` — **note the `-primary` suffix.**
+`valkey.enabled: true` bundles [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) (a Giant Swarm wrapper around upstream `valkey-io/valkey-helm`) with persistent storage. Single-pod Deployment behind a Service named `muster-valkey` (via `fullnameOverride`). Muster's storage defaults to `type: valkey` + `url: muster-valkey:6379`, so enabling the bundled chart alongside `oauth.server.enabled: true` is the only flip needed — no `url` override required.
 
 ```yaml
 valkey:
   enabled: true
-  auth:
-    existingSecret: muster-oauth
+  valkey:
+    auth:
+      usersExistingSecret: muster-oauth  # Secret must carry key `valkey-password`
 
 muster:
   muster:
     oauth:
       server:
-        storage:
-          type: valkey
-          valkey:
-            url: muster-valkey-primary.<namespace>.svc:6379
-            existingSecret: muster-oauth
+        enabled: true
+        existingSecret: muster-oauth
+        # storage.type: valkey
+        # storage.valkey.url: muster-valkey:6379
+        # — both inherited from the umbrella defaults.
 ```
 
-Operators with an out-of-band Valkey leave `valkey.enabled: false` and configure `muster.muster.oauth.server.storage.valkey.*` directly. See [UPGRADE.md](./UPGRADE.md) for migration notes from a previously-existing standalone Valkey.
+ACL authentication is enabled by default for the `default` user (`~* &* +@all`), with the cleartext password read from `valkey-password` in the operator-supplied Secret. Muster sends `AUTH <password>` against the default user, which is the standard backwards-compatible form.
+
+Operators with an out-of-band Valkey leave `valkey.enabled: false` and override `muster.muster.oauth.server.storage.valkey.url` to point at the external endpoint. See [UPGRADE.md](./UPGRADE.md) for migration notes from a previously-existing standalone Valkey.
 
 ### Public HTTPRoute (required for OAuth)
 
@@ -195,7 +201,7 @@ All images default to `gsoci.azurecr.io/giantswarm/*`:
 
 | Image | Source (mirrored by GS retagger) |
 |---|---|
-| `gsoci.azurecr.io/giantswarm/muster:0.1.193` | `gsoci.azurecr.io/giantswarm/muster` (native GS image) |
+| `gsoci.azurecr.io/giantswarm/muster:0.1.197` | `gsoci.azurecr.io/giantswarm/muster` (native GS image) |
 | `gsoci.azurecr.io/giantswarm/agentgateway-controller:v1.2.1` | `cr.agentgateway.dev/controller` |
 | `gsoci.azurecr.io/giantswarm/agentgateway:v1.2.1` | `cr.agentgateway.dev/agentgateway` |
 

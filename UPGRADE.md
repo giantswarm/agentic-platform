@@ -4,6 +4,35 @@ Operator action required between releases. CHANGELOG.md captures the diff; UPGRA
 
 ## 0.0.0 → 0.1.0 (first stable release — pending)
 
+### Bundled Valkey + OAuth server are ON by default
+
+`valkey.enabled` and `muster.muster.oauth.server.enabled` both default to `true`. Operators must supply per-cluster fields up-front or the muster sub-chart's fail-guards reject install:
+
+| Field | Why |
+|---|---|
+| `muster.muster.oauth.server.baseUrl` | OAuth issuer URL (HTTPS, public muster hostname). |
+| `muster.muster.oauth.server.dex.issuerUrl` | Dex issuer URL on this cluster. |
+| `muster.muster.oauth.server.dex.clientId` | OAuth client pre-registered in Dex. |
+| `muster.muster.oauth.server.existingSecret` | Secret carrying `dex-client-secret`, `registration-token`, `oauth-encryption-key`, `valkey-password`. |
+| `valkey.valkey.auth.usersExistingSecret` | Same Secret (key `valkey-password`) — drives ACL auth on the bundled Valkey. Conventionally the same name as the muster OAuth Secret. |
+
+For dev installs that don't need OAuth: set `muster.muster.oauth.server.enabled: false`, `muster.muster.oauth.server.storage.type: memory`, and (optionally) `valkey.enabled: false`.
+
+### muster 0.1.193 → 0.1.197
+
+`muster.ciliumNetworkPolicy.*` is removed. Migrate:
+
+```yaml
+muster:
+  networkPolicy:
+    enabled: true            # was: ciliumNetworkPolicy.enabled
+    flavor: cilium           # new — mirrors umbrella's networkPolicy.flavor
+    cilium:
+      allowClusterIngress: true  # was: ciliumNetworkPolicy.allowClusterIngress
+```
+
+The muster sub-chart now also ships a `kubernetes` flavor (vanilla `networking.k8s.io/v1 NetworkPolicy`) with the same CIDR replacements as the umbrella (`apiServerCIDR`, `clusterCIDR`, `worldExcludedCIDRs`). Muster's CiliumNetworkPolicy egress now covers the agentgateway data-plane on 8080 in the release namespace (upstream-proxy path) in addition to the existing Valkey egress on 6379.
+
 ### agentgateway-crds is a cluster prerequisite
 
 Install `agentgateway-crds` before the agentic-platform release. Upstream `agentgateway` ships the controller and CRDs as separate charts at `oci://cr.agentgateway.dev/charts/` — we have no choice but to install both. Muster's CRDs continue to ship inside the umbrella via the muster sub-chart's `templates/crds.yaml`.
@@ -53,49 +82,43 @@ The agentgateway controller hardcodes the data-plane Service to `type: LoadBalan
 
 `networkPolicy.flavor` now accepts `cilium` (default) or `kubernetes`. The previous `none` value is removed — opt out via `networkPolicy.enabled: false`. The `kubernetes` flavor renders vanilla `networking.k8s.io/v1 NetworkPolicy` but is best-effort: no entity selectors (`cluster`, `world`, `kube-apiserver` become CIDR ranges via `networkPolicy.kubernetes.{apiServerCIDR,worldExcludedCIDRs}`), no FQDN egress (`additionalEgressFQDNs` is ignored).
 
-**Cross-subchart caveat:** the umbrella's `networkPolicy.flavor` only governs the agentgateway policies it owns. The muster sub-chart's `ciliumNetworkPolicy.enabled` is independent and defaults to `true` in the umbrella values. When selecting the `kubernetes` flavor (or running on a non-Cilium cluster), also set:
+**Cross-subchart flavor switch.** Muster 0.1.197 ships the same `networkPolicy.{enabled,flavor,cilium.*,kubernetes.*}` shape as the umbrella, so the flavor switch is consistent across both. When selecting the `kubernetes` flavor (or running on a non-Cilium cluster), set:
 
 ```yaml
+networkPolicy:
+  flavor: kubernetes
 muster:
+  networkPolicy:
+    flavor: kubernetes
+valkey:
   ciliumNetworkPolicy:
-    enabled: false
+    enabled: false   # giantswarm/valkey-app has no kubernetes-flavor CNP yet
 ```
 
-Tracked for muster-side alignment — long-term the muster chart will gain a `networkPolicy.flavor` switch matching the umbrella's.
+Previous `muster.ciliumNetworkPolicy.{enabled,allowClusterIngress}` keys are gone — migrate to `muster.networkPolicy.{enabled,flavor,cilium.allowClusterIngress}`.
 
 ### Controller CiliumNetworkPolicy added
 
 The umbrella now ships a separate policy for the agentgateway **controller pod** in addition to the data-plane pod. Previously the controller was unprotected (upstream agentgateway chart ships no policies). Data-plane selector switched to the Gateway-API standard label `gateway.networking.k8s.io/gateway-name=<gateway.name>`; controller selector matches the controller's `app.kubernetes.io/instance=<release>` triple.
 
-### Bundled bitnami/valkey — `-primary` suffix on the writable Service
+### Bundled Valkey — giantswarm/valkey-app, ACL auth, default-on for muster
 
-`valkey.enabled: true` exposes the writable endpoint at `muster-valkey-primary.<namespace>.svc:6379`. If migrating from a previously-existing standalone Valkey reachable at `muster-valkey.muster.svc:6379`, update the URL:
+`valkey.enabled: true` now bundles [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) (wraps upstream `valkey-io/valkey-helm`) instead of `bitnami/valkey`. Differences operators must adopt:
 
-```yaml
-muster:
-  muster:
-    oauth:
-      server:
-        storage:
-          valkey:
-            url: muster-valkey-primary.muster.svc:6379  # was: muster-valkey.muster.svc:6379
-```
+- **Service name.** Writable endpoint is `muster-valkey.<namespace>.svc:6379` (single Deployment + Service — no primary/replica split, no `-primary` suffix).
+- **Default muster wiring.** `muster.muster.oauth.server.storage.type` defaults to `valkey` and `storage.valkey.url` defaults to `muster-valkey:6379` at the umbrella level. Enabling OAuth + the bundled valkey requires no further override. Set `storage.type: memory` for dev, or override the `url:` for an out-of-band Valkey.
+- **Auth model.** ACL-based, not flat-password. The bundled chart provisions a `default` user with `~* &* +@all` and reads the cleartext password from the `valkey-password` key of `valkey.valkey.auth.usersExistingSecret`. Muster sends `AUTH <password>` against the default user — standard backwards-compatible form.
+- **Values shape.** Wrapper exposes upstream values under `valkey.valkey.*`:
 
-### `valkey-password` Secret key
+  | Old (bitnami) | New (valkey-app) |
+  |---|---|
+  | `valkey.fullnameOverride: muster-valkey` | `valkey.valkey.fullnameOverride: muster-valkey` |
+  | `valkey.image.tag: "9.0.4"` | `valkey.valkey.image.tag` (defaults to chart appVersion 8.1.4) |
+  | `valkey.auth.existingSecret: <name>` | `valkey.valkey.auth.usersExistingSecret: <name>` |
+  | `valkey.primary.persistence.{enabled,size}` | `valkey.valkey.dataStorage.{enabled,requestedSize}` |
+  | `valkey.primary.resources` | `valkey.valkey.resources` |
 
-If reusing an existing `muster-valkey-auth` Secret with the key `default` (the bitnami default before `auth.usePasswordFiles`), set:
-
-```yaml
-muster:
-  muster:
-    oauth:
-      server:
-        storage:
-          valkey:
-            secretKeyPassword: default
-```
-
-The muster chart defaults this to `valkey-password`; the bundled valkey expectation matches.
+- **Migration from bitnami.** Re-pointing `storage.valkey.url` from `muster-valkey-primary.<ns>.svc:6379` to `muster-valkey.<ns>.svc:6379` is sufficient at the URL layer; the previous bitnami StatefulSet's PVC is not consumed by the new Deployment-backed PVC (different name). Treat session storage as ephemeral when cutting over.
 
 ### `bootstrap.oauth.*` removed
 
