@@ -168,26 +168,7 @@ muster:
 
 Random auto-generation via Helm `lookup` is intentionally not supported — every `helm upgrade` would either regenerate values (invalidating issued tokens) or render different output under `helm template` / `--dry-run` than at install time.
 
-### Dex / OIDC client registration
-
-`muster.muster.oauth.server.dex.{issuerUrl,clientId}` and the matching `dex-client-secret` must correspond to a client registered against the cluster's Dex (or another OIDC issuer). The agentic platform does NOT register the client — that's the IdP operator's job. On Giant Swarm workload clusters running `dex-operator`:
-
-```yaml
-apiVersion: dex.giantswarm.io/v1alpha1
-kind: DexIdentityProvider
-metadata:
-  name: muster
-  namespace: <dex-operator-namespace>
-spec:
-  type: github
-  name: GitHub
-  connectorConfig:
-    clientID: <github-app-id>
-    clientSecret: <github-app-secret>
-    redirectURI: https://muster.<cluster>.<base-domain>/oauth/callback
-```
-
-`redirectURI` must equal `<muster.oauth.server.baseUrl>/oauth/callback`.
+`muster.muster.oauth.server.dex.{issuerUrl,clientId}` and the matching `dex-client-secret` must correspond to a client registered against the cluster's OIDC issuer. Registration is out of scope for this chart; `redirectURI` must equal `<muster.oauth.server.baseUrl>/oauth/callback`.
 
 ### Bundled Valkey
 
