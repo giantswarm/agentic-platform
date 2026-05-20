@@ -64,6 +64,16 @@ The agentgateway controller hardcodes the data-plane Service to `type: LoadBalan
 
 `networkPolicy.flavor` now accepts `cilium` (default) or `kubernetes`. The previous `none` value is removed — opt out via `networkPolicy.enabled: false`. The `kubernetes` flavor renders vanilla `networking.k8s.io/v1 NetworkPolicy` but is best-effort: no entity selectors (`cluster`, `world`, `kube-apiserver` become CIDR ranges via `networkPolicy.kubernetes.{apiServerCIDR,worldExcludedCIDRs}`), no FQDN egress (`additionalEgressFQDNs` is ignored).
 
+**Cross-subchart caveat:** the umbrella's `networkPolicy.flavor` only governs the agentgateway policies it owns. The muster sub-chart's `ciliumNetworkPolicy.enabled` is independent and defaults to `true` in the umbrella values. When selecting the `kubernetes` flavor (or running on a non-Cilium cluster), also set:
+
+```yaml
+muster:
+  ciliumNetworkPolicy:
+    enabled: false
+```
+
+Tracked for muster-side alignment — long-term the muster chart will gain a `networkPolicy.flavor` switch matching the umbrella's.
+
 ### Controller CiliumNetworkPolicy added
 
 The umbrella now ships a separate policy for the agentgateway **controller pod** in addition to the data-plane pod. Previously the controller was unprotected (upstream agentgateway chart ships no policies). Data-plane selector switched to the Gateway-API standard label `gateway.networking.k8s.io/gateway-name=<gateway.name>`; controller selector matches the controller's `app.kubernetes.io/instance=<release>` triple.

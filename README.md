@@ -14,7 +14,7 @@ Owner: team-bumblebee.
 - `agentgateway-crds` chart installed (provides `AgentgatewayParameters`, `AgentgatewayBackend`, `AgentgatewayPolicy`). Not bundled — see [CRD lifecycle](#crd-lifecycle).
 - `muster-crds` chart installed (provides `MCPServer`, `Workflow`). Not bundled — see [CRD lifecycle](#crd-lifecycle).
 - A `GatewayClass` CR named `agentgateway` (`status.conditions[type=Accepted]=True`). The bundled `agentgateway` sub-chart creates it on install; operators managing the controller out-of-band must ensure the `GatewayClass` exists.
-- Cilium CNI for `networkPolicy.flavor: cilium` (default). Vanilla Kubernetes clusters: set `networkPolicy.flavor: kubernetes`. Opt out entirely with `networkPolicy.enabled: false`.
+- Cilium CNI for `networkPolicy.flavor: cilium` (default). Vanilla Kubernetes clusters: set `networkPolicy.flavor: kubernetes` **AND** `muster.ciliumNetworkPolicy.enabled: false` (the muster sub-chart still emits a CiliumNetworkPolicy for its own pod; the umbrella's flavor switch only governs the agentgateway policies — see [#TBD](https://github.com/giantswarm/muster/issues) for the muster-side alignment). Opt out entirely with `networkPolicy.enabled: false` + `muster.ciliumNetworkPolicy.enabled: false`.
 
 ## Installing
 

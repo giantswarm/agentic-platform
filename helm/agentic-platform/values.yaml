@@ -61,6 +61,11 @@ networkPolicy:
   # kubernetes → render vanilla networking.k8s.io/v1 NetworkPolicy
   #              (best-effort: no entity selectors, no FQDN egress; `additionalEgressFQDNs` is ignored)
   # Opt out entirely with `networkPolicy.enabled: false`.
+  #
+  # NOTE: this switch only governs the agentgateway policies the umbrella
+  # owns. The muster sub-chart's `ciliumNetworkPolicy.enabled` is independent —
+  # set `muster.ciliumNetworkPolicy.enabled: false` when running the
+  # `kubernetes` flavor or any non-Cilium cluster.
   flavor: cilium
   # CIDR-based egress for endpoints the `cluster` and `world` selectors miss
   # (cilium flavor) or to broaden world egress (kubernetes flavor). The most
