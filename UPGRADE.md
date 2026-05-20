@@ -4,23 +4,19 @@ Operator action required between releases. CHANGELOG.md captures the diff; UPGRA
 
 ## 0.0.0 → 0.1.0 (first stable release — pending)
 
-### CRD lifecycle — agentgateway-crds and muster-crds shipped separately
+### agentgateway-crds is a cluster prerequisite
 
-The agentic platform no longer bundles `agentgateway-crds` and no longer relies on the muster sub-chart's `templates/crds.yaml`. Install / upgrade the two CRD charts BEFORE the agentic-platform release. Encode ordering via Flux `HelmRelease.spec.dependsOn` (see README), or follow the raw-helm sequence:
+Install `agentgateway-crds` before the agentic-platform release. Upstream `agentgateway` ships the controller and CRDs as separate charts at `oci://cr.agentgateway.dev/charts/` — we have no choice but to install both. Muster's CRDs continue to ship inside the umbrella via the muster sub-chart's `templates/crds.yaml`.
 
 ```
 helm install agentgateway-crds \
   oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.2.1 \
   -n muster --create-namespace
-
-helm install muster-crds \
-  oci://gsoci.azurecr.io/charts/giantswarm/muster-crds \
-  --version <muster-crds-version> -n muster
 ```
 
-#### Adopting CRDs from a previous broken topology
+#### Adopting pre-existing agentgateway CRDs
 
-If a previous install of the agentic-platform created the CRDs via the sub-chart paths, the new sibling releases refuse to take ownership. One-time adoption:
+If a previous install applied agentgateway CRDs without Helm metadata, the new `agentgateway-crds` release refuses to take ownership. One-time adoption:
 
 ```bash
 for crd in $(kubectl get crd -o name | grep -E 'agentgateway\.dev$'); do
@@ -28,13 +24,6 @@ for crd in $(kubectl get crd -o name | grep -E 'agentgateway\.dev$'); do
     meta.helm.sh/release-name=agentgateway-crds \
     meta.helm.sh/release-namespace=muster --overwrite
   kubectl label "$crd" app.kubernetes.io/managed-by=Helm --overwrite
-done
-
-for crd in mcpservers.muster.giantswarm.io workflows.muster.giantswarm.io; do
-  kubectl annotate "crd/$crd" \
-    meta.helm.sh/release-name=muster-crds \
-    meta.helm.sh/release-namespace=muster --overwrite
-  kubectl label "crd/$crd" app.kubernetes.io/managed-by=Helm --overwrite
 done
 ```
 

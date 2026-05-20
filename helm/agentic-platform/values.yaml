@@ -114,8 +114,6 @@ muster:
       #           - muster.<cluster>.<base-domain>
       parentRefs: []
       hostnames: []
-  crds:
-    install: false
 
 # Bundled bitnami valkey for muster's OAuth session storage. With
 # fullnameOverride: muster-valkey the writable primary is at
