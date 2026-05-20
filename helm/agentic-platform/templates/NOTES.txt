@@ -2,6 +2,7 @@
 
 Gateway:        {{ .Values.gateway.name }} (class {{ .Values.gateway.gatewayClassName }})
 Listener port:  {{ (index .Values.gateway.listeners 0).port }}
+Service type:   {{ .Values.gateway.parameters.serviceType }} (data-plane Service forced via AgentgatewayParameters overlay)
 
 Prerequisite check (run BEFORE installing the agentic platform):
   kubectl get crd gateways.gateway.networking.k8s.io
@@ -9,24 +10,18 @@ Prerequisite check (run BEFORE installing the agentic platform):
   kubectl get crd mcpservers.muster.giantswarm.io
 
 This chart does NOT install any CRDs. Required CRDs are owned by sibling
-releases that must exist first:
+releases that must exist first. Encode ordering via Flux HelmRelease
+`spec.dependsOn`, or follow the raw-helm sequence:
 
-  Giant Swarm App platform — encode ordering on each App CR:
-    spec:
-      dependsOn:
-        - name: agentgateway-crds
-        - name: muster-crds
-
-  Raw helm:
-    helm install agentgateway-crds \
-      oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.2.1 \
-      -n {{ .Release.Namespace }} --create-namespace
-    helm install muster-crds \
-      oci://gsoci.azurecr.io/charts/giantswarm/muster-crds \
-      --version <muster-crds-version> -n {{ .Release.Namespace }}
-    helm install {{ .Release.Name }} \
-      oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
-      --version <agentic-platform-version> -n {{ .Release.Namespace }}
+  helm install agentgateway-crds \
+    oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.2.1 \
+    -n {{ .Release.Namespace }} --create-namespace
+  helm install muster-crds \
+    oci://gsoci.azurecr.io/charts/giantswarm/muster-crds \
+    --version <muster-crds-version> -n {{ .Release.Namespace }}
+  helm install {{ .Release.Name }} \
+    oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
+    --version <agentic-platform-version> -n {{ .Release.Namespace }}
 
 Verify the data-plane Deployment renders after the controller picks up the Gateway:
-  kubectl -n {{ .Release.Namespace }} get gateway,deployment -l app.kubernetes.io/name=agentgateway
+  kubectl -n {{ .Release.Namespace }} get gateway,deployment -l gateway.networking.k8s.io/gateway-name={{ .Values.gateway.name }}

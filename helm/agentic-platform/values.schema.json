@@ -36,58 +36,59 @@
           "properties": {
             "enabled": { "type": "boolean" },
             "name": { "type": "string" },
+            "serviceType": {
+              "type": "string",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+              "description": "Service type for the data-plane Service. Default ClusterIP — the controller hardcodes LoadBalancer; this overlay forces the override."
+            },
             "podSecurityContext": { "type": "object" },
             "containerSecurityContext": { "type": "object" },
             "dataPlaneEnv": {
               "type": "array",
-              "items": { "type": "object" },
-              "description": "Strategic-merge env entries appended to the data-plane container. Each item is a corev1.EnvVar."
+              "items": { "type": "object" }
             },
             "dataPlaneVolumes": {
               "type": "array",
-              "items": { "type": "object" },
-              "description": "Strategic-merge volumes on the data-plane pod template. Each item is a corev1.Volume."
+              "items": { "type": "object" }
             },
             "dataPlaneVolumeMounts": {
               "type": "array",
-              "items": { "type": "object" },
-              "description": "Strategic-merge volumeMounts on the data-plane container. Each item is a corev1.VolumeMount."
+              "items": { "type": "object" }
             }
           }
         }
       }
     },
-    "bootstrap": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "oauth": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["enabled", "name"],
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "name": { "type": "string", "minLength": 1 },
-            "dexClientSecret": { "type": "string" }
-          }
-        }
-      }
+    "extraObjects": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Arbitrary manifests rendered through `tpl` alongside the umbrella's templates. Each entry is any Kubernetes object."
     },
     "networkPolicy": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "enabled": { "type": "boolean" },
-        "flavor": { "type": "string", "enum": ["cilium", "none"] },
+        "flavor": { "type": "string", "enum": ["cilium", "kubernetes"] },
         "additionalEgressCIDRs": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "Extra CIDR-based egress rules applied to the data-plane policy. Use for in-cluster Gateway VIPs whose Cilium identity doesn't match `cluster` or `world`."
+          "items": { "type": "string" }
         },
         "additionalEgressFQDNs": {
           "type": "array",
           "items": { "type": "object" },
-          "description": "Extra FQDN-based egress rules. Requires a cluster-wide Cilium DNS visibility policy. Each item is a Cilium FQDN selector (e.g. {matchName: dex.example.com})."
+          "description": "cilium flavor only — vanilla NetworkPolicy has no FQDN equivalent."
+        },
+        "kubernetes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "apiServerCIDR": { "type": "string" },
+            "worldExcludedCIDRs": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
         }
       }
     }

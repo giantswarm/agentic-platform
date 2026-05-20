@@ -2,17 +2,14 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: {{ include "name" . }}-gateway
+  name: {{ include "name" . }}-dataplane
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "labels.common" . | nindent 4 }}
 spec:
-  # The data-plane pod is rendered by the agentgateway controller from the
-  # Gateway CR — its labels are not under Helm's control. The controller
-  # consistently stamps app.kubernetes.io/name=agentgateway on the pod.
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/name: agentgateway
+      gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
   ingress:
     - fromEntities: ["cluster"]
       toPorts:
@@ -21,10 +18,6 @@ spec:
               protocol: TCP
   egress:
     - toEntities: ["kube-apiserver"]
-    # DNS: every kube-dns variant Giant Swarm workload clusters ship with.
-    # `kube-dns` for vanilla CoreDNS, `coredns` for Cilium-managed CoreDNS
-    # Deployments, `k8s-dns-node-cache` for NodeLocal DNSCache (port 1053
-    # in addition to 53). Selecting only one variant silently drops DNS.
     - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: kube-system
@@ -52,9 +45,6 @@ spec:
               protocol: TCP
             - port: "443"
               protocol: TCP
-    # Reach upstream MCPServers and OIDC providers (Dex, etc.) fronted by an
-    # in-cluster Gateway. `world` does not cover in-cluster LoadBalancer or
-    # ClusterIP IPs.
     - toEntities: ["cluster"]
       toPorts:
         - ports:
@@ -62,7 +52,6 @@ spec:
               protocol: TCP
             - port: "443"
               protocol: TCP
-    # Reach muster on its aggregator port for OAuth + intrinsic tool calls.
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: muster
@@ -70,11 +59,17 @@ spec:
         - ports:
             - port: "8090"
               protocol: TCP
+    # xDS to the agentgateway controller.
+    - toEndpoints:
+        - matchLabels:
+            agentgateway: agentgateway
+            app.kubernetes.io/name: agentgateway
+            app.kubernetes.io/instance: {{ .Release.Name }}
+      toPorts:
+        - ports:
+            - port: "9978"
+              protocol: TCP
     {{- with .Values.networkPolicy.additionalEgressCIDRs }}
-    # CIDR-based egress for endpoints the `cluster` and `world` selectors
-    # miss — typically the envoy-gateway VIP range when OIDC discovery
-    # resolves to an in-cluster LoadBalancer IP whose Cilium identity
-    # doesn't match either `cluster` or a labelled endpoint.
     - toCIDR:
         {{- toYaml . | nindent 8 }}
       toPorts:
@@ -83,10 +78,6 @@ spec:
               protocol: TCP
     {{- end }}
     {{- with .Values.networkPolicy.additionalEgressFQDNs }}
-    # FQDN-based egress for DNS-resolved upstreams (Dex / OIDC public
-    # endpoints, hosted MCPServers). Cilium ≥ 1.13 needs the matching
-    # DNS visibility policy to be in place — usually shipped cluster-wide
-    # via a CiliumClusterwideNetworkPolicy.
     - toFQDNs:
         {{- toYaml . | nindent 8 }}
       toPorts:

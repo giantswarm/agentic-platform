@@ -8,6 +8,8 @@ gateway:
   # `agentgateway` GatewayClass is a cluster-level prerequisite. Two
   # release instances in the same cluster must override `gateway.name`
   # (Gateway is namespaced, so different release namespaces are fine).
+  # The Gateway resource itself is standard `gateway.networking.k8s.io/v1`;
+  # only `AgentgatewayParameters` is vendor-specific.
   # muster's public HTTPRoute attaches to a separate, operator-owned
   # public Gateway — not to this one. See `muster.gatewayAPI.httpRoute`.
   name: agentgateway
@@ -25,6 +27,11 @@ gateway:
   parameters:
     enabled: true
     name: ""
+    # Data-plane Service type. The controller hardcodes LoadBalancer; the
+    # umbrella forces ClusterIP via AgentgatewayParameters.spec.service so
+    # the data plane stays internal — envoy-gateway-system fronts public
+    # traffic. Override to LoadBalancer when there is no front Gateway.
+    serviceType: ClusterIP
     podSecurityContext:
       runAsNonRoot: true
       seccompProfile:
@@ -45,47 +52,65 @@ gateway:
     #     - name: OTEL_EXPORTER_OTLP_ENDPOINT
     #       value: http://tempo-distributor.tempo.svc:4317
     dataPlaneEnv: []
-
-# Bootstrap helpers for first-install on a fresh cluster. Opt-in.
-bootstrap:
-  # Bootstrap the muster OAuth Secret if it doesn't exist. Random values
-  # are generated for `registration-token`, `oauth-encryption-key`, and
-  # `valkey-password` on first install; subsequent installs re-emit the
-  # existing values via Helm `lookup`. `helm.sh/resource-policy: keep`
-  # protects the Secret from `helm uninstall`. Caveats are documented in
-  # templates/oauth-bootstrap-secret.yaml — do not use rendered Helm
-  # output as a GitOps source of truth for these fields.
-  #
-  # Set `muster.muster.oauth.server.existingSecret: muster-oauth` to
-  # consume the bootstrapped Secret.
-  oauth:
-    enabled: false
-    # Name of the Secret to create / re-emit.
-    name: muster-oauth
-    # MUST match the secret registered against the cluster's Dex /
-    # OIDC issuer (the agentic platform does not register clients;
-    # see README "Dex / OIDC client registration").
-    dexClientSecret: ""
+    dataPlaneVolumes: []
+    dataPlaneVolumeMounts: []
 
 networkPolicy:
   enabled: true
-  # Set to "none" on non-Cilium clusters.
+  # cilium  → render CiliumNetworkPolicy (uses entity selectors + FQDN egress)
+  # kubernetes → render vanilla networking.k8s.io/v1 NetworkPolicy
+  #              (best-effort: no entity selectors, no FQDN egress; `additionalEgressFQDNs` is ignored)
+  # Opt out entirely with `networkPolicy.enabled: false`.
   flavor: cilium
-  # Extra CIDR-based egress rules for endpoints the `cluster` / `world`
-  # entity selectors don't cover. The most common case: OIDC discovery
-  # (Dex) resolves to an envoy-gateway LoadBalancer VIP whose Cilium
-  # identity doesn't match either selector, so requests drop silently.
+  # CIDR-based egress for endpoints the `cluster` and `world` selectors miss
+  # (cilium flavor) or to broaden world egress (kubernetes flavor). The most
+  # common case: OIDC discovery (Dex) resolves to an envoy-gateway LoadBalancer
+  # VIP whose Cilium identity doesn't match either selector.
   # Example:
   #   additionalEgressCIDRs:
   #     - 10.223.16.0/24   # envoy-gateway VIP range on glean
   additionalEgressCIDRs: []
-  # Extra FQDN-based egress rules. Requires the cluster to ship a Cilium
-  # DNS visibility policy (CiliumClusterwideNetworkPolicy on most GS
-  # workload clusters). Use for hosted MCPServers / public OIDC issuers.
+  # FQDN-based egress for DNS-resolved upstreams (Dex / OIDC public endpoints,
+  # hosted MCPServers). cilium flavor only — vanilla NetworkPolicy has no
+  # equivalent. Requires the cluster to ship a Cilium DNS visibility policy
+  # (typically a CiliumClusterwideNetworkPolicy on GS workload clusters).
   # Example:
   #   additionalEgressFQDNs:
   #     - matchName: dex.glean.azuretest.gigantic.io
   additionalEgressFQDNs: []
+  # CIDR overrides for the `kubernetes` flavor. Vanilla NetworkPolicy can't
+  # use entity selectors so these CIDRs replace `cluster` / `world` /
+  # `kube-apiserver` egress with explicit ranges. Defaults are GS workload
+  # cluster defaults; override per installation.
+  kubernetes:
+    apiServerCIDR: 0.0.0.0/0
+    worldExcludedCIDRs:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - 169.254.0.0/16
+
+# extraObjects renders arbitrary manifests alongside the umbrella's
+# templates. Useful for non-Flux operators who want a single Helm release
+# to ship the muster OAuth Secret + values together. Each entry is passed
+# through `tpl` so Helm template functions work inside the manifest.
+#
+# Combine with muster.muster.oauth.server.existingSecret to point muster
+# at the Secret this list renders.
+#
+# Example:
+#   extraObjects:
+#     - apiVersion: v1
+#       kind: Secret
+#       metadata:
+#         name: muster-oauth
+#       type: Opaque
+#       stringData:
+#         dex-client-secret: REPLACE_ME
+#         registration-token: REPLACE_ME
+#         oauth-encryption-key: REPLACE_ME
+#         valkey-password: REPLACE_ME
+extraObjects: []
 
 muster:
   image:
@@ -126,30 +151,20 @@ muster:
       #           - muster.<cluster>.<base-domain>
       parentRefs: []
       hostnames: []
-  # The muster sub-chart's `crds.install` is a deprecated no-op since
-  # muster split CRDs into the sibling `muster-crds` chart. Pinning to
-  # false here is a safety declaration — without it, an older `muster`
-  # chart whose `templates/crds.yaml` still globbed `crds/*` would render
-  # ownership-less CRDs on every umbrella install.
   crds:
     install: false
 
 # Bundled Valkey for muster's OAuth session storage. Opt-in: set
 # `valkey.enabled: true` together with `muster.muster.oauth.server.storage.type: valkey`
 # and `muster.muster.oauth.server.storage.valkey.url: muster-valkey-primary.<release-namespace>.svc:6379`.
+# Note the `-primary` suffix — bitnami's primary/replica topology exposes
+# the writable endpoint at `<fullname>-primary`.
 # Operators with an out-of-band Valkey (e.g. shared across namespaces) should
 # leave `valkey.enabled: false` and configure the muster sub-chart's
 # `oauth.server.storage.valkey` block directly.
 valkey:
   enabled: false
-  # Keep the primary Service at `muster-valkey-primary` so muster's default
-  # URL convention matches without a cross-subchart values rewrite.
   fullnameOverride: muster-valkey
-  # The bitnami chart defaults `image.tag: "latest"` which kube-linter
-  # (and image-policy admission webhooks) reject. Pin to the chart's
-  # appVersion explicitly. Sentinel/metrics/etc. are off by default and
-  # not pinned here — enable them in operator values together with their
-  # own tag pin.
   image:
     tag: "9.0.4"
   auth:

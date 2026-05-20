@@ -10,25 +10,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial agentic-platform chart bundling `muster` 0.1.193 and `agentgateway` v1.2.1.
-- `Gateway` (name `agentgateway`) and `AgentgatewayParameters` overlay that injects `seccompProfile: RuntimeDefault` and drops all capabilities on the dynamically-rendered data-plane pod.
-- `gateway.parameters.dataPlaneEnv` strategic-merge env list, projected onto the data-plane container so OTel exporter config (and any other env-driven knob) lands on the dynamically-rendered Deployment without forking the controller.
-- `gateway.parameters.dataPlaneVolumes` and `gateway.parameters.dataPlaneVolumeMounts` strategic-merge lists for mounting external content (e.g. a cert-manager-issued CA bundle for `controller.xds.mode: tls`) onto the data-plane pod template.
-- `CiliumNetworkPolicy` allowing cluster-entity ingress on the listener port and DNS / world / cluster-ingress / muster-aggregator egress.
-- `values.schema.json` covering top-level keys; subchart keys pass-through.
+- `Gateway` (name `agentgateway`) and `AgentgatewayParameters` overlay injecting restricted-PSS `securityContext` on the controller-rendered data-plane pod.
+- `gateway.parameters.serviceType` (default `ClusterIP`) overlays `AgentgatewayParameters.spec.service.type` so the data-plane Service stays internal; the controller hardcodes `LoadBalancer`.
+- `gateway.parameters.dataPlaneEnv`, `dataPlaneVolumes`, `dataPlaneVolumeMounts` strategic-merge lists on the AgentgatewayParameters overlay.
+- `CiliumNetworkPolicy` for the agentgateway **controller pod** in addition to the data-plane pod (upstream agentgateway chart ships no policies).
+- `networking.k8s.io/v1 NetworkPolicy` rendering when `networkPolicy.flavor: kubernetes` — best-effort (no entity selectors, no FQDN egress).
+- `networkPolicy.kubernetes.{apiServerCIDR,worldExcludedCIDRs}` for the `kubernetes` flavor.
+- Top-level `extraObjects: []` rendering arbitrary manifests through `tpl` alongside the chart.
+- `values.schema.json` covering top-level keys with a cross-field combo check (muster valkey storage requires `valkey.enabled` or an explicit URL).
+- `UPGRADE.md` documenting the breaking changes for the first stable release.
 
 ### Changed
 
-- The agentic platform no longer bundles `agentgateway-crds` or the muster sub-chart's CRDs. Helm 3 only honours `crds/` at the top-level chart, so bundled sub-chart CRDs would never install cleanly first-try and made every `helm upgrade` an implicit CRD migration. CRDs now ship in dedicated sibling charts (`agentgateway-crds`, `muster-crds`) and must be installed before the agentic platform — encode ordering with `spec.dependsOn` on the App CR, or with the documented `helm install` sequence in `README.md` / `NOTES.txt`. `muster.crds.install` is pinned to `false` in `values.yaml` as a safety declaration.
-- `CiliumNetworkPolicy` egress broadened: DNS endpoint selectors now cover `kube-dns`, `coredns`, and `k8s-dns-node-cache` (ports 53 + 1053, UDP + TCP); world egress includes port 80; new `cluster` egress on 80/443 reaches in-cluster ingress (Dex / OIDC / MCPServers); new endpoint egress to `app.kubernetes.io/name=muster:8090` for OAuth + intrinsic tool calls. The previous policy only allowed `kube-dns:53` and `world:443`, which dropped DNS on clusters running NodeLocal DNSCache and blocked the controller from pushing XDS to the data plane.
-- `muster.ciliumNetworkPolicy.allowClusterIngress` default flipped to `true` in the umbrella's values.yaml. Production Giant Swarm installs resolve OIDC and MCPServer backends via in-cluster ingress LoadBalancer / ClusterIP IPs that the muster sub-chart's `world` egress does not cover.
-- `muster.gatewayAPI.httpRoute.parentRefs` and `.hostnames` no longer default to the umbrella's internal `agentgateway` Gateway. Muster's public HTTPRoute must attach to a separate, operator-owned public Gateway (typically `envoy-gateway-system/giantswarm-default`) — the muster sub-chart's existing fail-guard now blocks install until both fields are set explicitly. `muster.gatewayAPI.enabled` is `true` by default. README documents the values shape.
-- Bundled `bitnami/valkey` 5.6.5 as a conditional sub-chart (`condition: valkey.enabled`, default `false`). `fullnameOverride: muster-valkey` pins the primary Service at `muster-valkey-primary.<ns>.svc` so muster's OAuth-session-storage URL convention matches without a cross-subchart values rewrite. README documents the wiring; operators with an out-of-band Valkey leave it disabled.
-- README adds an "OAuth secrets" section documenting the inline-values vs `existingSecret` patterns, and a "Dex / OIDC client registration" section pointing at the `dex-operator` `DexIdentityProvider` shape.
-- New opt-in `bootstrap.oauth.enabled` template (`helm/agentic-platform/templates/oauth-bootstrap-secret.yaml`) creates a muster OAuth Secret on first install, re-emitting existing values via Helm `lookup` on subsequent reconciles. `helm.sh/resource-policy: keep` ensures `helm uninstall` does not destroy issued-token-binding material. `dex-client-secret` must be supplied by the operator (must match the Dex client registration); the three internal values (`registration-token`, `oauth-encryption-key`, `valkey-password`) auto-generate once.
-- New `UPGRADE.md` documenting the breaking changes operators must walk through for the first stable release.
-- `networkPolicy.additionalEgressCIDRs` and `networkPolicy.additionalEgressFQDNs` values on the data-plane CNP for endpoints the `cluster` / `world` selectors don't cover — typically the envoy-gateway VIP range when OIDC discovery resolves to an in-cluster LoadBalancer IP whose Cilium identity doesn't match either selector. Documented inline in `values.yaml` with the glean `10.223.16.0/24` example.
-- `values.schema.json` adds a cross-field combo check: `muster.muster.oauth.server.storage.type: valkey` requires either `valkey.enabled: true` or an explicit `muster.muster.oauth.server.storage.valkey.url`. Helm `lint` / `install` now rejects the misconfigured combination with a precise error instead of silently shipping a control plane that can't reach Valkey.
-- `Chart.yaml` description updated to reflect the runtime contract (muster + agentgateway + opt-in Valkey; CRDs as cluster prerequisite). `appVersion` stays at `0.1.0`, the umbrella's own version — sub-charts (muster, agentgateway, valkey) stamp their own `appVersion` on resources they render, so tying the umbrella's `appVersion` to muster's would force an umbrella release on every muster bump without giving operators any additional signal.
-- `GatewayClass agentgateway` documented as a cluster-level prerequisite (verified via `kubectl get gatewayclass agentgateway`). The bundled `agentgateway` controller subchart still satisfies the prereq on default installs; operators managing the controller out-of-band must ensure the `GatewayClass` exists.
+- CRD lifecycle: `agentgateway-crds` and `muster-crds` ship as sibling charts and must be installed before the agentic platform. `muster.crds.install` is pinned to `false` as a safety declaration.
+- Data-plane policy selector switched to the Gateway-API standard label `gateway.networking.k8s.io/gateway-name=<gateway.name>` (was `app.kubernetes.io/name=agentgateway`, which matched both the controller and the data plane).
+- Controller policy selector uses the agentgateway sub-chart's selector triple (`agentgateway: agentgateway` + `app.kubernetes.io/name=agentgateway` + `app.kubernetes.io/instance=<release>`).
+- Data-plane CNP gains xDS egress to the controller on TCP 9978; controller CNP gains xDS ingress from data-plane pods.
+- `CiliumNetworkPolicy` egress covers `kube-dns`, `coredns`, `k8s-dns-node-cache` on 53 + 1053 (UDP + TCP); world 80/443; cluster 80/443 for in-cluster ingress (Dex / MCPServers); muster on 8090.
+- `muster.ciliumNetworkPolicy.allowClusterIngress` defaulted to `true`.
+- `muster.gatewayAPI.httpRoute.parentRefs` / `.hostnames` no longer default to the data-plane Gateway. Muster's HTTPRoute must attach to the cluster's public Gateway (typically `envoy-gateway-system/giantswarm-default`); the muster fail-guard enforces this.
+- Bundled `bitnami/valkey` 5.6.5 as a conditional sub-chart (`condition: valkey.enabled`). `fullnameOverride: muster-valkey` exposes the writable primary at `muster-valkey-primary.<namespace>.svc:6379`.
+- `networkPolicy.flavor` enum changed from `cilium | none` to `cilium | kubernetes`. Opt out via `networkPolicy.enabled: false`.
+- README is now Flux HelmRelease-first (no Giant Swarm App platform). Adds a "Gateway API CR ownership" section clarifying that only `AgentgatewayParameters` is vendor-specific to agentgateway.
+- Templates grouped under `templates/agentgateway/` (Gateway, AgentgatewayParameters, four NetworkPolicy variants).
+- `Chart.yaml` description reflects the runtime contract (muster + agentgateway + opt-in Valkey; CRDs as cluster prerequisite). `appVersion` stays at the umbrella's own `0.1.0`.
+
+### Removed
+
+- `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
 [Unreleased]: https://github.com/giantswarm/agentic-platform/tree/main
