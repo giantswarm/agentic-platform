@@ -71,6 +71,21 @@ networkPolicy:
   enabled: true
   # Set to "none" on non-Cilium clusters.
   flavor: cilium
+  # Extra CIDR-based egress rules for endpoints the `cluster` / `world`
+  # entity selectors don't cover. The most common case: OIDC discovery
+  # (Dex) resolves to an envoy-gateway LoadBalancer VIP whose Cilium
+  # identity doesn't match either selector, so requests drop silently.
+  # Example:
+  #   additionalEgressCIDRs:
+  #     - 10.223.16.0/24   # envoy-gateway VIP range on glean
+  additionalEgressCIDRs: []
+  # Extra FQDN-based egress rules. Requires the cluster to ship a Cilium
+  # DNS visibility policy (CiliumClusterwideNetworkPolicy on most GS
+  # workload clusters). Use for hosted MCPServers / public OIDC issuers.
+  # Example:
+  #   additionalEgressFQDNs:
+  #     - matchName: dex.glean.azuretest.gigantic.io
+  additionalEgressFQDNs: []
 
 muster:
   image:

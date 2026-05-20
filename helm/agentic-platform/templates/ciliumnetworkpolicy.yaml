@@ -70,4 +70,28 @@ spec:
         - ports:
             - port: "8090"
               protocol: TCP
+    {{- with .Values.networkPolicy.additionalEgressCIDRs }}
+    # CIDR-based egress for endpoints the `cluster` and `world` selectors
+    # miss — typically the envoy-gateway VIP range when OIDC discovery
+    # resolves to an in-cluster LoadBalancer IP whose Cilium identity
+    # doesn't match either `cluster` or a labelled endpoint.
+    - toCIDR:
+        {{- toYaml . | nindent 8 }}
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    {{- end }}
+    {{- with .Values.networkPolicy.additionalEgressFQDNs }}
+    # FQDN-based egress for DNS-resolved upstreams (Dex / OIDC public
+    # endpoints, hosted MCPServers). Cilium ≥ 1.13 needs the matching
+    # DNS visibility policy to be in place — usually shipped cluster-wide
+    # via a CiliumClusterwideNetworkPolicy.
+    - toFQDNs:
+        {{- toYaml . | nindent 8 }}
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    {{- end }}
 {{- end }}

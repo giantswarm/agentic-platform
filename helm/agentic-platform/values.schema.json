@@ -78,8 +78,92 @@
       "additionalProperties": false,
       "properties": {
         "enabled": { "type": "boolean" },
-        "flavor": { "type": "string", "enum": ["cilium", "none"] }
+        "flavor": { "type": "string", "enum": ["cilium", "none"] },
+        "additionalEgressCIDRs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Extra CIDR-based egress rules applied to the data-plane policy. Use for in-cluster Gateway VIPs whose Cilium identity doesn't match `cluster` or `world`."
+        },
+        "additionalEgressFQDNs": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Extra FQDN-based egress rules. Requires a cluster-wide Cilium DNS visibility policy. Each item is a Cilium FQDN selector (e.g. {matchName: dex.example.com})."
+        }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "description": "Bundled Valkey requires `valkey.enabled: true` together with `muster.muster.oauth.server.storage.type: valkey`. Conversely, switching muster's storage to valkey requires either the bundled `valkey.enabled: true` or an external `muster.muster.oauth.server.storage.valkey.url`.",
+      "if": {
+        "properties": {
+          "muster": {
+            "properties": {
+              "muster": {
+                "properties": {
+                  "oauth": {
+                    "properties": {
+                      "server": {
+                        "properties": {
+                          "storage": {
+                            "properties": {
+                              "type": { "const": "valkey" }
+                            },
+                            "required": ["type"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "anyOf": [
+          {
+            "properties": {
+              "valkey": {
+                "properties": { "enabled": { "const": true } },
+                "required": ["enabled"]
+              }
+            },
+            "required": ["valkey"]
+          },
+          {
+            "properties": {
+              "muster": {
+                "properties": {
+                  "muster": {
+                    "properties": {
+                      "oauth": {
+                        "properties": {
+                          "server": {
+                            "properties": {
+                              "storage": {
+                                "properties": {
+                                  "valkey": {
+                                    "properties": {
+                                      "url": { "type": "string", "minLength": 1 }
+                                    },
+                                    "required": ["url"]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
 }
