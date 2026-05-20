@@ -145,6 +145,13 @@ valkey:
   # Keep the primary Service at `muster-valkey-primary` so muster's default
   # URL convention matches without a cross-subchart values rewrite.
   fullnameOverride: muster-valkey
+  # The bitnami chart defaults `image.tag: "latest"` which kube-linter
+  # (and image-policy admission webhooks) reject. Pin to the chart's
+  # appVersion explicitly. Sentinel/metrics/etc. are off by default and
+  # not pinned here — enable them in operator values together with their
+  # own tag pin.
+  image:
+    tag: "9.0.4"
   auth:
     enabled: true
     # `existingSecret` should reference a Secret with key `valkey-password`.
