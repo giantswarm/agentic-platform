@@ -6,7 +6,7 @@ dependencies:
   repository: oci://cr.agentgateway.dev/charts
   version: v1.2.1
 - name: valkey
-  repository: https://charts.bitnami.com/bitnami
+  repository: oci://registry-1.docker.io/bitnamicharts
   version: 5.6.5
-digest: sha256:9f6c05b53c34ec31228be447cb5585e933ab4b17e5d86bd93deed5871a9a3014
-generated: "2026-05-20T01:59:46.826367317+02:00"
+digest: sha256:f448b42c7b8b55a0a53ffcec458fbd19197b43730c1c2397baf5ef200a7bd7c8
+generated: "2026-05-20T02:26:54.434512133+02:00"

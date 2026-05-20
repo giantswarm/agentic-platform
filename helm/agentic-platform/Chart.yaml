@@ -31,5 +31,7 @@ dependencies:
   # cross-subchart values override.
   - name: valkey
     version: 5.6.5
-    repository: https://charts.bitnami.com/bitnami
+    # OCI form: ABS's chart-testing pipeline does not pre-register the
+    # bitnami HTTP repo, but OCI deps don't need `helm repo add`.
+    repository: oci://registry-1.docker.io/bitnamicharts
     condition: valkey.enabled
