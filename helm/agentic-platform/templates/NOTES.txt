@@ -22,10 +22,10 @@ releases that must exist first:
       oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.2.1 \
       -n {{ .Release.Namespace }} --create-namespace
     helm install muster-crds \
-      oci://giantswarmpublic.azurecr.io/giantswarm-catalog/muster-crds \
+      oci://gsoci.azurecr.io/charts/giantswarm/muster-crds \
       --version <muster-crds-version> -n {{ .Release.Namespace }}
     helm install {{ .Release.Name }} \
-      oci://giantswarmpublic.azurecr.io/giantswarm-catalog/agentic-platform \
+      oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
       --version <agentic-platform-version> -n {{ .Release.Namespace }}
 
 Verify the data-plane Deployment renders after the controller picks up the Gateway:

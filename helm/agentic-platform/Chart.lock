@@ -1,6 +1,6 @@
 dependencies:
 - name: muster
-  repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
+  repository: oci://gsoci.azurecr.io/charts/giantswarm
   version: 0.1.193
 - name: agentgateway
   repository: oci://cr.agentgateway.dev/charts
@@ -8,5 +8,5 @@ dependencies:
 - name: valkey
   repository: https://charts.bitnami.com/bitnami
   version: 5.6.5
-digest: sha256:d5846ab8991081004e7cafd289548fbd1fd07f733343cfd8d71bedc2fd81c2b4
-generated: "2026-05-20T01:15:44.942469559+02:00"
+digest: sha256:9f6c05b53c34ec31228be447cb5585e933ab4b17e5d86bd93deed5871a9a3014
+generated: "2026-05-20T01:59:46.826367317+02:00"

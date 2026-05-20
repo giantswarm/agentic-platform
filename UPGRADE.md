@@ -25,7 +25,7 @@ helm install agentgateway-crds \
   -n muster --create-namespace
 
 helm install muster-crds \
-  oci://giantswarmpublic.azurecr.io/giantswarm-catalog/muster-crds \
+  oci://gsoci.azurecr.io/charts/giantswarm/muster-crds \
   --version <muster-crds-version> -n muster
 ```
 

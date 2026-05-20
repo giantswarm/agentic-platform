@@ -79,13 +79,13 @@ helm install agentgateway-crds \
 
 # 2. Muster CRDs (MCPServer, Workflow).
 helm install muster-crds \
-  oci://giantswarmpublic.azurecr.io/giantswarm-catalog/muster-crds \
+  oci://gsoci.azurecr.io/charts/giantswarm/muster-crds \
   --version <muster-crds-version> \
   --namespace muster
 
 # 3. The agentic platform itself.
 helm install agentic-platform \
-  oci://giantswarmpublic.azurecr.io/giantswarm-catalog/agentic-platform \
+  oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
   --version <chart-version> \
   --namespace muster
 ```
@@ -247,7 +247,7 @@ sibling releases whose lifecycle is decoupled from the data plane:
 |---|---|---|
 | `gateways.gateway.networking.k8s.io`, `httproutes…`, `gatewayclasses…` | Gateway API upstream | cluster prerequisite |
 | `agentgatewayparameters.agentgateway.dev`, `agentgatewaybackends…`, `agentgatewaypolicies…` | `agentgateway-crds` | `oci://cr.agentgateway.dev/charts/agentgateway-crds` |
-| `mcpservers.muster.giantswarm.io`, `workflows.muster.giantswarm.io` | `muster-crds` | `oci://giantswarmpublic.azurecr.io/giantswarm-catalog/muster-crds` |
+| `mcpservers.muster.giantswarm.io`, `workflows.muster.giantswarm.io` | `muster-crds` | `oci://gsoci.azurecr.io/charts/giantswarm/muster-crds` |
 
 Why separate releases (mirrors the kgateway / cert-manager pattern):
 

@@ -20,7 +20,7 @@ annotations:
 dependencies:
   - name: muster
     version: 0.1.193
-    repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v1.2.1
     repository: oci://cr.agentgateway.dev/charts
