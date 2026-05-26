@@ -4,6 +4,44 @@ Operator action required between releases. CHANGELOG.md captures the diff; UPGRA
 
 ## 0.0.0 → 0.1.0 (first stable release — pending)
 
+### `giantswarm/klaus-gateway` is now bundled (default on)
+
+`"klaus-gateway".enabled` defaults to `true`. If a cluster already runs a standalone `HelmRelease` for `giantswarm/klaus-gateway`, take one of these actions before upgrading:
+
+```yaml
+# Option A: disable the bundled sub-chart and keep the standalone release as-is.
+"klaus-gateway":
+  enabled: false
+```
+
+```bash
+# Option B: uninstall the standalone release, then upgrade. The umbrella's
+# bundled sub-chart takes over management of the Deployment and ServiceMonitor.
+helm uninstall <standalone-release-name> -n <namespace>
+helm upgrade agentic-platform ...
+```
+
+After option B, the bundled `ChannelRoute` CRD (`channelroutes.routing.giantswarm.io`) is now managed by this release. If you previously managed it out-of-band, adopt it or set `"klaus-gateway".crd.install: false`.
+
+### OTel defaults added for agentgateway data plane and Klaus-gateway
+
+`gateway.parameters.dataPlaneEnv` now defaults to:
+
+```yaml
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: http://otlp-gateway.kube-system.svc:4317
+- name: OTEL_EXPORTER_OTLP_PROTOCOL
+  value: grpc
+```
+
+This requires an `otlp-gateway` Service in `kube-system` (provided by the Giant Swarm observability platform). On clusters without it, the agentgateway data-plane logs connection errors to the exporter but starts normally. Disable with:
+
+```yaml
+gateway:
+  parameters:
+    dataPlaneEnv: []
+```
+
 ### Bundled Valkey + OAuth server are ON by default
 
 `valkey.enabled` and `muster.muster.oauth.server.enabled` both default to `true`. Operators must supply per-cluster fields up-front or the muster sub-chart's fail-guards reject install:

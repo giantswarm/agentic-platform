@@ -95,6 +95,10 @@ helm install agentic-platform \
 | `muster.*` | passes through to muster | See [muster chart README](https://github.com/giantswarm/muster/blob/main/helm/muster/README.md). |
 | `agentgateway.*` | passes through to upstream agentgateway | See [agentgateway docs](https://agentgateway.dev). |
 | `valkey.enabled` | `true` | Bundle [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) for muster OAuth session storage. |
+| `"klaus-gateway".enabled` | `true` | Bundle [giantswarm/klaus-gateway](https://github.com/giantswarm/klaus-gateway) as the channel adapter and session router in front of Klaus agent instances. Disable if a standalone `HelmRelease` for `giantswarm/klaus-gateway` already runs in the cluster. |
+| `"klaus-gateway".upstream.agentgatewayURL` | `""` | URL of the agentgateway data-plane Service in the install namespace (e.g. `http://agentgateway-data-plane.<ns>.svc:8080`). When empty, traffic routes directly to Klaus instance BaseURLs. |
+| `"klaus-gateway".observability.otlpEndpoint` | `http://otlp-gateway.kube-system.svc:4317` | OTel trace export endpoint for the Klaus-gateway process. |
+| `"klaus-operator".enabled` | `false` | Reserved. `giantswarm/klaus-operator` is not yet published to the catalog; flip to `true` once a chart version is available. |
 | `muster.muster.oauth.server.enabled` | `true` | OAuth resource-server protection on the muster API. Requires `baseUrl`, `dex.{issuerUrl,clientId}`, and a Secret carrying `dex-client-secret` / `registration-token` / `oauth-encryption-key` / `valkey-password`. |
 | `muster.muster.oauth.server.storage.type` | `valkey` | Muster storage backend default. Pairs with `valkey.enabled: true`; flip to `memory` for dev. |
 | `muster.muster.oauth.server.storage.valkey.url` | `muster-valkey:6379` | Bundled-valkey Service. Override to point at an out-of-band Valkey. |
@@ -194,6 +198,45 @@ muster:
       hostnames:
         - muster.<cluster>.<base-domain>
 ```
+
+## Observability
+
+All bundled components push OTel traces to the cluster-wide `otlp-gateway.kube-system.svc:4317` (gRPC) by default:
+
+| Component | Mechanism | Default endpoint |
+|---|---|---|
+| agentgateway data plane | `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_PROTOCOL` env vars via `gateway.parameters.dataPlaneEnv` | `http://otlp-gateway.kube-system.svc:4317` |
+| klaus-gateway | `--otel-otlp-endpoint` flag via `"klaus-gateway".observability.otlpEndpoint` | `http://otlp-gateway.kube-system.svc:4317` |
+
+Muster does not yet support OTLP push. Its `/metrics` endpoint is scraped via `ServiceMonitor` (`muster.serviceMonitor.enabled: true`).
+
+Override any endpoint per component:
+
+```yaml
+gateway:
+  parameters:
+    dataPlaneEnv:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://tempo-distributor.tempo.svc:4317
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: grpc
+
+"klaus-gateway":
+  observability:
+    otlpEndpoint: "http://tempo-distributor.tempo.svc:4317"
+```
+
+## Reference workloads (not bundled)
+
+These MCP servers and agent runtimes integrate with the agentic platform but are maintained by other teams and are not bundled in this umbrella.
+
+| Component | Team | Purpose |
+|---|---|---|
+| [giantswarm/mcp-observability-platform](https://github.com/giantswarm/mcp-observability-platform) | atlas | MCP server exposing Grafana, Mimir, Loki, Tempo, and Alertmanager with OIDC RBAC. Deploy as an `MCPServer` CR behind muster. |
+| [giantswarm/mcp-prometheus](https://github.com/giantswarm/mcp-prometheus) | planeteers | MCP server for Prometheus query. |
+| [giantswarm/mcp-capi](https://github.com/giantswarm/mcp-capi) | planeteers | MCP server for Cluster API. |
+| [giantswarm/mcp-runbooks](https://github.com/giantswarm/mcp-runbooks) | planeteers | MCP server for Giant Swarm runbooks. |
+| [giantswarm/mcp-kubernetes](https://github.com/giantswarm/mcp-kubernetes) | bumblebee | MCP server for the Kubernetes API. |
 
 ## Private registry overrides
 

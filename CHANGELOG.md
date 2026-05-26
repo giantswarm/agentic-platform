@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `klaus-gateway` 0.1.0 conditional sub-chart (`condition: klaus-gateway.enabled`, default `true`). Channel adapter and session router for Klaus agent instances; fronts the deployed agentgateway data plane via `upstream.agentgatewayURL`. Operators running a standalone `HelmRelease` for `giantswarm/klaus-gateway` must set `"klaus-gateway".enabled: false` or remove the standalone release before upgrading.
+- `"klaus-operator".enabled` placeholder value (`false` by default). `giantswarm/klaus-operator` is not yet published to the giantswarm catalog; the Chart.yaml entry is commented out and will be uncommented once a chart version is available.
+- Agentgateway data-plane OTel env defaults: `OTEL_EXPORTER_OTLP_ENDPOINT=http://otlp-gateway.kube-system.svc:4317` and `OTEL_EXPORTER_OTLP_PROTOCOL=grpc` added to `gateway.parameters.dataPlaneEnv`. Override to point at a different backend.
+- `muster.serviceMonitor.enabled: true` default. OTel push to otlp-gateway is not yet supported by muster; ServiceMonitor is the primary observability path until muster gains an `otlpEndpoint` knob.
+- `ci/test-full-stack-values.yaml` CI values file satisfying all fail-guards for a complete `helm template` render (OAuth off, valkey off, parentRefs stubbed).
+
 ## [0.1.0] - 2026-05-26
 
 ### Added
