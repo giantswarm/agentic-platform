@@ -216,9 +216,6 @@ gateway:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: grpc
 
-"klaus-gateway":
-  observability:
-    otlpEndpoint: "http://tempo-distributor.tempo.svc:4317"
 ```
 
 ## Reference workloads (not bundled)
