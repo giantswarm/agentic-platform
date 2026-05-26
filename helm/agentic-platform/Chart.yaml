@@ -2,11 +2,12 @@ apiVersion: v2
 name: agentic-platform
 type: application
 description: |
-  Giant Swarm agentic platform — MCP gateway consumer-side deploy unit. Bundles
-  muster (MCP aggregator control plane) and the agentgateway controller +
-  data-plane proxy, plus an opt-in giantswarm/valkey-app for muster's OAuth
-  session storage. Required CRDs (agentgateway-crds, muster-crds) and the
-  Gateway API GatewayClass are cluster-level prerequisites — see README.
+  Giant Swarm agentic platform. Bundles muster (MCP aggregator control plane),
+  agentgateway (MCP/LLM/A2A data plane), and an opt-in giantswarm/valkey-app
+  for muster OAuth session storage. Conditionally bundles klaus-gateway (channel
+  adapter + session router for Klaus agent instances) and, once published,
+  klaus-operator (operator managing dynamic Klaus instances). Required CRDs and
+  the Gateway API GatewayClass are cluster-level prerequisites -- see README.
 home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
@@ -32,3 +33,21 @@ dependencies:
     version: 0.1.2
     repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
     condition: valkey.enabled
+  # Channel adapter + session router for Klaus agent instances. Fronts
+  # agentgateway with Slack/web/klausctl channel adapters; routes by
+  # (channel, thread, user) to KlausInstance. Enabled by default — operators
+  # who run a separate HelmRelease for klaus-gateway must set
+  # `klaus-gateway.enabled: false` before upgrading or remove the standalone
+  # release first.
+  - name: klaus-gateway
+    version: 0.1.0
+    repository: https://giantswarm.github.io/giantswarm-catalog
+    condition: klaus-gateway.enabled
+  # Klaus instance lifecycle operator. Not yet published to the giantswarm
+  # catalog; this entry is reserved for a future release. Set
+  # `klaus-operator.enabled: false` (current default) until a chart version
+  # is available. Tracked: https://github.com/giantswarm/agentic-platform/issues
+  # - name: klaus-operator
+  #   version: 0.0.x                         # fill in once published
+  #   repository: https://giantswarm.github.io/giantswarm-catalog
+  #   condition: klaus-operator.enabled
