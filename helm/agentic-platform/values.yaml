@@ -195,40 +195,6 @@ valkey:
         cpu: 200m
         memory: 256Mi
 
-# Channel adapter + session router for Klaus agent instances.
-# enabled: true by default — clusters that already run a standalone
-# HelmRelease for klaus-gateway must set this to false or remove the
-# standalone release before upgrading.
-"klaus-gateway":
-  enabled: true
-  image:
-    registry: gsoci.azurecr.io
-  # agentgateway.enabled is false: the umbrella already owns the Gateway and
-  # AgentgatewayParameters; disable to avoid a duplicate. Set
-  # upstream.agentgatewayURL to route through the deployed data plane.
-  agentgateway:
-    enabled: false
-  # Set to the agentgateway data-plane Service URL in the install namespace,
-  # e.g. http://agentgateway-data-plane.<namespace>.svc:8080. Empty disables
-  # agentgateway forwarding and routes directly to instance BaseURLs.
-  upstream:
-    agentgatewayURL: ""
-  # ServiceMonitor enabled by default so Prometheus scrapes the /metrics endpoint.
-  serviceMonitor:
-    enabled: true
-    interval: "60s"
-    scrapeTimeout: "45s"
-  # OTel traces to the cluster-wide otlp-gateway. Override per cluster.
-  observability:
-    otlpEndpoint: "http://otlp-gateway.kube-system.svc:4317"
-
-# Klaus instance lifecycle operator.
-# Not yet published to the giantswarm catalog; keep disabled until a chart
-# version is available. When published, flip enabled: true and pin a version
-# in Chart.yaml above.
-"klaus-operator":
-  enabled: false
-
 agentgateway:
   image:
     registry: gsoci.azurecr.io

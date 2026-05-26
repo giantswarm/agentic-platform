@@ -64,20 +64,6 @@
       "items": { "type": "object" },
       "description": "Arbitrary manifests rendered through `tpl` alongside the umbrella's templates. Each entry is any Kubernetes object."
     },
-    "klaus-gateway": {
-      "type": "object",
-      "additionalProperties": true,
-      "properties": {
-        "enabled": { "type": "boolean" }
-      }
-    },
-    "klaus-operator": {
-      "type": "object",
-      "additionalProperties": true,
-      "properties": {
-        "enabled": { "type": "boolean" }
-      }
-    },
     "networkPolicy": {
       "type": "object",
       "additionalProperties": false,

@@ -4,26 +4,7 @@ Operator action required between releases. CHANGELOG.md captures the diff; UPGRA
 
 ## 0.0.0 → 0.1.0 (first stable release — pending)
 
-### `giantswarm/klaus-gateway` is now bundled (default on)
-
-`"klaus-gateway".enabled` defaults to `true`. If a cluster already runs a standalone `HelmRelease` for `giantswarm/klaus-gateway`, take one of these actions before upgrading:
-
-```yaml
-# Option A: disable the bundled sub-chart and keep the standalone release as-is.
-"klaus-gateway":
-  enabled: false
-```
-
-```bash
-# Option B: uninstall the standalone release, then upgrade. The umbrella's
-# bundled sub-chart takes over management of the Deployment and ServiceMonitor.
-helm uninstall <standalone-release-name> -n <namespace>
-helm upgrade agentic-platform ...
-```
-
-After option B, the bundled `ChannelRoute` CRD (`channelroutes.routing.giantswarm.io`) is now managed by this release. If you previously managed it out-of-band, adopt it or set `"klaus-gateway".crd.install: false`.
-
-### OTel defaults added for agentgateway data plane and Klaus-gateway
+### OTel defaults added for agentgateway data plane
 
 `gateway.parameters.dataPlaneEnv` now defaults to:
 

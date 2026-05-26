@@ -17,11 +17,3 @@ muster:
 
 valkey:
   enabled: false
-
-"klaus-gateway":
-  enabled: true
-  agentgateway:
-    enabled: false
-
-"klaus-operator":
-  enabled: false

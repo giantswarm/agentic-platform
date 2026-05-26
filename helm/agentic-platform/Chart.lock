@@ -8,8 +8,5 @@ dependencies:
 - name: valkey
   repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.2
-- name: klaus-gateway
-  repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
-  version: 0.1.0
-digest: sha256:e575cb96b06123e0015f360c5b559156ffcefac9db13f337a098796e654c024d
-generated: "2026-05-26T17:45:22.97708524+02:00"
+digest: sha256:78bcc2c9e936c4a9f1e10f377dc8359e4fc95194d44643b7bf7a10c8f757b540
+generated: "2026-05-26T17:56:36.157556044+02:00"

@@ -95,10 +95,6 @@ helm install agentic-platform \
 | `muster.*` | passes through to muster | See [muster chart README](https://github.com/giantswarm/muster/blob/main/helm/muster/README.md). |
 | `agentgateway.*` | passes through to upstream agentgateway | See [agentgateway docs](https://agentgateway.dev). |
 | `valkey.enabled` | `true` | Bundle [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) for muster OAuth session storage. |
-| `"klaus-gateway".enabled` | `true` | Bundle [giantswarm/klaus-gateway](https://github.com/giantswarm/klaus-gateway) as the channel adapter and session router in front of Klaus agent instances. Disable if a standalone `HelmRelease` for `giantswarm/klaus-gateway` already runs in the cluster. |
-| `"klaus-gateway".upstream.agentgatewayURL` | `""` | URL of the agentgateway data-plane Service in the install namespace (e.g. `http://agentgateway-data-plane.<ns>.svc:8080`). When empty, traffic routes directly to Klaus instance BaseURLs. |
-| `"klaus-gateway".observability.otlpEndpoint` | `http://otlp-gateway.kube-system.svc:4317` | OTel trace export endpoint for the Klaus-gateway process. |
-| `"klaus-operator".enabled` | `false` | Reserved. `giantswarm/klaus-operator` is not yet published to the catalog; flip to `true` once a chart version is available. |
 | `muster.muster.oauth.server.enabled` | `true` | OAuth resource-server protection on the muster API. Requires `baseUrl`, `dex.{issuerUrl,clientId}`, and a Secret carrying `dex-client-secret` / `registration-token` / `oauth-encryption-key` / `valkey-password`. |
 | `muster.muster.oauth.server.storage.type` | `valkey` | Muster storage backend default. Pairs with `valkey.enabled: true`; flip to `memory` for dev. |
 | `muster.muster.oauth.server.storage.valkey.url` | `muster-valkey:6379` | Bundled-valkey Service. Override to point at an out-of-band Valkey. |
