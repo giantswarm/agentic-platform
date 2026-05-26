@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-05-26
+
 ### Added
 
 - Initial agentic-platform chart bundling `muster` 0.1.197 and `agentgateway` v1.2.1.
@@ -41,4 +43,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/tree/main
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/giantswarm/agentic-platform/releases/tag/v0.1.0
