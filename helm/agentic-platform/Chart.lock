@@ -9,7 +9,7 @@ dependencies:
   repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.2
 - name: klaus-gateway
-  repository: https://giantswarm.github.io/giantswarm-catalog
+  repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.0
-digest: sha256:56eed76ecc4739d3047292ab00e839a2cd2562ecf3b6c783d4aa5e581dfe717a
-generated: "2026-05-26T16:09:37.234949438+02:00"
+digest: sha256:e575cb96b06123e0015f360c5b559156ffcefac9db13f337a098796e654c024d
+generated: "2026-05-26T17:45:22.97708524+02:00"

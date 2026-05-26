@@ -41,7 +41,7 @@ dependencies:
   # release first.
   - name: klaus-gateway
     version: 0.1.0
-    repository: https://giantswarm.github.io/giantswarm-catalog
+    repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
     condition: klaus-gateway.enabled
   # Klaus instance lifecycle operator. Not yet published to the giantswarm
   # catalog; this entry is reserved for a future release. Set
