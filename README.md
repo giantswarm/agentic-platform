@@ -202,7 +202,6 @@ All bundled components push OTel traces to the cluster-wide `otlp-gateway.kube-s
 | Component | Mechanism | Default endpoint |
 |---|---|---|
 | agentgateway data plane | `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_PROTOCOL` env vars via `gateway.parameters.dataPlaneEnv` | `http://otlp-gateway.kube-system.svc:4317` |
-| klaus-gateway | `--otel-otlp-endpoint` flag via `"klaus-gateway".observability.otlpEndpoint` | `http://otlp-gateway.kube-system.svc:4317` |
 
 Muster does not yet support OTLP push. Its `/metrics` endpoint is scraped via `ServiceMonitor` (`muster.serviceMonitor.enabled: true`).
 
