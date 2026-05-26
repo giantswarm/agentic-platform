@@ -1,12 +1,222 @@
-# This file is a Helm values file for the agentic-platform chart.
-#
-# To learn more about how to configure your app on your cluster
-# and override the default values in here, visit:
-#
-#   https://docs.giantswarm.io/tutorials/fleet-management/app-platform/app-configuration/#basic-values-merging-example
-#
-image:
-  name: "giantswarm/agentic-platform"
-  tag: ""
-registry:
-  domain: gsoci.azurecr.io
+global:
+  registry: gsoci.azurecr.io
+  imagePullSecrets: []
+
+# Data-plane Gateway. Reconciled by the agentgateway controller. Muster's
+# public HTTPRoute attaches to a separate Gateway (see muster.gatewayAPI).
+gateway:
+  enabled: true
+  name: agentgateway
+  gatewayClassName: agentgateway
+  listeners:
+    - name: http
+      port: 8080
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+  parameters:
+    enabled: true
+    name: ""
+    # Controller hardcodes LoadBalancer; this overlay forces ClusterIP.
+    # Override to LoadBalancer when no front Gateway exposes the data plane.
+    serviceType: ClusterIP
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    # Strategic-merge env appended to the data-plane container. Example:
+    #   dataPlaneEnv:
+    #     - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    #       value: http://tempo-distributor.tempo.svc:4317
+    dataPlaneEnv: []
+    dataPlaneVolumes: []
+    dataPlaneVolumeMounts: []
+
+networkPolicy:
+  enabled: true
+  # cilium     — CiliumNetworkPolicy (entity selectors + FQDN egress)
+  # kubernetes — vanilla networking.k8s.io/v1 NetworkPolicy
+  #
+  # Only governs the agentgateway policies owned by this chart. Muster's
+  # ciliumNetworkPolicy is independent — set muster.ciliumNetworkPolicy.enabled
+  # to false when running the kubernetes flavor.
+  flavor: cilium
+  # Extra CIDR egress for in-cluster Gateway VIPs the entity selectors miss.
+  # Example:
+  #   additionalEgressCIDRs:
+  #     - 10.223.16.0/24
+  additionalEgressCIDRs: []
+  # FQDN egress (cilium flavor only — requires a cluster Cilium DNS visibility
+  # policy). Example:
+  #   additionalEgressFQDNs:
+  #     - matchName: dex.example.gigantic.io
+  additionalEgressFQDNs: []
+  # CIDR replacements for the kubernetes flavor. Vanilla NetworkPolicy has no
+  # entity selectors.
+  kubernetes:
+    apiServerCIDR: 0.0.0.0/0
+    worldExcludedCIDRs:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - 169.254.0.0/16
+
+# Arbitrary manifests rendered through `tpl` alongside the chart. Useful for
+# shipping the muster OAuth Secret in the same Helm release. Example:
+#   extraObjects:
+#     - apiVersion: v1
+#       kind: Secret
+#       metadata:
+#         name: muster-oauth
+#       type: Opaque
+#       stringData:
+#         dex-client-secret: REPLACE_ME
+#         registration-token: REPLACE_ME
+#         oauth-encryption-key: REPLACE_ME
+#         valkey-password: REPLACE_ME
+extraObjects: []
+
+muster:
+  image:
+    registry: gsoci.azurecr.io
+  # Muster's NetworkPolicy mirrors the umbrella's flavor split (`cilium` vs
+  # `kubernetes`). Defaults stay aligned with `networkPolicy.flavor` at the
+  # umbrella top level — flip `flavor: kubernetes` here too when running on
+  # a non-Cilium cluster.
+  networkPolicy:
+    enabled: true
+    flavor: cilium
+    cilium:
+      # Reaches Dex / OIDC / MCPServers fronted by in-cluster ingress.
+      # Muster's sub-chart default is false.
+      allowClusterIngress: true
+  podAnnotations:
+    application.giantswarm.io/team: bumblebee
+  gatewayAPI:
+    enabled: true
+    httpRoute:
+      enabled: true
+      # Attach to the cluster's public Gateway (not the umbrella's data-plane
+      # Gateway). Both fields are required; the muster sub-chart fails install
+      # otherwise. Example:
+      #   muster:
+      #     gatewayAPI:
+      #       httpRoute:
+      #         parentRefs:
+      #           - name: giantswarm-default
+      #             namespace: envoy-gateway-system
+      #             group: gateway.networking.k8s.io
+      #             kind: Gateway
+      #         hostnames:
+      #           - muster.<cluster>.<base-domain>
+      parentRefs: []
+      hostnames: []
+  # OAuth resource-server protection is ON by default; the bundled Valkey
+  # (see `valkey:` below) provides session storage. Operators must supply
+  # the per-cluster OIDC fields below — muster's template-time fail-guards
+  # reject install otherwise. Flip `enabled: false` for dev installs that
+  # don't need OAuth.
+  muster:
+    oauth:
+      server:
+        enabled: true
+        # Required: public muster URL (HTTPS). Used as the OAuth issuer and
+        # to derive callback URLs. Example: https://muster.<cluster>.<base-domain>
+        baseUrl: ""
+        dex:
+          # Required: Dex issuer URL on this cluster (e.g.
+          # https://dex.<cluster>.<base-domain>).
+          issuerUrl: ""
+          # Required: OAuth client ID pre-registered in Dex.
+          clientId: ""
+        # Required: name of a Secret carrying dex-client-secret,
+        # registration-token, oauth-encryption-key, and valkey-password.
+        # Ship via the umbrella's `extraObjects:` or pre-create out of band.
+        existingSecret: ""
+        storage:
+          type: valkey
+          valkey:
+            # Bare Service name — same-namespace DNS resolves regardless
+            # of install namespace. Override for an out-of-band Valkey.
+            url: muster-valkey:6379
+            secretKeyPassword: valkey-password
+
+# Bundled giantswarm/valkey-app for muster's OAuth session storage.
+# Wrapper chart exposes three top-level blocks consumed here:
+#   .valkey               — upstream valkey-io/valkey-helm values
+#   .ciliumNetworkPolicy  — wrapper's CNP (independent of umbrella networkPolicy.flavor)
+#   .vpa                  — wrapper's VerticalPodAutoscaler (off by default)
+# Single-pod Deployment + PVC; writable Service at muster-valkey.<ns>.svc:6379.
+valkey:
+  enabled: true
+  ciliumNetworkPolicy:
+    enabled: true
+  vpa:
+    enabled: false
+  valkey:
+    fullnameOverride: muster-valkey
+    replicaCount: 1
+    auth:
+      enabled: true
+      # Required: name of the Secret with key `valkey-password`. Conventionally
+      # the same Secret referenced from `muster.muster.oauth.server.existingSecret`
+      # — operators ship one Secret carrying every OAuth + Valkey credential.
+      # Ship via the umbrella's `extraObjects:` or pre-create out of band.
+      usersExistingSecret: ""
+      aclUsers:
+        default:
+          permissions: "~* &* +@all"
+          passwordKey: valkey-password
+    dataStorage:
+      enabled: true
+      requestedSize: 1Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+agentgateway:
+  image:
+    registry: gsoci.azurecr.io
+    tag: v1.2.1
+  controller:
+    image:
+      repository: giantswarm/agentgateway-controller
+  proxy:
+    image:
+      registry: gsoci.azurecr.io
+      repository: giantswarm/agentgateway
+      tag: v1.2.1
+  podAnnotations:
+    application.giantswarm.io/team: bumblebee
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

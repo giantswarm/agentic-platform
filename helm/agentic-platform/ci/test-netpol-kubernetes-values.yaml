@@ -1,0 +1,9 @@
+networkPolicy:
+  enabled: true
+  flavor: kubernetes
+  kubernetes:
+    apiServerCIDR: 10.0.0.1/32
+    worldExcludedCIDRs:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16

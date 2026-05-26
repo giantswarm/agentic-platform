@@ -1,0 +1,54 @@
+{{- if and .Values.networkPolicy.enabled (eq .Values.networkPolicy.flavor "cilium") }}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      agentgateway: agentgateway
+      app.kubernetes.io/name: agentgateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  ingress:
+    # xDS from data-plane pods spawned by this controller.
+    - fromEndpoints:
+        - matchLabels:
+            gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
+      toPorts:
+        - ports:
+            - port: "9978"
+              protocol: TCP
+    # Prometheus / health scrape from cluster monitoring.
+    - fromEntities: ["cluster"]
+      toPorts:
+        - ports:
+            - port: "9092"
+              protocol: TCP
+            - port: "9093"
+              protocol: TCP
+  egress:
+    - toEntities: ["kube-apiserver"]
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: coredns
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: k8s-dns-node-cache
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+            - port: "1053"
+              protocol: UDP
+            - port: "1053"
+              protocol: TCP
+{{- end }}

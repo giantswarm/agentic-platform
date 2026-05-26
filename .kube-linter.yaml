@@ -1,0 +1,11 @@
+checks:
+  # Suppress checks that can only be satisfied inside the bundled bitnami
+  # valkey sub-chart — we cannot edit upstream templates. Keep this list
+  # tight: every entry is a defence we are choosing to skip globally.
+  exclude:
+    # `pdb-unhealthy-pod-eviction-policy` flags PodDisruptionBudgets that
+    # don't set `spec.unhealthyPodEvictionPolicy`. The bitnami valkey
+    # chart renders a PDB without this field, and the chart does not
+    # expose a value to override it. Our own umbrella ships no PDBs, so
+    # disabling the check globally only relaxes it on the sub-chart.
+    - pdb-unhealthy-pod-eviction-policy

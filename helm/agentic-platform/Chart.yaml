@@ -1,31 +1,34 @@
-# See https://docs.giantswarm.io/reference/platform-api/chart-metadata/
-# for details and background.
-
 apiVersion: v2
-
-# Version of the packaged app
-appVersion: 0.0.1
-
-# Make sure your name DOES NOT end in "app" or "-app".
 name: agentic-platform
-
-# Please describe what the app provides in a sentence or two.
-description: Please add description
-
-# URL of the GitHub repository that is the source of this Chart.yaml file.
+type: application
+description: |
+  Giant Swarm agentic platform — MCP gateway consumer-side deploy unit. Bundles
+  muster (MCP aggregator control plane) and the agentgateway controller +
+  data-plane proxy, plus an opt-in giantswarm/valkey-app for muster's OAuth
+  session storage. Required CRDs (agentgateway-crds, muster-crds) and the
+  Gateway API GatewayClass are cluster-level prerequisites — see README.
 home: https://github.com/giantswarm/agentic-platform
-
-# If you have an icon/logo, you should add it to https://github.com/giantswarm/web-assets
-# and set the final URL here.
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
-
 sources:
-- https://github.com/some-org/some-repo
+  - https://github.com/giantswarm/agentic-platform
+appVersion: "0.1.0"
 version: 0.0.0-dev
 annotations:
-  # Adapt to 'giantswarm' if this application is not to be deployed by customers
   io.giantswarm.application.audience: all
-  # Adapt to 'true' if Giant Swarm takes responsibility for this app where it's deplyed
-  io.giantswarm.application.managed: "false"
-  # used through .Chart.Annotations . Please replace TEAM-NAME with your team's short name, e. g. 'shield'  for team-shield
-  io.giantswarm.application.team: TEAM-NAME
+  io.giantswarm.application.managed: "true"
+  io.giantswarm.application.team: bumblebee
+dependencies:
+  - name: muster
+    version: 0.1.197
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+  - name: agentgateway
+    version: v1.2.1
+    repository: oci://cr.agentgateway.dev/charts
+  # Bundled Valkey (giantswarm/valkey-app — wraps upstream valkey-io/valkey-helm)
+  # for muster's OAuth session storage. Single-pod Deployment with PVC; primary
+  # Service at `muster-valkey.<namespace>.svc:6379` (no `-primary` suffix).
+  # Opt-in via `valkey.enabled`; pairs with muster's default storage.type=valkey.
+  - name: valkey
+    version: 0.1.2
+    repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
+    condition: valkey.enabled

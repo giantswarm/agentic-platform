@@ -1,0 +1,13 @@
+global:
+  registry: localhost:5000
+
+muster:
+  image:
+    registry: localhost:5000
+
+agentgateway:
+  image:
+    registry: localhost:5000
+  proxy:
+    image:
+      registry: localhost:5000

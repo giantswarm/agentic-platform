@@ -1,68 +1,266 @@
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/giantswarm/agentic-platform/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/giantswarm/agentic-platform/tree/main)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/giantswarm/agentic-platform/badge)](https://securityscorecards.dev/viewer/?uri=github.com/giantswarm/agentic-platform)
 
-[Guide about how to manage an app on Giant Swarm](https://handbook.giantswarm.io/docs/dev-and-releng/app-developer-processes/adding_app_to_appcatalog/)
+# agentic-platform
 
-# agentic-platform chart
+The agentic platform is Giant Swarm's MCP gateway deploy unit. It ships [muster](https://github.com/giantswarm/muster) (MCP gateway / aggregator) and [agentgateway](https://github.com/agentgateway/agentgateway) (MCP data plane) together, plus the consumer-side `Gateway`, `AgentgatewayParameters`, and network policies that wire them up.
 
-Giant Swarm offers a agentic-platform App which can be installed in workload clusters.
-Here, we define the agentic-platform chart with its templates and default configuration.
+Owner: team-bumblebee.
 
-**What is this app?**
+## Prerequisites
 
-**Why did we add it?**
-
-**Who can use it?**
+- Kubernetes ≥ 1.33 on the install target.
+- Gateway API v1 CRDs (`gateways.gateway.networking.k8s.io`, `httproutes.gateway.networking.k8s.io`, `gatewayclasses.gateway.networking.k8s.io`) installed cluster-wide. The agentic platform does **not** install them.
+- `agentgateway-crds` chart installed (provides `AgentgatewayParameters`, `AgentgatewayBackend`, `AgentgatewayPolicy`). Not bundled — upstream `agentgateway` ships the controller and CRDs as separate charts; see [CRD lifecycle](#crd-lifecycle).
+- Muster's `MCPServer` and `Workflow` CRDs are installed by the bundled `muster` sub-chart's `templates/crds.yaml` (gated by `muster.crds.install`, default `true`).
+- A `GatewayClass` CR named `agentgateway` (`status.conditions[type=Accepted]=True`). The bundled `agentgateway` sub-chart creates it on install; operators managing the controller out-of-band must ensure the `GatewayClass` exists.
+- Cilium CNI for `networkPolicy.flavor: cilium` (default). Vanilla Kubernetes clusters: set `networkPolicy.flavor: kubernetes` **AND** `muster.networkPolicy.flavor: kubernetes` **AND** `valkey.ciliumNetworkPolicy.enabled: false` (the bundled valkey wrapper's CNP has no kubernetes-flavor counterpart). Opt out entirely with `networkPolicy.enabled: false` + `muster.networkPolicy.enabled: false` + `valkey.ciliumNetworkPolicy.enabled: false`.
 
 ## Installing
 
-There are several ways to install this app onto a workload cluster.
+Install `agentgateway-crds` first, then the platform. Muster's CRDs ship inside the umbrella via the muster sub-chart.
 
-- [Using GitOps to instantiate the App](https://docs.giantswarm.io/tutorials/continuous-deployment/apps/add-appcr/)
-- By creating an [App resource](https://docs.giantswarm.io/reference/platform-api/crd/apps.application.giantswarm.io) using the platform API as explained in [Getting started with App Platform](https://docs.giantswarm.io/tutorials/fleet-management/app-platform/).
-
-## Configuring
-
-### values.yaml
-
-**This is an example of a values file you could upload using our web interface.**
+### Flux
 
 ```yaml
-# values.yaml
-
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: agentgateway-crds
+  namespace: muster
+spec:
+  interval: 1h
+  url: oci://cr.agentgateway.dev/charts/agentgateway-crds
+  ref: { tag: v1.2.1 }
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: agentic-platform
+  namespace: muster
+spec:
+  interval: 1h
+  url: oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform
+  ref: { tag: <agentic-platform-version> }
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: agentgateway-crds
+  namespace: muster
+spec:
+  interval: 10m
+  chartRef: { kind: OCIRepository, name: agentgateway-crds }
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: agentic-platform
+  namespace: muster
+spec:
+  interval: 10m
+  chartRef: { kind: OCIRepository, name: agentic-platform }
+  dependsOn:
+    - { name: agentgateway-crds }
+  valuesFrom:
+    - kind: Secret
+      name: agentic-platform-values
 ```
 
-### Sample App CR and ConfigMap for the management cluster
+### Raw Helm
 
-If you have access to the Kubernetes API on the management cluster, you could create the App CR and ConfigMap directly.
+```bash
+helm install agentgateway-crds \
+  oci://cr.agentgateway.dev/charts/agentgateway-crds \
+  --version v1.2.1 --namespace muster --create-namespace
 
-Here is an example that would install the app to workload cluster `abc12`:
+helm install agentic-platform \
+  oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
+  --version <chart-version> --namespace muster -f values.yaml
+```
+
+## Configuration
+
+| Key | Default | Purpose |
+|---|---|---|
+| `global.registry` | `gsoci.azurecr.io` | Default container image registry. |
+| `gateway.name` | `agentgateway` | `Gateway` resource name. |
+| `gateway.gatewayClassName` | `agentgateway` | The `GatewayClass` the data plane attaches to. |
+| `gateway.listeners` | `[{name: http, port: 8080, protocol: HTTP}]` | Listener spec passed verbatim. |
+| `gateway.parameters.serviceType` | `ClusterIP` | Data-plane Service type (overrides controller-hardcoded LoadBalancer via `AgentgatewayParameters.spec.service`). |
+| `gateway.parameters.{pod,container}SecurityContext` | restricted-PSS compatible | Strategic-merge overlay on the data-plane Deployment. |
+| `networkPolicy.enabled` | `true` | Master switch for the umbrella's network policies. |
+| `networkPolicy.flavor` | `cilium` | `cilium` → CiliumNetworkPolicy; `kubernetes` → vanilla NetworkPolicy (best-effort, no entity selectors / FQDN egress). |
+| `extraObjects` | `[]` | Arbitrary manifests rendered through `tpl` alongside the chart. |
+| `muster.*` | passes through to muster | See [muster chart README](https://github.com/giantswarm/muster/blob/main/helm/muster/README.md). |
+| `agentgateway.*` | passes through to upstream agentgateway | See [agentgateway docs](https://agentgateway.dev). |
+| `valkey.enabled` | `true` | Bundle [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) for muster OAuth session storage. |
+| `muster.muster.oauth.server.enabled` | `true` | OAuth resource-server protection on the muster API. Requires `baseUrl`, `dex.{issuerUrl,clientId}`, and a Secret carrying `dex-client-secret` / `registration-token` / `oauth-encryption-key` / `valkey-password`. |
+| `muster.muster.oauth.server.storage.type` | `valkey` | Muster storage backend default. Pairs with `valkey.enabled: true`; flip to `memory` for dev. |
+| `muster.muster.oauth.server.storage.valkey.url` | `muster-valkey:6379` | Bundled-valkey Service. Override to point at an out-of-band Valkey. |
+
+Full schema: [`helm/agentic-platform/values.schema.json`](./helm/agentic-platform/values.schema.json).
+
+### Gateway API CR ownership
+
+Of the resources the umbrella manages, **only `AgentgatewayParameters` is vendor-specific** to agentgateway. Everything else is standard Gateway API / standard Cilium.
+
+| Resource | API | Owned by | Notes |
+|---|---|---|---|
+| `Gateway` (data-plane spawn trigger) | `gateway.networking.k8s.io/v1` (standard) | this umbrella (`templates/agentgateway/gateway.yaml`) | Coupled to agentgateway only via `gatewayClassName: agentgateway`. One per data plane. |
+| `AgentgatewayParameters` | `agentgateway.dev/v1alpha1` (**vendor-specific**) | this umbrella (`templates/agentgateway/agentgatewayparameters.yaml`) | The only agentgateway-vendor CR the umbrella ships. Strategic-merge overlay over the controller-rendered Deployment + Service; forces Service type ClusterIP by default. |
+| `CiliumNetworkPolicy` / `NetworkPolicy` (×4 — controller + data-plane, per flavor) | `cilium.io/v2` or `networking.k8s.io/v1` | this umbrella (`templates/agentgateway/networkpolicy-*.yaml`) | Two pods covered: controller and data-plane. Upstream agentgateway ships no policies. |
+| `HTTPRoute` (per app — muster, future tools) | `gateway.networking.k8s.io/v1` (standard) | each app's sub-chart | Attaches to the cluster's public Gateway (typically `envoy-gateway-system/giantswarm-default`), NOT to the umbrella's data-plane Gateway. |
+| `Gateway` (public routing endpoint) | `gateway.networking.k8s.io/v1` (standard) | platform team | `envoy-gateway-system/giantswarm-default` — not owned by this chart. |
+
+### OAuth secrets
+
+Three orthogonal paths. None replace the others — pick what matches your topology.
+
+| Path | Configured via | Use case |
+|---|---|---|
+| **Inline values** | `muster.muster.oauth.server.dex.clientSecret`, `registrationToken`, `encryptionKeyValue`, `storage.valkey.password` | Quick dev/test or GitOps with values-level encryption (sops + helm-secrets, Flux `decryption:`). No external Secret to manage. |
+| **`existingSecret`** | `muster.muster.oauth.server.existingSecret: <name>` (Secret pre-created out-of-band) | Production Giant Swarm pattern — SOPS-encrypted Secret in giantswarm-configs reconciled by Flux ahead of the platform; or `kubectl create secret` for manual ops. |
+| **`extraObjects`** | Umbrella-level `extraObjects: []` list (this chart) + muster `existingSecret` pointed at the rendered Secret | Single Helm release ships Secret + values together. Non-Flux operators (ArgoCD, vanilla Helm) who want one `helm upgrade` to manage everything. |
+
+Example using `extraObjects` + `existingSecret`:
 
 ```yaml
-# appCR.yaml
+extraObjects:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: muster-oauth
+    type: Opaque
+    stringData:
+      dex-client-secret: REPLACE_ME
+      registration-token: REPLACE_ME
+      oauth-encryption-key: REPLACE_ME
+      valkey-password: REPLACE_ME
 
+muster:
+  muster:
+    oauth:
+      server:
+        existingSecret: muster-oauth
 ```
+
+Random auto-generation via Helm `lookup` is intentionally not supported — every `helm upgrade` would either regenerate values (invalidating issued tokens) or render different output under `helm template` / `--dry-run` than at install time.
+
+`muster.muster.oauth.server.dex.{issuerUrl,clientId}` and the matching `dex-client-secret` must correspond to a client registered against the cluster's OIDC issuer. Registration is out of scope for this chart; `redirectURI` must equal `<muster.oauth.server.baseUrl>/oauth/callback`.
+
+### Bundled Valkey
+
+`valkey.enabled: true` bundles [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) (a Giant Swarm wrapper around upstream `valkey-io/valkey-helm`) with persistent storage. Single-pod Deployment behind a Service named `muster-valkey` (via `fullnameOverride`). Muster's storage defaults to `type: valkey` + `url: muster-valkey:6379`, so enabling the bundled chart alongside `oauth.server.enabled: true` is the only flip needed — no `url` override required.
 
 ```yaml
-# user-values-configmap.yaml
+valkey:
+  enabled: true
+  valkey:
+    auth:
+      usersExistingSecret: muster-oauth  # Secret must carry key `valkey-password`
 
+muster:
+  muster:
+    oauth:
+      server:
+        enabled: true
+        existingSecret: muster-oauth
+        # storage.type: valkey
+        # storage.valkey.url: muster-valkey:6379
+        # — both inherited from the umbrella defaults.
 ```
 
-See our [full reference on how to configure apps](https://docs.giantswarm.io/tutorials/fleet-management/app-platform/app-configuration/) for more details.
+ACL authentication is enabled by default for the `default` user (`~* &* +@all`), with the cleartext password read from `valkey-password` in the operator-supplied Secret. Muster sends `AUTH <password>` against the default user, which is the standard backwards-compatible form.
+
+Operators with an out-of-band Valkey leave `valkey.enabled: false` and override `muster.muster.oauth.server.storage.valkey.url` to point at the external endpoint. See [UPGRADE.md](./UPGRADE.md) for migration notes from a previously-existing standalone Valkey.
+
+### Public HTTPRoute (required for OAuth)
+
+The umbrella renders a `Gateway` for the **data plane** only — that Gateway is not exposed publicly and is not the right parent for muster's HTTPRoute. Muster's HTTPRoute must attach to the cluster's public Gateway (typically envoy-gateway-system) with hostnames that match the OAuth callback URL from `muster.oauth.mcpClient.publicUrl`.
+
+The muster sub-chart's fail-guard rejects install until both `parentRefs` and `hostnames` are set:
+
+```yaml
+muster:
+  gatewayAPI:
+    enabled: true
+    httpRoute:
+      parentRefs:
+        - name: giantswarm-default
+          namespace: envoy-gateway-system
+          group: gateway.networking.k8s.io
+          kind: Gateway
+      hostnames:
+        - muster.<cluster>.<base-domain>
+```
+
+## Private registry overrides
+
+All images default to `gsoci.azurecr.io/giantswarm/*`:
+
+| Image | Source (mirrored by GS retagger) |
+|---|---|
+| `gsoci.azurecr.io/giantswarm/muster:0.1.197` | `gsoci.azurecr.io/giantswarm/muster` (native GS image) |
+| `gsoci.azurecr.io/giantswarm/agentgateway-controller:v1.2.1` | `cr.agentgateway.dev/controller` |
+| `gsoci.azurecr.io/giantswarm/agentgateway:v1.2.1` | `cr.agentgateway.dev/agentgateway` |
+
+To pull from a private mirror, override the registry on every image (neither subchart exposes a `global.registry` that propagates to all images):
+
+```yaml
+global:
+  registry: registry.example.com
+
+muster:
+  image:
+    registry: registry.example.com
+
+agentgateway:
+  image:
+    registry: registry.example.com
+  proxy:
+    image:
+      registry: registry.example.com
+```
+
+## Security
+
+The agentgateway data-plane pod template is rendered at runtime by the controller, not by Helm. To inject restricted-PSS-compatible `securityContext` fields, the umbrella ships an `AgentgatewayParameters` resource referenced from `Gateway.spec.infrastructure.parametersRef`. The controller applies it as a strategic merge patch over the generated Deployment and Service — that's how `gateway.parameters.serviceType: ClusterIP` forces the otherwise-hardcoded `type: LoadBalancer`.
+
+The data-plane pod template hardcodes `sysctls: [net.ipv4.ip_unprivileged_port_start=0]`. This is a namespaced-safe sysctl (no kubelet allowlist required). On clusters with built-in Pod Security Admission `restricted` enforced, the sysctl will be rejected — label the install namespace with `pod-security.kubernetes.io/enforce: baseline` (or allowlist the sysctl in Kyverno's `restrict-sysctls` policy as Giant Swarm workload clusters already do).
+
+## CRD lifecycle
+
+| CRDs | Source |
+|---|---|
+| `gateways.gateway.networking.k8s.io`, `httproutes…`, `gatewayclasses…` | Gateway API upstream — cluster prerequisite |
+| `agentgatewayparameters.agentgateway.dev`, `agentgatewaybackends…`, `agentgatewaypolicies…` | `agentgateway-crds` chart (`oci://cr.agentgateway.dev/charts/agentgateway-crds`) — upstream agentgateway ships the controller and CRDs as separate charts |
+| `mcpservers.muster.giantswarm.io`, `workflows.muster.giantswarm.io` | muster sub-chart `templates/crds.yaml` (gated by `muster.crds.install`, default `true`) |
+
+`helm uninstall agentic-platform` will cascade-delete the muster CRDs and every `MCPServer` / `Workflow` CR. Pre-create the CRDs out of band (or annotate them with `helm.sh/resource-policy: keep`) if you need them to survive uninstall.
+
+### Adoption of pre-existing agentgateway CRDs
+
+If a previous install applied agentgateway CRDs without Helm metadata, the new `agentgateway-crds` release will refuse to take ownership. One-time adoption:
+
+```bash
+for crd in $(kubectl get crd -o name | grep -E 'agentgateway\.dev$'); do
+  kubectl annotate "$crd" \
+    meta.helm.sh/release-name=agentgateway-crds \
+    meta.helm.sh/release-namespace=muster --overwrite
+  kubectl label "$crd" app.kubernetes.io/managed-by=Helm --overwrite
+done
+```
+
+### Upgrading CRDs
+
+Muster CRDs migrate as part of the agentic-platform `helm upgrade` (they ship inside the muster sub-chart). For `agentgateway-crds`, follow upstream release notes.
 
 ## Compatibility
 
-This app has been tested to work with the following workload cluster release versions:
-
-- _add release version_
-
-## Limitations
-
-Some apps have restrictions on how they can be deployed.
-Not following these limitations will most likely result in a broken deployment.
-
-- _add limitation_
+Targets Giant Swarm workload clusters running Kubernetes ≥ 1.33 with Cilium and Kyverno. The `kubernetes` NetworkPolicy flavor works on any CNI but is best-effort (no entity selectors, no FQDN egress).
 
 ## Credit
 
-- {APP HELM REPOSITORY}
+- [muster](https://github.com/giantswarm/muster) — Giant Swarm, Apache 2.0.
+- [agentgateway](https://github.com/agentgateway/agentgateway) — agentgateway authors, Apache 2.0.

@@ -1,0 +1,88 @@
+{{- if and .Values.networkPolicy.enabled (eq .Values.networkPolicy.flavor "cilium") }}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-dataplane
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
+  ingress:
+    - fromEntities: ["cluster"]
+      toPorts:
+        - ports:
+            - port: "{{ (index .Values.gateway.listeners 0).port }}"
+              protocol: TCP
+  egress:
+    - toEntities: ["kube-apiserver"]
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: coredns
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: k8s-dns-node-cache
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+            - port: "1053"
+              protocol: UDP
+            - port: "1053"
+              protocol: TCP
+    - toEntities: ["world"]
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+    - toEntities: ["cluster"]
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: muster
+      toPorts:
+        - ports:
+            - port: "8090"
+              protocol: TCP
+    # xDS to the agentgateway controller.
+    - toEndpoints:
+        - matchLabels:
+            agentgateway: agentgateway
+            app.kubernetes.io/name: agentgateway
+            app.kubernetes.io/instance: {{ .Release.Name }}
+      toPorts:
+        - ports:
+            - port: "9978"
+              protocol: TCP
+    {{- with .Values.networkPolicy.additionalEgressCIDRs }}
+    - toCIDR:
+        {{- toYaml . | nindent 8 }}
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    {{- end }}
+    {{- with .Values.networkPolicy.additionalEgressFQDNs }}
+    - toFQDNs:
+        {{- toYaml . | nindent 8 }}
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    {{- end }}
+{{- end }}

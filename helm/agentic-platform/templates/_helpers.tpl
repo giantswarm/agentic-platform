@@ -32,3 +32,10 @@ Selector labels
 app.kubernetes.io/name: {{ include "name" . | quote }}
 app.kubernetes.io/instance: {{ .Release.Name | quote }}
 {{- end -}}
+
+{{/*
+Name of the AgentgatewayParameters CR — defaults to release name.
+*/}}
+{{- define "agentic-platform.parametersName" -}}
+{{- default .Release.Name .Values.gateway.parameters.name -}}
+{{- end -}}
