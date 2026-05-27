@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-27
+
 ### Added
 
 - `agentgateway-crds` bundled as a conditional sub-chart (`condition: agentgateway-crds.enabled`, default `true`) so the umbrella is self-contained. The chart now ships the `AgentgatewayParameters` / `AgentgatewayPolicy` / `AgentgatewayBackend` CRDs alongside the `AgentgatewayParameters` CR it renders; Helm applies CRDs ahead of the CR via install ordering. Disable on clusters that manage these CRDs out of band.
@@ -54,5 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/giantswarm/agentic-platform/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/giantswarm/agentic-platform/releases/tag/v0.1.0
