@@ -91,6 +91,14 @@ extraObjects: []
 muster:
   image:
     registry: gsoci.azurecr.io
+  # muster's CRDs (MCPServer / Workflow) now ship via the companion
+  # agentic-platform-crds chart, not the muster sub-chart. The currently
+  # pinned muster (0.1.197) still defaults `crds.install: true`, so we MUST
+  # disable it here to avoid duplicate CRD ownership with the CRDs release.
+  # The muster-crds split (muster #750) defaults this to false upstream; this
+  # override stays as a guard regardless of the muster version pinned below.
+  crds:
+    install: false
   # muster does not currently support OTLP push; ServiceMonitor is the
   # primary observability path. Enable below once muster gains an otlpEndpoint
   # knob. Filed: https://github.com/giantswarm/muster/issues/726 (probe gap).
@@ -228,9 +236,3 @@ agentgateway:
     limits:
       cpu: 500m
       memory: 512Mi
-
-# agentgateway CRDs (AgentgatewayParameters / Policy / Backend), bundled as a
-# sub-chart so the umbrella is self-contained. Disable on clusters that manage
-# these CRDs out of band (e.g. a shared agentgateway-crds release).
-agentgateway-crds:
-  enabled: true

@@ -7,14 +7,15 @@ Service type:   {{ .Values.gateway.parameters.serviceType }} (data-plane Service
 Prerequisite check (run BEFORE installing the agentic platform):
   kubectl get crd gateways.gateway.networking.k8s.io
   kubectl get crd agentgatewayparameters.agentgateway.dev
+  kubectl get crd mcpservers.muster.giantswarm.io
 
-Install agentgateway-crds first (upstream ships controller + CRDs as
-separate charts). Muster's CRDs ship inside the umbrella via the muster
-sub-chart.
+This chart installs NO CRDs. Install the companion agentic-platform-crds
+chart first (it ships the agentgateway + muster CRDs); wait for them to be
+Established; then install this release.
 
-  helm install agentgateway-crds \
-    oci://cr.agentgateway.dev/charts/agentgateway-crds --version v1.2.1 \
-    -n {{ .Release.Namespace }} --create-namespace
+  helm install agentic-platform-crds \
+    oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-crds \
+    --version <crds-chart-version> -n {{ .Release.Namespace }} --create-namespace
   helm install {{ .Release.Name }} \
     oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
     --version <agentic-platform-version> -n {{ .Release.Namespace }}

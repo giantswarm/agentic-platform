@@ -5,8 +5,9 @@ description: |
   Giant Swarm agentic platform — MCP gateway consumer-side deploy unit. Bundles
   muster (MCP aggregator control plane) and the agentgateway controller +
   data-plane proxy, plus an opt-in giantswarm/valkey-app for muster's OAuth
-  session storage. agentgateway and muster CRDs are bundled; the Gateway API
-  CRDs and GatewayClass remain cluster-level prerequisites — see README.
+  session storage. CRDs ship separately in the companion agentic-platform-crds
+  chart, which must be installed first; the Gateway API CRDs and GatewayClass
+  remain cluster-level prerequisites — see README.
 home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
@@ -24,17 +25,11 @@ dependencies:
   - name: agentgateway
     version: v1.2.1
     repository: oci://cr.agentgateway.dev/charts
-  # agentgateway CRDs (AgentgatewayParameters / Policy / Backend). Upstream
-  # ships them as a chart separate from the controller; the umbrella renders
-  # an AgentgatewayParameters CR, so the CRDs must be present. Bundled here
-  # (toggle via `agentgateway-crds.enabled`) so the chart is self-contained.
-  # NOTE: until upstream parameterizes the CRD annotations, these CRDs are
-  # NOT marked `helm.sh/resource-policy: keep` — uninstalling the release
-  # deletes them and cascades to all agentgateway CRs. Tracked upstream.
-  - name: agentgateway-crds
-    version: v1.2.1
-    repository: oci://cr.agentgateway.dev/charts
-    condition: agentgateway-crds.enabled
+  # CRDs (agentgateway: AgentgatewayParameters / Policy / Backend; muster:
+  # MCPServer / Workflow) now ship in the companion agentic-platform-crds
+  # chart, NOT here. This chart renders the CRs that consume them, so the
+  # agentic-platform-crds release must be installed (and Established) first.
+  # See README "CRD lifecycle".
   # Bundled Valkey (giantswarm/valkey-app — wraps upstream valkey-io/valkey-helm)
   # for muster's OAuth session storage. Single-pod Deployment with PVC; primary
   # Service at `muster-valkey.<namespace>.svc:6379` (no `-primary` suffix).

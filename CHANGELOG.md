@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New `agentic-platform-crds` chart (`helm/agentic-platform-crds/`): a CRD-only umbrella that vendors the upstream `agentgateway-crds` (`v1.2.1`) and `muster-crds` sub-charts, shipping all five CRDs the platform's CRs consume. Install it **before** `agentic-platform`; CRD and workload lifecycles are now decoupled (two releases in sequence, Flux/Argo-agnostic). The muster CRDs are `helm.sh/resource-policy: keep`-protected via `muster-crds.crds.annotations`.
+- Second CircleCI `architect/push-to-app-catalog` job (`package-and-push-crds-chart`) building and publishing `agentic-platform-crds` alongside `agentic-platform` on git tags.
+
+### Changed
+
+- All CRDs moved out of `agentic-platform` into the new `agentic-platform-crds` chart. `agentic-platform` now installs **zero** CRDs — it renders only the CRs (`Gateway`, `AgentgatewayParameters`, plus muster's). `helm template agentic-platform` emitting any `CustomResourceDefinition` is a regression.
+- `muster.crds.install` defaulted to `false` in `agentic-platform` values, so the bundled `muster` sub-chart renders no CRDs (the currently pinned muster `0.1.197` still defaults `crds.install: true`).
+- `Chart.yaml` description: CRDs now ship in the companion `agentic-platform-crds` chart.
+
+### Removed
+
+- `agentgateway-crds` sub-chart dependency (`condition: agentgateway-crds.enabled`) and the `agentgateway-crds:` values block from `agentic-platform`. The CRDs are provided by `agentic-platform-crds`.
+
+### Known issues
+
+- **agentgateway keep-gap.** The upstream `agentgateway-crds` chart renders its CRDs without `helm.sh/resource-policy: keep` and exposes no knob to inject it. `helm uninstall agentic-platform-crds` therefore deletes the agentgateway CRDs and cascades to every agentgateway CR cluster-wide (the muster CRDs are keep-protected). Documented in the `agentic-platform-crds` README/NOTES and the platform README "CRD lifecycle"; tracked upstream.
+
 ## [0.2.0] - 2026-05-27
 
 ### Added

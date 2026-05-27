@@ -2,6 +2,55 @@
 
 Operator action required between releases. CHANGELOG.md captures the diff; UPGRADE.md captures what an operator has to *do*.
 
+## 0.2.0 → \<next\> (two-chart CRD split)
+
+CRDs are no longer bundled in `agentic-platform`. They now ship in the companion **`agentic-platform-crds`** chart, which must be installed (and Established) **before** `agentic-platform`. There are now **two releases** from this repo, in order.
+
+### What changed
+
+- The `agentgateway-crds` sub-chart dependency is **removed** from `agentic-platform`. (`agentgateway-crds.enabled` in your values is now a no-op — drop it.)
+- `muster.crds.install` is set to `false` by the umbrella, so the bundled `muster` sub-chart renders no CRDs.
+- The five CRDs (3 × `agentgateway.dev`, 2 × `muster.giantswarm.io`) are provided by `agentic-platform-crds`.
+- `helm template agentic-platform` now emits **zero** `CustomResourceDefinition` objects (CI guards this).
+
+### Install ordering
+
+```bash
+helm upgrade --install agentic-platform-crds \
+  oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-crds \
+  --version <crds-chart-version> -n muster --create-namespace
+
+kubectl wait --for=condition=Established \
+  crd/agentgatewayparameters.agentgateway.dev \
+  crd/mcpservers.muster.giantswarm.io
+
+helm upgrade --install agentic-platform \
+  oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
+  --version <chart-version> -n muster -f values.yaml
+```
+
+Flux users: add `dependsOn: [{ name: agentic-platform-crds }]` to the `agentic-platform` HelmRelease (see README).
+
+### One-time CRD ownership handoff (required)
+
+The `0.2.0` `agentic-platform` release **owned** the agentgateway and muster CRDs (Helm metadata `meta.helm.sh/release-name=<your-platform-release>`). The new `agentic-platform-crds` release will refuse to adopt CRDs owned by a different release. Re-annotate the existing CRDs so the CRDs release takes ownership and they survive future platform uninstalls. Run this **before** installing `agentic-platform-crds`:
+
+```bash
+# Replace `muster` with the namespace your agentic-platform-crds release installs into.
+for crd in $(kubectl get crd -o name | grep -E 'agentgateway\.dev$|muster\.giantswarm\.io$'); do
+  kubectl annotate "$crd" \
+    meta.helm.sh/release-name=agentic-platform-crds \
+    meta.helm.sh/release-namespace=muster --overwrite
+  kubectl label "$crd" app.kubernetes.io/managed-by=Helm --overwrite
+done
+```
+
+After the handoff, the muster CRDs become `helm.sh/resource-policy: keep`-protected via `agentic-platform-crds`. The agentgateway CRDs remain unprotected (upstream gap — see README "CRD lifecycle"); uninstalling `agentic-platform-crds` still deletes them and cascades to all agentgateway CRs.
+
+### muster / muster-crds version alignment
+
+`agentic-platform-crds` pins `muster-crds`; `agentic-platform` pins `muster`. Keep the two muster versions aligned so the CRD schemas match the controller. An identical-content `muster-crds` bump is a no-op upgrade.
+
 ## 0.0.0 → 0.1.0 (first stable release — pending)
 
 ### OTel defaults added for agentgateway data plane
