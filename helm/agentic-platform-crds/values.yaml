@@ -1,0 +1,23 @@
+# Default values for agentic-platform-crds.
+#
+# This chart is a thin umbrella over two CRD sub-charts. It carries no
+# templates of its own — installing it installs the CRDs.
+#
+#   agentgateway-crds  → AgentgatewayParameters / AgentgatewayPolicy / AgentgatewayBackend
+#   muster-crds        → MCPServer / Workflow
+#
+# WARNING (agentgateway keep-gap): the upstream agentgateway-crds sub-chart
+# renders its CRDs WITHOUT `helm.sh/resource-policy: keep` and exposes no knob
+# to inject it. `helm uninstall agentic-platform-crds` therefore DELETES the
+# agentgateway CRDs and cascades to every agentgateway CR in the cluster. The
+# muster CRDs below are keep-protected, so an uninstall is split-brain: muster
+# CRDs survive, agentgateway CRDs do not. Tracked upstream — see README.md.
+
+# muster-crds sub-chart values. The muster-crds loader merges
+# `crds.annotations` into each CRD's metadata.annotations. We set the keep
+# policy here explicitly (defense in depth) so the MCPServer / Workflow CRDs —
+# and any MCPServer / Workflow CRs that depend on them — survive uninstall.
+muster-crds:
+  crds:
+    annotations:
+      helm.sh/resource-policy: keep

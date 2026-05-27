@@ -19,3 +19,20 @@ workflows:
           branches:
             ignore:
             - main
+    - architect/push-to-app-catalog:
+        context: architect
+        executor: app-build-suite
+        name: package-and-push-crds-chart
+        app_catalog: giantswarm-catalog
+        app_catalog_test: giantswarm-test-catalog
+        chart: 'agentic-platform-crds'
+        # chart name differs from the repo (agentic-platform) — required by the
+        # orb's chart-name check to publish a second chart from this repo.
+        explicit_allow_chart_name_mismatch: true
+          # Trigger job on git tag.
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore:
+            - main

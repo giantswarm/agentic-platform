@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/giantswarm/agentic-platform/helm/agentic-platform-crds/values.schema.json",
+  "type": "object",
+  "description": "agentic-platform-crds is a thin umbrella over the agentgateway-crds and muster-crds sub-charts. Values are passed through to those sub-charts, so this schema is intentionally permissive.",
+  "additionalProperties": true
+}
