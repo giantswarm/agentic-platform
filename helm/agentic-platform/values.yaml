@@ -220,3 +220,9 @@ agentgateway:
     limits:
       cpu: 500m
       memory: 512Mi
+
+# agentgateway CRDs (AgentgatewayParameters / Policy / Backend), bundled as a
+# sub-chart so the umbrella is self-contained. Disable on clusters that manage
+# these CRDs out of band (e.g. a shared agentgateway-crds release).
+agentgateway-crds:
+  enabled: true
