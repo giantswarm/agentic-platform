@@ -9,4 +9,4 @@ dependencies:
   repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.2
 digest: sha256:78bcc2c9e936c4a9f1e10f377dc8359e4fc95194d44643b7bf7a10c8f757b540
-generated: "2026-05-20T16:08:09.7947424+02:00"
+generated: "2026-05-26T17:56:36.157556044+02:00"

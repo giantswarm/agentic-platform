@@ -195,6 +195,41 @@ muster:
         - muster.<cluster>.<base-domain>
 ```
 
+## Observability
+
+All bundled components push OTel traces to the cluster-wide `otlp-gateway.kube-system.svc:4317` (gRPC) by default:
+
+| Component | Mechanism | Default endpoint |
+|---|---|---|
+| agentgateway data plane | `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_PROTOCOL` env vars via `gateway.parameters.dataPlaneEnv` | `http://otlp-gateway.kube-system.svc:4317` |
+
+Muster does not yet support OTLP push. Its `/metrics` endpoint is scraped via `ServiceMonitor` (`muster.serviceMonitor.enabled: true`).
+
+Override any endpoint per component:
+
+```yaml
+gateway:
+  parameters:
+    dataPlaneEnv:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://tempo-distributor.tempo.svc:4317
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: grpc
+
+```
+
+## Reference workloads (not bundled)
+
+These MCP servers and agent runtimes integrate with the agentic platform but are maintained by other teams and are not bundled in this umbrella.
+
+| Component | Team | Purpose |
+|---|---|---|
+| [giantswarm/mcp-observability-platform](https://github.com/giantswarm/mcp-observability-platform) | atlas | MCP server exposing Grafana, Mimir, Loki, Tempo, and Alertmanager with OIDC RBAC. Deploy as an `MCPServer` CR behind muster. |
+| [giantswarm/mcp-prometheus](https://github.com/giantswarm/mcp-prometheus) | planeteers | MCP server for Prometheus query. |
+| [giantswarm/mcp-capi](https://github.com/giantswarm/mcp-capi) | planeteers | MCP server for Cluster API. |
+| [giantswarm/mcp-runbooks](https://github.com/giantswarm/mcp-runbooks) | planeteers | MCP server for Giant Swarm runbooks. |
+| [giantswarm/mcp-kubernetes](https://github.com/giantswarm/mcp-kubernetes) | bumblebee | MCP server for the Kubernetes API. |
+
 ## Private registry overrides
 
 All images default to `gsoci.azurecr.io/giantswarm/*`:
