@@ -1,4 +1,14 @@
-{{- if and .Values.gateway.enabled .Values.gateway.parameters.enabled }}
+{{- /*
+  Gate the CR on its CRD being registered in the cluster. The agentgateway
+  CRDs ship as agentgateway-crds sub-chart templates, so they install in the
+  same Helm pass that renders this CR. On a first install the kind is not yet
+  in the API, and Helm aborts the whole release ("no matches for kind
+  AgentgatewayParameters"). Skipping it here lets the CRDs install; the next
+  reconcile picks up the kind via discovery and creates the CR.
+  NOTE: under `helm template` (no live cluster) pass
+  --api-versions=agentgateway.dev/v1alpha1/AgentgatewayParameters to render it.
+*/}}
+{{- if and .Values.gateway.enabled .Values.gateway.parameters.enabled (.Capabilities.APIVersions.Has "agentgateway.dev/v1alpha1/AgentgatewayParameters") }}
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayParameters
 metadata:

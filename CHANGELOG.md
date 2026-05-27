@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `AgentgatewayParameters` CR now gated on `.Capabilities.APIVersions.Has "agentgateway.dev/v1alpha1/AgentgatewayParameters"`. The agentgateway CRDs ship as sub-chart `templates/` (not `crds/`), so they install in the same Helm pass that renders the CR — on a first install the kind is not yet registered and Helm aborts the whole release (`no matches for kind "AgentgatewayParameters"`). The CR is now skipped until its CRD exists; the next reconcile (Flux discovery) creates it. The CRDs stay as templates, so they continue to upgrade in place. This corrects the 0.2.0 assumption that "Helm applies CRDs ahead of the CR via install ordering" — sub-chart template CRDs are not ordered ahead of CRs. Under `helm template`, pass `--api-versions=agentgateway.dev/v1alpha1/AgentgatewayParameters` to render the CR.
+
 ## [0.2.0] - 2026-05-27
 
 ### Added
