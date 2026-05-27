@@ -4,6 +4,25 @@ Operator action required between releases. CHANGELOG.md captures the diff; UPGRA
 
 ## 0.0.0 → 0.1.0 (first stable release — pending)
 
+### OTel defaults added for agentgateway data plane
+
+`gateway.parameters.dataPlaneEnv` now defaults to:
+
+```yaml
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: http://otlp-gateway.kube-system.svc:4317
+- name: OTEL_EXPORTER_OTLP_PROTOCOL
+  value: grpc
+```
+
+This requires an `otlp-gateway` Service in `kube-system` (provided by the Giant Swarm observability platform). On clusters without it, the agentgateway data-plane logs connection errors to the exporter but starts normally. Disable with:
+
+```yaml
+gateway:
+  parameters:
+    dataPlaneEnv: []
+```
+
 ### Bundled Valkey + OAuth server are ON by default
 
 `valkey.enabled` and `muster.muster.oauth.server.enabled` both default to `true`. Operators must supply per-cluster fields up-front or the muster sub-chart's fail-guards reject install:
