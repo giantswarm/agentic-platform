@@ -22,10 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `agentgateway-crds` sub-chart dependency (`condition: agentgateway-crds.enabled`) and the `agentgateway-crds:` values block from `agentic-platform`. The CRDs are provided by `agentic-platform-crds`.
 
-### Known issues
-
-- **agentgateway keep-gap.** The upstream `agentgateway-crds` chart renders its CRDs without `helm.sh/resource-policy: keep` and exposes no knob to inject it. `helm uninstall agentic-platform-crds` therefore deletes the agentgateway CRDs and cascades to every agentgateway CR cluster-wide (the muster CRDs are keep-protected). Documented in the `agentic-platform-crds` README/NOTES and the platform README "CRD lifecycle"; tracked upstream.
-
 ## [0.2.0] - 2026-05-27
 
 ### Added
