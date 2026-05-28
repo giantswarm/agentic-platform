@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-28
+
 ### Fixed
 
 - Restored restricted-PSS compliant `securityContext`/`podSecurityContext` defaults on the bundled valkey sub-chart, which were inadvertently dropped during the CRD-chart split (0.3.0). Without them, Kyverno's `disallow-privilege-escalation` and `restrict-seccomp-strict` policies reject the `muster-valkey` Deployment because the init container reuses the main container's `securityContext` and the upstream defaults omit `allowPrivilegeEscalation: false` and `seccompProfile: RuntimeDefault`.
@@ -77,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/giantswarm/agentic-platform/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/giantswarm/agentic-platform/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/giantswarm/agentic-platform/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/giantswarm/agentic-platform/releases/tag/v0.1.0
