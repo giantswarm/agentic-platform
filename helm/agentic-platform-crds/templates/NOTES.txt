@@ -1,0 +1,40 @@
+{{ .Chart.Name }} {{ .Chart.Version }} installed in namespace {{ .Release.Namespace }}.
+
+This chart ships the CustomResourceDefinitions for the agentic platform:
+
+  agentgateway-crds → agentgatewayparameters.agentgateway.dev
+                      agentgatewaypolicies.agentgateway.dev
+                      agentgatewaybackends.agentgateway.dev
+  muster-crds       → mcpservers.muster.giantswarm.io
+                      workflows.muster.giantswarm.io
+
+INSTALL ORDER: install (or upgrade) this CRDs release BEFORE the companion
+agentic-platform release. The platform chart renders CRs (AgentgatewayParameters,
+Gateway, MCPServer, Workflow) that require these CRDs to already exist and be
+Established.
+
+Verify the CRDs are registered and Established before installing the platform:
+
+  kubectl get crd \
+    agentgatewayparameters.agentgateway.dev \
+    agentgatewaypolicies.agentgateway.dev \
+    agentgatewaybackends.agentgateway.dev \
+    mcpservers.muster.giantswarm.io \
+    workflows.muster.giantswarm.io
+
+  kubectl wait --for=condition=Established crd/agentgatewayparameters.agentgateway.dev
+
+Gateway API CRDs (gateways/httproutes/gatewayclasses.gateway.networking.k8s.io)
+remain a cluster prerequisite and are NOT shipped by this chart.
+
+UNINSTALL WARNING (mixed delete behaviour):
+  - muster CRDs (mcpservers/workflows.muster.giantswarm.io) carry
+    `helm.sh/resource-policy: keep` — they and their MCPServer / Workflow CRs
+    survive `helm uninstall {{ .Release.Name }}`.
+  - agentgateway CRDs (*.agentgateway.dev) do NOT carry the keep policy
+    (upstream agentgateway-crds exposes no knob to set it). `helm uninstall
+    {{ .Release.Name }}` DELETES them and cascades to every agentgateway CR
+    cluster-wide. Treat uninstalling this release as destructive for
+    agentgateway CRs. Tracked upstream — see README.md.
+
+For more information, visit: https://github.com/giantswarm/agentic-platform

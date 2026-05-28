@@ -1,15 +1,12 @@
 dependencies:
 - name: muster
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.1.197
+  version: 0.1.213
 - name: agentgateway
-  repository: oci://cr.agentgateway.dev/charts
-  version: v1.2.1
-- name: agentgateway-crds
   repository: oci://cr.agentgateway.dev/charts
   version: v1.2.1
 - name: valkey
   repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.2
-digest: sha256:53ef3617147eb0a5ba9df6f4b614d41928d6106b293a87e996598875c8560a86
-generated: "2026-05-27T09:52:53.391738+02:00"
+digest: sha256:1f6e7a95ca7bfcf1d4c988d440c9a824a2b576865adb5569a2b366c350252d22
+generated: "2026-05-28T09:38:01.992941+02:00"

@@ -1,0 +1,37 @@
+apiVersion: v2
+name: agentic-platform-crds
+type: application
+description: |
+  CustomResourceDefinitions for the Giant Swarm agentic platform. Ships the
+  agentgateway CRDs (AgentgatewayParameters / AgentgatewayPolicy /
+  AgentgatewayBackend) and muster CRDs (MCPServer / Workflow) as a single
+  install unit. Install this chart first; once the CRDs are Established the
+  companion agentic-platform chart can apply its CRs. The Gateway API CRDs and
+  GatewayClass remain cluster-level prerequisites — see README.
+home: https://github.com/giantswarm/agentic-platform
+icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
+sources:
+  - https://github.com/giantswarm/agentic-platform
+appVersion: "0.1.0"
+version: 0.2.0
+annotations:
+  io.giantswarm.application.audience: all
+  io.giantswarm.application.managed: "true"
+  io.giantswarm.application.team: bumblebee
+dependencies:
+  # agentgateway CRDs (AgentgatewayParameters / AgentgatewayPolicy /
+  # AgentgatewayBackend). Upstream ships them as a chart separate from the
+  # controller. No condition: a CRDs chart installs all of its CRDs.
+  # WARNING: upstream agentgateway-crds does NOT mark these CRDs
+  # `helm.sh/resource-policy: keep`, so `helm uninstall agentic-platform-crds`
+  # deletes them and cascades to every agentgateway CR cluster-wide. There is
+  # no knob to inject the annotation. Tracked upstream — see README.
+  - name: agentgateway-crds
+    version: v1.2.1
+    repository: oci://cr.agentgateway.dev/charts
+  # muster CRDs (MCPServer / Workflow). CRD-only chart split out of the muster
+  # app chart. These CRDs ARE marked `helm.sh/resource-policy: keep` and
+  # survive uninstall (see values.yaml crds.annotations). No condition.
+  - name: muster-crds
+    version: 0.1.213
+    repository: oci://gsoci.azurecr.io/charts/giantswarm

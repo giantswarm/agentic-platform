@@ -11,14 +11,13 @@ Owner: team-bumblebee.
 
 - Kubernetes ≥ 1.33 on the install target.
 - Gateway API v1 CRDs (`gateways.gateway.networking.k8s.io`, `httproutes.gateway.networking.k8s.io`, `gatewayclasses.gateway.networking.k8s.io`) installed cluster-wide. The agentic platform does **not** install them.
-- `agentgateway-crds` chart installed (provides `AgentgatewayParameters`, `AgentgatewayBackend`, `AgentgatewayPolicy`). Not bundled — upstream `agentgateway` ships the controller and CRDs as separate charts; see [CRD lifecycle](#crd-lifecycle).
-- Muster's `MCPServer` and `Workflow` CRDs are installed by the bundled `muster` sub-chart's `templates/crds.yaml` (gated by `muster.crds.install`, default `true`).
+- The companion **`agentic-platform-crds` chart installed first** — it ships all CRDs this chart's CRs consume (`AgentgatewayParameters` / `AgentgatewayPolicy` / `AgentgatewayBackend` and muster's `MCPServer` / `Workflow`). This chart installs **no** CRDs of its own; see [CRD lifecycle](#crd-lifecycle).
 - A `GatewayClass` CR named `agentgateway` (`status.conditions[type=Accepted]=True`). The bundled `agentgateway` sub-chart creates it on install; operators managing the controller out-of-band must ensure the `GatewayClass` exists.
 - Cilium CNI for `networkPolicy.flavor: cilium` (default). Vanilla Kubernetes clusters: set `networkPolicy.flavor: kubernetes` **AND** `muster.networkPolicy.flavor: kubernetes` **AND** `valkey.ciliumNetworkPolicy.enabled: false` (the bundled valkey wrapper's CNP has no kubernetes-flavor counterpart). Opt out entirely with `networkPolicy.enabled: false` + `muster.networkPolicy.enabled: false` + `valkey.ciliumNetworkPolicy.enabled: false`.
 
 ## Installing
 
-Install `agentgateway-crds` first, then the platform. Muster's CRDs ship inside the umbrella via the muster sub-chart.
+Two charts from this repo, installed **in order**: the companion `agentic-platform-crds` chart first (it ships every CRD this chart's CRs need), then `agentic-platform`. CRD and workload lifecycles are decoupled — ordering is just "two releases in sequence", agnostic of Flux `dependsOn` / Argo sync-waves.
 
 ### Flux
 
@@ -26,12 +25,12 @@ Install `agentgateway-crds` first, then the platform. Muster's CRDs ship inside 
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
-  name: agentgateway-crds
+  name: agentic-platform-crds
   namespace: muster
 spec:
   interval: 1h
-  url: oci://cr.agentgateway.dev/charts/agentgateway-crds
-  ref: { tag: v1.2.1 }
+  url: oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-crds
+  ref: { tag: <agentic-platform-crds-version> }
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
@@ -46,11 +45,11 @@ spec:
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: agentgateway-crds
+  name: agentic-platform-crds
   namespace: muster
 spec:
   interval: 10m
-  chartRef: { kind: OCIRepository, name: agentgateway-crds }
+  chartRef: { kind: OCIRepository, name: agentic-platform-crds }
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -61,7 +60,7 @@ spec:
   interval: 10m
   chartRef: { kind: OCIRepository, name: agentic-platform }
   dependsOn:
-    - { name: agentgateway-crds }
+    - { name: agentic-platform-crds }
   valuesFrom:
     - kind: Secret
       name: agentic-platform-values
@@ -70,9 +69,27 @@ spec:
 ### Raw Helm
 
 ```bash
+helm install agentic-platform-crds \
+  oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-crds \
+  --version <crds-chart-version> --namespace muster --create-namespace
+
+helm install agentic-platform \
+  oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
+  --version <chart-version> --namespace muster -f values.yaml
+```
+
+#### Raw CRD-chart fallback (no `agentic-platform-crds`)
+
+`agentic-platform-crds` is a thin umbrella over two upstream CRD charts. If you prefer to manage the CRD charts directly (or already run a shared `agentgateway-crds` release), install both source charts instead — they provide the same five CRDs:
+
+```bash
 helm install agentgateway-crds \
   oci://cr.agentgateway.dev/charts/agentgateway-crds \
   --version v1.2.1 --namespace muster --create-namespace
+
+helm install muster-crds \
+  oci://gsoci.azurecr.io/charts/giantswarm/muster-crds \
+  --version <muster-crds-version> --namespace muster
 
 helm install agentic-platform \
   oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
@@ -266,30 +283,43 @@ The data-plane pod template hardcodes `sysctls: [net.ipv4.ip_unprivileged_port_s
 
 ## CRD lifecycle
 
+All CRDs ship in the companion **`agentic-platform-crds`** chart (installed first). This chart (`agentic-platform`) installs **no** CRDs — it only renders CRs that consume them.
+
 | CRDs | Source |
 |---|---|
-| `gateways.gateway.networking.k8s.io`, `httproutes…`, `gatewayclasses…` | Gateway API upstream — cluster prerequisite |
-| `agentgatewayparameters.agentgateway.dev`, `agentgatewaybackends…`, `agentgatewaypolicies…` | `agentgateway-crds` chart (`oci://cr.agentgateway.dev/charts/agentgateway-crds`) — upstream agentgateway ships the controller and CRDs as separate charts |
-| `mcpservers.muster.giantswarm.io`, `workflows.muster.giantswarm.io` | muster sub-chart `templates/crds.yaml` (gated by `muster.crds.install`, default `true`) |
+| `gateways.gateway.networking.k8s.io`, `httproutes…`, `gatewayclasses…` | Gateway API upstream — cluster prerequisite (not shipped by either chart) |
+| `agentgatewayparameters.agentgateway.dev`, `agentgatewaybackends…`, `agentgatewaypolicies…` | `agentic-platform-crds` chart (vendors the upstream `agentgateway-crds` sub-chart) |
+| `mcpservers.muster.giantswarm.io`, `workflows.muster.giantswarm.io` | `agentic-platform-crds` chart (vendors the `muster-crds` sub-chart) |
 
-`helm uninstall agentic-platform` will cascade-delete the muster CRDs and every `MCPServer` / `Workflow` CR. Pre-create the CRDs out of band (or annotate them with `helm.sh/resource-policy: keep`) if you need them to survive uninstall.
+`helm uninstall agentic-platform` (the workload release) leaves all CRDs and CRs intact — it owns none of them.
 
-### Adoption of pre-existing agentgateway CRDs
+**Uninstalling `agentic-platform-crds` is not uniform.** Mind the agentgateway keep-gap:
 
-If a previous install applied agentgateway CRDs without Helm metadata, the new `agentgateway-crds` release will refuse to take ownership. One-time adoption:
+| CRDs | `helm.sh/resource-policy: keep`? | On `helm uninstall agentic-platform-crds` |
+|---|---|---|
+| `mcpservers`, `workflows` (`muster.giantswarm.io`) | **Yes** | CRDs and their CRs **survive**. |
+| `agentgatewayparameters`, `agentgatewaypolicies`, `agentgatewaybackends` (`agentgateway.dev`) | **No** | CRDs are **deleted** and the delete **cascades to every agentgateway CR cluster-wide**. |
+
+The upstream `agentgateway-crds` chart renders its CRDs without the keep annotation and exposes no knob to inject it, so `agentic-platform-crds` cannot protect them. An upstream change to parameterize the agentgateway CRD annotations is pending (see `CHANGELOG.md`); the keep policy will be set once it lands. Until then, treat uninstalling the CRDs release as destructive for agentgateway CRs.
+
+### Adoption / ownership handoff for pre-existing agentgateway + muster CRDs
+
+If the `0.2.0` `agentic-platform` chart previously installed these CRDs (they were bundled then), or a prior install applied them without Helm metadata, the new `agentic-platform-crds` release refuses to take ownership until you re-annotate them. One-time handoff (run **before** installing `agentic-platform-crds`):
 
 ```bash
-for crd in $(kubectl get crd -o name | grep -E 'agentgateway\.dev$'); do
+for crd in $(kubectl get crd -o name | grep -E 'agentgateway\.dev$|muster\.giantswarm\.io$'); do
   kubectl annotate "$crd" \
-    meta.helm.sh/release-name=agentgateway-crds \
+    meta.helm.sh/release-name=agentic-platform-crds \
     meta.helm.sh/release-namespace=muster --overwrite
   kubectl label "$crd" app.kubernetes.io/managed-by=Helm --overwrite
 done
 ```
 
+See [UPGRADE.md](./UPGRADE.md) for the full `0.2.0 → next` migration.
+
 ### Upgrading CRDs
 
-Muster CRDs migrate as part of the agentic-platform `helm upgrade` (they ship inside the muster sub-chart). For `agentgateway-crds`, follow upstream release notes.
+CRDs now migrate with the `agentic-platform-crds` release — `helm upgrade agentic-platform-crds`. An identical-content CRDs bump (re-published unchanged alongside a workload release) is a no-op upgrade.
 
 ## Compatibility
 
