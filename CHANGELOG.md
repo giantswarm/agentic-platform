@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-28
+
 ## [0.4.0] - 2026-05-28
 
 ### Fixed
@@ -79,7 +81,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/giantswarm/agentic-platform/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/giantswarm/agentic-platform/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/giantswarm/agentic-platform/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/giantswarm/agentic-platform/compare/v0.1.0...v0.2.0
