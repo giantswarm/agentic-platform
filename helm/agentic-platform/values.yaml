@@ -202,6 +202,25 @@ valkey:
       limits:
         cpu: 200m
         memory: 256Mi
+    # Restricted-PSS compliant. The inner valkey chart's defaults omit
+    # seccompProfile and allowPrivilegeEscalation, which Kyverno's restricted
+    # policies reject (the init container reuses this same securityContext).
+    podSecurityContext:
+      fsGroup: 1000
+      runAsUser: 1000
+      runAsGroup: 1000
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 1000
+      seccompProfile:
+        type: RuntimeDefault
 
 agentgateway:
   image:
