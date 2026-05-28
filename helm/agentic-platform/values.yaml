@@ -221,6 +221,23 @@ valkey:
       runAsUser: 1000
       seccompProfile:
         type: RuntimeDefault
+    # Metrics exporter sidecar (oliver006/redis_exporter) — separate values key
+    # from the main container. The wrapper enables `metrics.enabled: true` and
+    # sets a base securityContext that's missing `allowPrivilegeEscalation` and
+    # `seccompProfile`, which Kyverno's restricted policies reject. Mirror the
+    # main container's block for the sidecar.
+    metrics:
+      exporter:
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          seccompProfile:
+            type: RuntimeDefault
 
 agentgateway:
   image:
