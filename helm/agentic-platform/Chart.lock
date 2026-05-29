@@ -8,5 +8,8 @@ dependencies:
 - name: valkey
   repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.2
-digest: sha256:1f6e7a95ca7bfcf1d4c988d440c9a824a2b576865adb5569a2b366c350252d22
-generated: "2026-05-28T09:38:01.992941+02:00"
+- name: agentic-platform-mcps
+  repository: oci://gsoci.azurecr.io/charts/giantswarm
+  version: 0.1.0
+digest: sha256:d7803abd61a03fd93ce3ecb1df25a046f60665b95c582ec1890dbb205f859a45
+generated: "2026-05-29T11:42:04.045139+02:00"

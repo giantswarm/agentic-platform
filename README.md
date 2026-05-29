@@ -112,6 +112,8 @@ helm install agentic-platform \
 | `muster.*` | passes through to muster | See [muster chart README](https://github.com/giantswarm/muster/blob/main/helm/muster/README.md). |
 | `agentgateway.*` | passes through to upstream agentgateway | See [agentgateway docs](https://agentgateway.dev). |
 | `valkey.enabled` | `true` | Bundle [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) for muster OAuth session storage. |
+| `mcps.enabled` | `false` | Bundle [giantswarm/agentic-platform-mcps](https://github.com/giantswarm/agentic-platform-mcps) to render the platform's MCP server CRs. Toggle is separate from the value namespace — see [Bundled MCP servers](#bundled-mcp-servers). |
+| `agentic-platform-mcps.mcpServers` | `[]` | Abstract list of MCP servers rendered into `MCPServer` / `AgentgatewayBackend` CRs. Renders nothing until populated. |
 | `muster.muster.oauth.server.enabled` | `true` | OAuth resource-server protection on the muster API. Requires `baseUrl`, `dex.{issuerUrl,clientId}`, and a Secret carrying `dex-client-secret` / `registration-token` / `oauth-encryption-key` / `valkey-password`. |
 | `muster.muster.oauth.server.storage.type` | `valkey` | Muster storage backend default. Pairs with `valkey.enabled: true`; flip to `memory` for dev. |
 | `muster.muster.oauth.server.storage.valkey.url` | `muster-valkey:6379` | Bundled-valkey Service. Override to point at an out-of-band Valkey. |
@@ -191,6 +193,23 @@ muster:
 ACL authentication is enabled by default for the `default` user (`~* &* +@all`), with the cleartext password read from `valkey-password` in the operator-supplied Secret. Muster sends `AUTH <password>` against the default user, which is the standard backwards-compatible form.
 
 Operators with an out-of-band Valkey leave `valkey.enabled: false` and override `muster.muster.oauth.server.storage.valkey.url` to point at the external endpoint. See [UPGRADE.md](./UPGRADE.md) for migration notes from a previously-existing standalone Valkey.
+
+### Bundled MCP servers
+
+`mcps.enabled: true` bundles [giantswarm/agentic-platform-mcps](https://github.com/giantswarm/agentic-platform-mcps), which renders the platform's MCP server CRs from one abstract, vendor-neutral `mcpServers` list — muster `MCPServer` CRs by default, and/or agentgateway `AgentgatewayBackend` + `AgentgatewayPolicy` CRs. Like the umbrella's other CRs, these consume CRDs shipped by the companion `agentic-platform-crds` chart (install first); this sub-chart ships **no** CRDs of its own.
+
+```yaml
+mcps:
+  enabled: true
+
+agentic-platform-mcps:
+  mcpServers:
+    - cluster: <cluster>
+      group: kubernetes
+      url: https://mcp.<cluster>.<base-domain>/mcp
+```
+
+The `mcps.enabled` toggle deliberately lives in its **own** top-level block rather than under `agentic-platform-mcps.enabled`: the sub-chart's `values.schema.json` is strict (`additionalProperties: false`) and rejects an `enabled` key. Everything under `agentic-platform-mcps.*` is passed through to the sub-chart verbatim — see its [values reference](https://github.com/giantswarm/agentic-platform-mcps) for `defaults`, `identityProviders`, per-entry `auth`, and the `muster` / `agentgateway` rendering toggles. Even when enabled, the chart renders nothing until `mcpServers` is populated.
 
 ### Public HTTPRoute (required for OAuth)
 
