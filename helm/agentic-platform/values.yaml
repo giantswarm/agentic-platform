@@ -239,6 +239,35 @@ valkey:
           seccompProfile:
             type: RuntimeDefault
 
+# Bundled agentic-platform-mcps chart — renders the platform's MCP server CRs
+# from one abstract, vendor-neutral `mcpServers` list:
+#   .muster.enabled        — render muster.giantswarm.io MCPServer CRs (default true)
+#   .agentgateway.enabled  — render agentgateway.dev AgentgatewayBackend +
+#                            per-target AgentgatewayPolicy CRs (default false)
+# The CRDs these CRs consume ship in the companion agentic-platform-crds chart
+# (install first) — this sub-chart ships no CRDs. Even when enabled it renders
+# nothing until `agentic-platform-mcps.mcpServers` is populated.
+# Full value reference: https://github.com/giantswarm/agentic-platform-mcps
+#
+# The on/off toggle lives here, OUTSIDE the `agentic-platform-mcps` namespace,
+# because the sub-chart's strict values.schema.json (additionalProperties: false)
+# rejects an `enabled` key. This is the `condition: mcps.enabled` dependency gate.
+mcps:
+  enabled: false
+
+# Values passed through to the agentic-platform-mcps sub-chart. Only keys it
+# declares are allowed (muster, agentgateway, defaults, identityProviders,
+# mcpServers). The `mcps.enabled` toggle above is intentionally separate.
+agentic-platform-mcps:
+  # Flat list of MCP servers. Required per entry: cluster, group, url. See the
+  # sub-chart values for `defaults`, `identityProviders`, and per-entry `auth`.
+  # Example:
+  #   mcpServers:
+  #     - cluster: <cluster>
+  #       group: kubernetes
+  #       url: https://example.com/mcp
+  mcpServers: []
+
 agentgateway:
   image:
     registry: gsoci.azurecr.io

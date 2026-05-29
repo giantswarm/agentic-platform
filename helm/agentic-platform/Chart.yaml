@@ -38,3 +38,15 @@ dependencies:
     version: 0.1.2
     repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
     condition: valkey.enabled
+  # agentic-platform-mcps renders the platform's MCP server CRs (muster
+  # MCPServer and/or agentgateway AgentgatewayBackend + AgentgatewayPolicy) from
+  # one abstract `mcpServers` list. Like this chart's other CRs, those resources
+  # consume CRDs that ship in the companion agentic-platform-crds chart (install
+  # first). Opt-in via the top-level `mcps.enabled`; renders nothing until
+  # `agentic-platform-mcps.mcpServers` is populated. The toggle lives outside the
+  # `agentic-platform-mcps` value namespace because the sub-chart's strict
+  # values.schema.json (additionalProperties: false) rejects an `enabled` key.
+  - name: agentic-platform-mcps
+    version: 0.1.0
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    condition: mcps.enabled
