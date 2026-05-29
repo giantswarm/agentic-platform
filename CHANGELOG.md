@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-29
+
 ### Added
 
 - `agentic-platform-mcps` bundled as a conditional sub-chart (`condition: mcps.enabled`, default `false`). It renders the platform's MCP server CRs (muster `MCPServer` and/or agentgateway `AgentgatewayBackend` + `AgentgatewayPolicy`) from one abstract `agentic-platform-mcps.mcpServers` list. The toggle lives in a separate top-level `mcps:` block because the sub-chart's strict `values.schema.json` (`additionalProperties: false`) rejects an `enabled` key. The CRs consume CRDs shipped by the companion `agentic-platform-crds` chart — the umbrella still installs **zero** CRDs. New `ci/test-mcps-values.yaml` exercises the path.
@@ -89,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/giantswarm/agentic-platform/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/giantswarm/agentic-platform/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/giantswarm/agentic-platform/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/giantswarm/agentic-platform/compare/v0.2.0...v0.3.0
