@@ -47,6 +47,6 @@ dependencies:
   # `agentic-platform-mcps` value namespace because the sub-chart's strict
   # values.schema.json (additionalProperties: false) rejects an `enabled` key.
   - name: agentic-platform-mcps
-    version: 0.1.0-97896cfcdcecfd66ccd8459ab4c8bd084288345e
+    version: 0.1.0-5ec4a771e1d92c24f31319dbf78af969f60da393
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: mcps.enabled
