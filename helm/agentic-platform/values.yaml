@@ -289,6 +289,19 @@ mcps:
 # declares are allowed (muster, agentgateway, defaults, identityProviders,
 # mcpServers). The `mcps.enabled` toggle above is intentionally separate.
 agentic-platform-mcps:
+  agentgateway:
+    # The umbrella bundles both muster and agentgateway, so the via-muster
+    # topology is always the right default — agentgateway sits in front of
+    # muster for observability, muster keeps all per-server auth and exchange.
+    enabled: true
+    viaMuster: true
+    # musterUrl points at the muster sub-chart Service in the same release.
+    # The muster sub-chart names its Service "<release>-muster" by convention.
+    # The default below matches the standard GS deploy (release=agentic-platform,
+    # namespace=agentic-platform). Override only if deploying under a different
+    # release name or namespace.
+    musterUrl: "http://agentic-platform-muster.agentic-platform.svc.cluster.local:8090/mcp"
+
   # Flat list of MCP servers. Required per entry: cluster, group, url. See the
   # sub-chart values for `defaults`, `identityProviders`, and per-entry `auth`.
   # Example:
