@@ -10,6 +10,6 @@ dependencies:
   version: 0.1.2
 - name: agentic-platform-mcps
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.1.0-d1a985f0c24ce3769bb7a047781a74e1aeca2703
-digest: sha256:19f0925abc9294a05a20bf17179f387cd9e953d8344b95df5dab748cc9cb43eb
-generated: "2026-05-30T19:40:43.834052187+02:00"
+  version: 0.1.0-0424d7209a9f09376491c973f61ccd6b95c3ee01
+digest: sha256:c0b04a22048fdfd877b246cc32b7bf5e1807e4dadbb714bfe399da677a97a495
+generated: "2026-05-30T20:04:22.549235082+02:00"
