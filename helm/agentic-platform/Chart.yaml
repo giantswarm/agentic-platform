@@ -20,7 +20,7 @@ annotations:
   io.giantswarm.application.team: bumblebee
 dependencies:
   - name: muster
-    version: 0.1.213
+    version: 0.1.222-74bd94fb8d98ad5650425166414aa2fee1bcc401
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v1.2.1
