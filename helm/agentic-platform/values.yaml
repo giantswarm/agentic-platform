@@ -290,16 +290,22 @@ mcps:
 # mcpServers). The `mcps.enabled` toggle above is intentionally separate.
 agentic-platform-mcps:
   agentgateway:
-    # The umbrella bundles both muster and agentgateway, so the via-muster
-    # topology is always the right default — agentgateway sits in front of
-    # muster for observability, muster keeps all per-server auth and exchange.
+    # enabled: true  — agentgateway is always active in this umbrella; it sits
+    # in front of muster as the observability choke point for every MCP call
+    # (protocol=mcp, gen_ai.tool.name, session id, latency logged via OTLP).
     enabled: true
+    # viaMuster: true  — routes all MCP traffic through muster instead of having
+    # agentgateway connect to each server directly. muster keeps all per-server
+    # connection logic, OAuth, and RFC 8693 token exchange. This is the current
+    # topology because a DCR-capable IdP (needed for the direct topology) is not
+    # yet available. When Zitadel or similar ships RFC 7591 + RFC 8707, this can
+    # be flipped to false and muster's aggregator role retired.
     viaMuster: true
-    # musterUrl points at the muster sub-chart Service in the same release.
-    # The muster sub-chart names its Service "<release>-muster" by convention.
-    # The default below matches the standard GS deploy (release=agentic-platform,
-    # namespace=agentic-platform). Override only if deploying under a different
-    # release name or namespace.
+    # musterUrl — in-cluster address of the muster Service bundled in this
+    # umbrella. The muster sub-chart always names its Service "<release>-muster"
+    # and the standard GS deploy uses release=agentic-platform in the
+    # agentic-platform namespace, making this a fixed value. Override only if
+    # the release name or namespace differs.
     musterUrl: "http://agentic-platform-muster.agentic-platform.svc.cluster.local:8090/mcp"
 
   # Flat list of MCP servers. Required per entry: cluster, group, url. See the
