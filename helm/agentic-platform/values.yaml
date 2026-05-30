@@ -15,6 +15,26 @@ gateway:
       allowedRoutes:
         namespaces:
           from: Same
+  # Public ingress HTTPRoute: exposes the agentgateway data-plane Service on
+  # the cluster's ingress Gateway (e.g. giantswarm-default/envoy-gateway-system).
+  # When parentRefs is empty no HTTPRoute is rendered; agentgateway is then only
+  # reachable in-cluster (useful when serviceType is ClusterIP).
+  httpRoute:
+    parentRefs: []
+    hostnames: []
+    annotations: {}
+    labels: {}
+  # Route-scoped BackendTrafficPolicy on the ingress HTTPRoute. A cluster-wide
+  # BackendTrafficPolicy (gateway-giantswarm-default-error-pages) rewrites all
+  # 4xx/5xx to an HTML error page and strips upstream headers including
+  # WWW-Authenticate. A route-scoped policy takes precedence and prevents this,
+  # preserving the MCP OAuth challenge so clients can discover the authorization
+  # server. Set enabled: true on any cluster that has the error-pages override.
+  backendTrafficPolicy:
+    enabled: false
+    timeout: "0s"
+    annotations: {}
+    labels: {}
   parameters:
     enabled: true
     name: ""
