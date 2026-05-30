@@ -131,6 +131,24 @@
                             "type": "object"
                         }
                     }
+                },
+                "jwksEgress": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "integer"
+                        },
+                        "podSelector": {
+                            "type": "object"
+                        }
+                    }
                 }
             }
         },

@@ -15,6 +15,16 @@ gateway:
       allowedRoutes:
         namespaces:
           from: Same
+  # Allow the data-plane to reach the JWKS endpoint for JWT validation
+  # (oauthMode: validate). Required when the JWKS service runs on a port not
+  # covered by the default cluster egress rules (80/443) — typically Dex on 5556.
+  jwksEgress:
+    enabled: false
+    namespace: giantswarm
+    port: 5556
+    # Optional extra pod label selectors to narrow the target beyond namespace.
+    podSelector: {}
+
   # Public ingress HTTPRoute: exposes the agentgateway data-plane Service on
   # the cluster's ingress Gateway (e.g. giantswarm-default/envoy-gateway-system).
   # When parentRefs is empty no HTTPRoute is rendered; agentgateway is then only

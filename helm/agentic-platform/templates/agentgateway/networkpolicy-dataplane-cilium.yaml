@@ -69,6 +69,23 @@ spec:
         - ports:
             - port: "9978"
               protocol: TCP
+    {{- with .Values.gateway.jwksEgress }}
+    {{- if .enabled }}
+    # Allow the data-plane to fetch JWKS for JWT validation (oauthMode: validate).
+    # The JWKS service is typically Dex, running on a non-standard port that the
+    # default cluster egress rules (80/443) do not cover.
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: {{ .namespace | quote }}
+            {{- with .podSelector }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      toPorts:
+        - ports:
+            - port: {{ .port | toString | quote }}
+              protocol: TCP
+    {{- end }}
+    {{- end }}
     {{- with .Values.networkPolicy.additionalEgressCIDRs }}
     - toCIDR:
         {{- toYaml . | nindent 8 }}

@@ -64,6 +64,23 @@ spec:
       ports:
         - port: 9978
           protocol: TCP
+    {{- with .Values.gateway.jwksEgress }}
+    {{- if .enabled }}
+    # Allow the data-plane to fetch JWKS for JWT validation (oauthMode: validate).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .namespace | quote }}
+          {{- with .podSelector }}
+          podSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+          {{- end }}
+      ports:
+        - port: {{ .port }}
+          protocol: TCP
+    {{- end }}
+    {{- end }}
     {{- with .Values.networkPolicy.additionalEgressCIDRs }}
     - to:
         {{- range . }}
