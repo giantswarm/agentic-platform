@@ -25,10 +25,13 @@ gateway:
     # Optional extra pod label selectors to narrow the target beyond namespace.
     podSelector: {}
 
-  # Public ingress HTTPRoute: exposes the agentgateway data-plane Service on
-  # the cluster's ingress Gateway (e.g. giantswarm-default/envoy-gateway-system).
-  # When parentRefs is empty no HTTPRoute is rendered; agentgateway is then only
-  # reachable in-cluster (useful when serviceType is ClusterIP).
+  # Path-specific HTTPRoute intercepting /mcp on the muster public hostname.
+  # Routes <muster-hostname>/mcp to the agentgateway Service so both topologies
+  # (with and without agentgateway) share a single client-facing URL.
+  # Gateway API path-specificity (/mcp beats /) ensures /mcp goes to agentgateway
+  # while all other paths (OAuth, well-known, DCR) continue to muster directly.
+  # When parentRefs is empty this HTTPRoute is not rendered and /mcp is served
+  # by the muster catch-all route.
   httpRoute:
     parentRefs: []
     hostnames: []
