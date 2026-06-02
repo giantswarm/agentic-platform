@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped bundled `muster` to `0.1.230-961353df` (giantswarm/muster#772: functional JWT signing-key wiring, `AllowedClaims` in `TrustedIssuer`, `KubernetesSATrusts` removed).
+- Bumped bundled `agentic-platform-mcps` to `0.1.0-b01fa102` (giantswarm/agentic-platform-mcps#7 HEAD).
+
 ## [0.5.0] - 2026-05-29
 
 ### Added

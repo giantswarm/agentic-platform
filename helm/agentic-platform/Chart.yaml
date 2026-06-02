@@ -20,7 +20,7 @@ annotations:
   io.giantswarm.application.team: bumblebee
 dependencies:
   - name: muster
-    version: 0.1.222-74bd94fb8d98ad5650425166414aa2fee1bcc401
+    version: 0.1.230-961353df24e4508046b8411685850768cb62dc4b
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v1.2.1
@@ -47,6 +47,6 @@ dependencies:
   # `agentic-platform-mcps` value namespace because the sub-chart's strict
   # values.schema.json (additionalProperties: false) rejects an `enabled` key.
   - name: agentic-platform-mcps
-    version: 0.1.0-0424d7209a9f09376491c973f61ccd6b95c3ee01
+    version: 0.1.0-b01fa102d37a77c81d7328f7049138753f199053
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: mcps.enabled
