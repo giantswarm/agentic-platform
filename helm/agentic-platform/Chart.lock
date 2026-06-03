@@ -1,7 +1,7 @@
 dependencies:
 - name: muster
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.1.213
+  version: 0.2.1
 - name: agentgateway
   repository: oci://cr.agentgateway.dev/charts
   version: v1.2.1
@@ -10,6 +10,6 @@ dependencies:
   version: 0.1.2
 - name: agentic-platform-mcps
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.1.0
-digest: sha256:d7803abd61a03fd93ce3ecb1df25a046f60665b95c582ec1890dbb205f859a45
-generated: "2026-05-29T11:42:04.045139+02:00"
+  version: 0.2.0
+digest: sha256:f0a014d87e2de80d998b132a6ee01c5429eb007bb3873134953a2adf27735fab
+generated: "2026-06-03T19:10:19.608934+02:00"

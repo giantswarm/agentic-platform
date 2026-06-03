@@ -1,170 +1,298 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/giantswarm/agentic-platform/helm/agentic-platform/values.schema.json",
-  "type": "object",
-  "additionalProperties": true,
-  "properties": {
-    "global": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "registry": {
-          "type": "string",
-          "description": "Default container image registry. Override to point at a private mirror."
-        },
-        "imagePullSecrets": {
-          "type": "array",
-          "items": { "type": "object" }
-        }
-      }
-    },
-    "gateway": {
-      "type": "object",
-      "required": ["name", "gatewayClassName"],
-      "additionalProperties": false,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "name": { "type": "string", "minLength": 1 },
-        "gatewayClassName": { "type": "string", "minLength": 1 },
-        "listeners": {
-          "type": "array",
-          "items": { "type": "object" }
-        },
-        "parameters": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "name": { "type": "string" },
-            "serviceType": {
-              "type": "string",
-              "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
-              "description": "Service type for the data-plane Service. Default ClusterIP — the controller hardcodes LoadBalancer; this overlay forces the override."
-            },
-            "podSecurityContext": { "type": "object" },
-            "containerSecurityContext": { "type": "object" },
-            "dataPlaneEnv": {
-              "type": "array",
-              "items": { "type": "object" }
-            },
-            "dataPlaneVolumes": {
-              "type": "array",
-              "items": { "type": "object" }
-            },
-            "dataPlaneVolumeMounts": {
-              "type": "array",
-              "items": { "type": "object" }
-            }
-          }
-        }
-      }
-    },
-    "extraObjects": {
-      "type": "array",
-      "items": { "type": "object" },
-      "description": "Arbitrary manifests rendered through `tpl` alongside the umbrella's templates. Each entry is any Kubernetes object."
-    },
-    "networkPolicy": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "flavor": { "type": "string", "enum": ["cilium", "kubernetes"] },
-        "additionalEgressCIDRs": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "additionalEgressFQDNs": {
-          "type": "array",
-          "items": { "type": "object" },
-          "description": "cilium flavor only — vanilla NetworkPolicy has no FQDN equivalent."
-        },
-        "kubernetes": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "apiServerCIDR": { "type": "string" },
-            "worldExcludedCIDRs": {
-              "type": "array",
-              "items": { "type": "string" }
-            }
-          }
-        }
-      }
-    }
-  },
-  "allOf": [
-    {
-      "description": "Bundled Valkey requires `valkey.enabled: true` together with `muster.muster.oauth.server.storage.type: valkey`. Conversely, switching muster's storage to valkey requires either the bundled `valkey.enabled: true` or an external `muster.muster.oauth.server.storage.valkey.url`.",
-      "if": {
-        "properties": {
-          "muster": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/giantswarm/agentic-platform/helm/agentic-platform/values.schema.json",
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+        "global": {
+            "type": "object",
+            "additionalProperties": false,
             "properties": {
-              "muster": {
-                "properties": {
-                  "oauth": {
-                    "properties": {
-                      "server": {
-                        "properties": {
-                          "storage": {
-                            "properties": {
-                              "type": { "const": "valkey" }
-                            },
-                            "required": ["type"]
-                          }
-                        }
-                      }
+                "registry": {
+                    "type": "string",
+                    "description": "Default container image registry. Override to point at a private mirror."
+                },
+                "imagePullSecrets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
                     }
-                  }
                 }
-              }
             }
-          }
-        }
-      },
-      "then": {
-        "anyOf": [
-          {
+        },
+        "gateway": {
+            "type": "object",
+            "required": [
+                "name",
+                "gatewayClassName"
+            ],
+            "additionalProperties": false,
             "properties": {
-              "valkey": {
-                "properties": { "enabled": { "const": true } },
-                "required": ["enabled"]
-              }
-            },
-            "required": ["valkey"]
-          },
-          {
-            "properties": {
-              "muster": {
-                "properties": {
-                  "muster": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "gatewayClassName": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "listeners": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
                     "properties": {
-                      "oauth": {
-                        "properties": {
-                          "server": {
-                            "properties": {
-                              "storage": {
-                                "properties": {
-                                  "valkey": {
-                                    "properties": {
-                                      "url": { "type": "string", "minLength": 1 }
-                                    },
-                                    "required": ["url"]
-                                  }
-                                }
-                              }
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "serviceType": {
+                            "type": "string",
+                            "enum": [
+                                "ClusterIP",
+                                "NodePort",
+                                "LoadBalancer"
+                            ],
+                            "description": "Service type for the data-plane Service. Default ClusterIP \u2014 the controller hardcodes LoadBalancer; this overlay forces the override."
+                        },
+                        "podSecurityContext": {
+                            "type": "object"
+                        },
+                        "containerSecurityContext": {
+                            "type": "object"
+                        },
+                        "dataPlaneEnv": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
                             }
-                          }
+                        },
+                        "dataPlaneVolumes": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "dataPlaneVolumeMounts": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
                         }
-                      }
                     }
-                  }
+                },
+                "httpRoute": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "parentRefs": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "hostnames": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "annotations": {
+                            "type": "object"
+                        },
+                        "labels": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "backendTrafficPolicy": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "timeout": {
+                            "type": "string"
+                        },
+                        "annotations": {
+                            "type": "object"
+                        },
+                        "labels": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "jwksEgress": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "integer"
+                        },
+                        "podSelector": {
+                            "type": "object"
+                        }
+                    }
                 }
-              }
             }
-          }
-        ]
-      }
-    }
-  ]
+        },
+        "extraObjects": {
+            "type": "array",
+            "items": {
+                "type": "object"
+            },
+            "description": "Arbitrary manifests rendered through `tpl` alongside the umbrella's templates. Each entry is any Kubernetes object."
+        },
+        "networkPolicy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "flavor": {
+                    "type": "string",
+                    "enum": [
+                        "cilium",
+                        "kubernetes"
+                    ]
+                },
+                "additionalEgressCIDRs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "additionalEgressFQDNs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "description": "cilium flavor only \u2014 vanilla NetworkPolicy has no FQDN equivalent."
+                },
+                "kubernetes": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "apiServerCIDR": {
+                            "type": "string"
+                        },
+                        "worldExcludedCIDRs": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "description": "Bundled Valkey requires `valkey.enabled: true` together with `muster.muster.oauth.server.storage.type: valkey`. Conversely, switching muster's storage to valkey requires either the bundled `valkey.enabled: true` or an external `muster.muster.oauth.server.storage.valkey.url`.",
+            "if": {
+                "properties": {
+                    "muster": {
+                        "properties": {
+                            "muster": {
+                                "properties": {
+                                    "oauth": {
+                                        "properties": {
+                                            "server": {
+                                                "properties": {
+                                                    "storage": {
+                                                        "properties": {
+                                                            "type": {
+                                                                "const": "valkey"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "type"
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "then": {
+                "anyOf": [
+                    {
+                        "properties": {
+                            "valkey": {
+                                "properties": {
+                                    "enabled": {
+                                        "const": true
+                                    }
+                                },
+                                "required": [
+                                    "enabled"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "valkey"
+                        ]
+                    },
+                    {
+                        "properties": {
+                            "muster": {
+                                "properties": {
+                                    "muster": {
+                                        "properties": {
+                                            "oauth": {
+                                                "properties": {
+                                                    "server": {
+                                                        "properties": {
+                                                            "storage": {
+                                                                "properties": {
+                                                                    "valkey": {
+                                                                        "properties": {
+                                                                            "url": {
+                                                                                "type": "string",
+                                                                                "minLength": 1
+                                                                            }
+                                                                        },
+                                                                        "required": [
+                                                                            "url"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ]
 }

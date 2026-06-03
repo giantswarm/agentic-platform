@@ -213,6 +213,10 @@ The `mcps.enabled` toggle deliberately lives in its **own** top-level block rath
 
 ### Public HTTPRoute (required for OAuth)
 
+> For the end-to-end authentication story — the request path, OAuth discovery,
+> `forward` vs `exchange` token handling, and edge JWT validation / JWKS — see
+> [docs/authentication.md](./docs/authentication.md).
+
 The umbrella renders a `Gateway` for the **data plane** only — that Gateway is not exposed publicly and is not the right parent for muster's HTTPRoute. Muster's HTTPRoute must attach to the cluster's public Gateway (typically envoy-gateway-system) with hostnames that match the OAuth callback URL from `muster.oauth.mcpClient.publicUrl`.
 
 The muster sub-chart's fail-guard rejects install until both `parentRefs` and `hostnames` are set:

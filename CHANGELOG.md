@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped bundled `muster` to `0.2.1` (stable; muster#772 JWT signing-key wiring fix + `jwt_key.go` enabling edge JWT validation, and the CNP ingress-gateway egress fix from muster#788).
+- Bumped bundled `agentic-platform-mcps` to `0.2.0` (stable release).
+
 ## [0.5.0] - 2026-05-29
 
 ### Added

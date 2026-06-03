@@ -15,6 +15,39 @@ gateway:
       allowedRoutes:
         namespaces:
           from: Same
+  # Allow the data-plane to reach the JWKS endpoint for JWT validation
+  # (oauthMode: validate). Required when the JWKS service runs on a port not
+  # covered by the default cluster egress rules (80/443) — typically Dex on 5556.
+  jwksEgress:
+    enabled: false
+    namespace: giantswarm
+    port: 5556
+    # Optional extra pod label selectors to narrow the target beyond namespace.
+    podSelector: {}
+
+  # Path-specific HTTPRoute intercepting /mcp on the muster public hostname.
+  # Routes <muster-hostname>/mcp to the agentgateway Service so both topologies
+  # (with and without agentgateway) share a single client-facing URL.
+  # Gateway API path-specificity (/mcp beats /) ensures /mcp goes to agentgateway
+  # while all other paths (OAuth, well-known, DCR) continue to muster directly.
+  # When parentRefs is empty this HTTPRoute is not rendered and /mcp is served
+  # by the muster catch-all route.
+  httpRoute:
+    parentRefs: []
+    hostnames: []
+    annotations: {}
+    labels: {}
+  # Route-scoped BackendTrafficPolicy on the ingress HTTPRoute. A cluster-wide
+  # BackendTrafficPolicy (gateway-giantswarm-default-error-pages) rewrites all
+  # 4xx/5xx to an HTML error page and strips upstream headers including
+  # WWW-Authenticate. A route-scoped policy takes precedence and prevents this,
+  # preserving the MCP OAuth challenge so clients can discover the authorization
+  # server. Set enabled: true on any cluster that has the error-pages override.
+  backendTrafficPolicy:
+    enabled: false
+    timeout: "0s"
+    annotations: {}
+    labels: {}
   parameters:
     enabled: true
     name: ""
@@ -259,6 +292,25 @@ mcps:
 # declares are allowed (muster, agentgateway, defaults, identityProviders,
 # mcpServers). The `mcps.enabled` toggle above is intentionally separate.
 agentic-platform-mcps:
+  agentgateway:
+    # enabled: true  — agentgateway is always active in this umbrella; it sits
+    # in front of muster as the observability choke point for every MCP call
+    # (protocol=mcp, gen_ai.tool.name, session id, latency logged via OTLP).
+    enabled: true
+    # viaMuster: true  — routes all MCP traffic through muster instead of having
+    # agentgateway connect to each server directly. muster keeps all per-server
+    # connection logic, OAuth, and RFC 8693 token exchange. This is the current
+    # topology because a DCR-capable IdP (needed for the direct topology) is not
+    # yet available. When Zitadel or similar ships RFC 7591 + RFC 8707, this can
+    # be flipped to false and muster's aggregator role retired.
+    viaMuster: true
+    # musterUrl — in-cluster address of the muster Service bundled in this
+    # umbrella. The muster sub-chart always names its Service "<release>-muster"
+    # and the standard GS deploy uses release=agentic-platform in the
+    # agentic-platform namespace, making this a fixed value. Override only if
+    # the release name or namespace differs.
+    musterUrl: "http://agentic-platform-muster.agentic-platform.svc.cluster.local:8090/mcp"
+
   # Flat list of MCP servers. Required per entry: cluster, group, url. See the
   # sub-chart values for `defaults`, `identityProviders`, and per-entry `auth`.
   # Example:
