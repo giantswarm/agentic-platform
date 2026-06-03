@@ -50,3 +50,16 @@ dependencies:
     version: 0.2.0
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: mcps.enabled
+  # kagent — Kubernetes-native AI agent runtime (controller + UI). Opt-in via
+  # `kagent.enabled`. CRDs ship in the companion agentic-platform-crds chart
+  # (install first). The kagent subchart has no strict values schema, so the
+  # `enabled` key lives directly under `kagent:` (no separate toggle namespace
+  # needed). Default namespace is overridden to `kagent` via
+  # `kagent.namespaceOverride`; the chart renders every resource namespace
+  # explicitly via its `kagent.namespace` helper.
+  # When `postgres.enabled` is also true, configure the CNPG DSN wiring under
+  # `kagent.database.postgres` — see values.yaml for the commented-out example.
+  - name: kagent
+    version: 0.9.4
+    repository: oci://ghcr.io/kagent-dev/kagent/helm
+    condition: kagent.enabled

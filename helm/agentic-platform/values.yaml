@@ -320,6 +320,92 @@ agentic-platform-mcps:
   #       url: https://example.com/mcp
   mcpServers: []
 
+# kagent — Kubernetes-native AI agent runtime (controller + UI).
+# All keys pass through to the kagent subchart (no strict schema filtering).
+# Prerequisite: kagent-crds must be installed via the companion
+# agentic-platform-crds chart before enabling this.
+#
+# When postgres.enabled is true, configure the CNPG DSN wiring below so kagent
+# uses the platform Postgres instead of its bundled instance. CNPG auto-generates
+# Secret `agentic-platform-pg-app` in the kagent namespace; mount its `uri` key:
+#
+#   kagent:
+#     database:
+#       postgres:
+#         urlFile: /etc/cnpg/uri       # POSTGRES_DATABASE_URL_FILE
+#         vectorEnabled: true          # mirror of postgres.vector.enabled
+#         bundled: { enabled: false }  # disable bundled postgres:18.3-alpine
+#     controller:
+#       volumes:
+#         - name: cnpg-dsn
+#           secret:
+#             secretName: agentic-platform-pg-app
+#             items: [{ key: uri, path: uri }]
+#       volumeMounts:
+#         - { name: cnpg-dsn, mountPath: /etc/cnpg, readOnly: true }
+kagent:
+  enabled: false
+  # Keep kagent resources in the kagent namespace separate from the umbrella's
+  # release namespace. The kagent subchart renders every resource's namespace
+  # via its `kagent.namespace` helper, so this override is honored everywhere.
+  namespaceOverride: kagent
+
+# Platform Postgres — CloudNativePG Cluster for kagent (and future Klaus sessions).
+# The CNPG operator and its CRDs are a cluster-level prerequisite (like Gateway
+# API CRDs): they must be installed before enabling this. Flip `enabled: false`
+# to use kagent's bundled Postgres or an external DSN (set kagent.database.postgres
+# accordingly). When `enabled: true`, set `postgres.namespace` to match
+# `kagent.namespaceOverride` so the generated DSN Secret is co-located with the
+# kagent controller that mounts it.
+postgres:
+  enabled: false
+  # Must match kagent.namespaceOverride — the CNPG-generated Secret is created
+  # in the Cluster's namespace and kagent mounts it by name.
+  namespace: kagent
+  clusterName: agentic-platform-pg
+  instances: 3
+  storage:
+    size: 20Gi
+    # EKS: gp3. Azure: managed-premium. on-prem: rook-ceph or local-path.
+    storageClass: gp3
+  # Operand image. Leave empty for the CNPG operator's default image.
+  # For pgvector without the ImageVolume approach (CNPG < 1.29 / PG < 18),
+  # supply a pgvector-bundled image here (e.g. a custom build from
+  # ghcr.io/cloudnative-pg/postgresql with pgvector compiled in).
+  image:
+    name: ""
+  # pgvector — required for kagent Memory API (RAG / semantic retrieval).
+  # pgvector is NOT a trusted extension (C functions), so CREATE EXTENSION runs
+  # as superuser. Two modes:
+  #
+  # - extensionImage.reference unset (default): CREATE EXTENSION via
+  #   postInitTemplateSQL. The binary must be present in the operand image
+  #   (set image.name to a pgvector-bundled image).
+  #
+  # - extensionImage.reference set (CNPG 1.29+ / PG 18 only): ImageVolume.
+  #   The extension binary is mounted from a sidecar OCI image; the CNPG
+  #   Database CR runs CREATE EXTENSION as the operator. Use the official image:
+  #   ghcr.io/cloudnative-pg/pgvector:<version>-<pg>-<distro>
+  #   Example: ghcr.io/cloudnative-pg/pgvector:0.8.2-18-trixie
+  vector:
+    enabled: false
+    extensionImage:
+      reference: ""
+  # kagent application database. kagent's golang-migrate runner creates tables
+  # in whatever search_path the DSN resolves to. The schema is pre-created in
+  # postInitApplicationSQL; ALTER ROLE sets the default search_path so kagent
+  # tables land in the named schema (not public).
+  applicationDatabase:
+    name: kagent
+    owner: kagent
+    schema: kagent
+  # Optional Klaus resultstore database. Off by default — pending the
+  # subplan-core-runtime decision on Klaus session persistence.
+  sessionsDatabase:
+    enabled: false
+    name: sessions
+    owner: sessions
+
 agentgateway:
   image:
     registry: gsoci.azurecr.io

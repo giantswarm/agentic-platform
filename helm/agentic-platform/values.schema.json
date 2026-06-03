@@ -203,6 +203,115 @@
                 }
             }
         }
+        },
+        "kagent": {
+            "type": "object",
+            "description": "kagent subchart values (pass-through). All keys forwarded to the kagent chart. Only `enabled` and `namespaceOverride` are documented here; the subchart's own values.yaml governs the rest.",
+            "additionalProperties": true,
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Install the kagent subchart. Requires kagent-crds to be present (install agentic-platform-crds first)."
+                },
+                "namespaceOverride": {
+                    "type": "string",
+                    "description": "Target namespace for all kagent resources. Must match postgres.namespace when postgres.enabled is true."
+                }
+            }
+        },
+        "postgres": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "CloudNativePG Cluster for the platform. The CNPG operator and CRDs are a cluster-level prerequisite (not shipped here). Set enabled: false to use kagent's bundled Postgres or an external DSN.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "namespace": {
+                    "type": "string",
+                    "description": "Namespace for the CNPG Cluster and its generated Secrets. Must match kagent.namespaceOverride so the DSN Secret is co-located with the kagent controller."
+                },
+                "clusterName": {
+                    "type": "string"
+                },
+                "instances": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "storage": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "size": {
+                            "type": "string"
+                        },
+                        "storageClass": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "image": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Operand image name. Leave empty for CNPG operator default. Supply a pgvector-bundled image when vector.enabled and vector.extensionImage.reference is unset."
+                        }
+                    }
+                },
+                "vector": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "extensionImage": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "reference": {
+                                    "type": "string",
+                                    "description": "CNPG 1.29+/PG18 ImageVolume reference. When set, the pgvector binary is mounted from this OCI image and CNPG creates the extension via a Database CR. Example: ghcr.io/cloudnative-pg/pgvector:0.8.2-18-trixie"
+                                }
+                            }
+                        }
+                    }
+                },
+                "applicationDatabase": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "owner": {
+                            "type": "string"
+                        },
+                        "schema": {
+                            "type": "string",
+                            "description": "Named schema created in postInitApplicationSQL. kagent tables land here instead of public."
+                        }
+                    }
+                },
+                "sessionsDatabase": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "owner": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
     },
     "allOf": [
         {
