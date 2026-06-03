@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bumped bundled `muster` to `0.1.235-dev.feat-jwt-signing-key-helm.2026-06-03.09-55-10` (giantswarm/muster#772: adds `allowPrivateIPOIDC`, mcp-oauth v0.2.186).
-- Bumped bundled `agentic-platform-mcps` to `0.1.0-b01fa102` (giantswarm/agentic-platform-mcps#7 HEAD).
+- Bumped bundled `muster` to `0.1.242-dev.fix-cilium-egress-ingress-gateway` (muster#788: CNP egress rule for Cilium-managed ingress gateway VIP, correct `app.kubernetes.io/name=envoy` selector).
+- Bumped bundled `agentic-platform-mcps` to `0.2.0` (stable release).
 
 ## [0.5.0] - 2026-05-29
 
