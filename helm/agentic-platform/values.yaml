@@ -350,6 +350,163 @@ kagent:
   # via its `kagent.namespace` helper, so this override is honored everywhere.
   namespaceOverride: kagent
 
+  # --- Security contexts (required by Kyverno restricted-PSS on GS clusters) ---
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
+
+  controller:
+    auth:
+      # unsecure: kagent trusts any request. Acceptable when agentgateway sits in
+      # front and validates JWTs before forwarding — see templates/kagent/.
+      # Switch to trusted-proxy + oauth2-proxy.enabled: true for full prod auth.
+      mode: unsecure
+      userIdClaim: sub
+
+  # Model provider — Anthropic by default.
+  # Pre-create the API key Secret before enabling kagent:
+  #   kubectl create secret generic kagent-anthropic -n kagent \
+  #     --from-literal=ANTHROPIC_API_KEY=<key>
+  providers:
+    default: anthropic
+    anthropic:
+      provider: Anthropic
+      model: claude-sonnet-4-6
+      apiKeySecretRef: kagent-anthropic
+      apiKeySecretKey: ANTHROPIC_API_KEY
+
+  # OTel — send traces and logs to the GS Observability Platform OTLP gateway.
+  # The same endpoint agentgateway and muster use (kube-system otlp-gateway).
+  otel:
+    tracing:
+      enabled: true
+      exporter:
+        otlp:
+          endpoint: http://otlp-gateway.kube-system.svc:4317
+          protocol: grpc
+          insecure: true
+    logging:
+      enabled: true
+      exporter:
+        otlp:
+          endpoint: http://otlp-gateway.kube-system.svc:4317
+          insecure: true
+
+  # --- UI auth: oauth2-proxy in front of the kagent UI ---
+  # Disabled by default. Enable and supply Dex OIDC credentials to secure the UI.
+  # Requires a Dex client pre-registered with redirect URI:
+  #   https://<kagent-ui-hostname>/oauth2/callback
+  # Create the Secret before enabling:
+  #   kubectl create secret generic kagent-oauth2-proxy -n kagent \
+  #     --from-literal=client-id=<dex-client-id> \
+  #     --from-literal=client-secret=<dex-client-secret> \
+  #     --from-literal=cookie-secret=$(openssl rand -base64 32)
+  oauth2-proxy:
+    enabled: false
+    redis:
+      enabled: false
+    sessionStorage:
+      type: cookie
+    extraVolumes:
+      - name: custom-templates
+        configMap:
+          name: kagent-oauth2-proxy-templates
+    extraVolumeMounts:
+      - name: custom-templates
+        mountPath: /templates
+        readOnly: true
+    config:
+      existingSecret: kagent-oauth2-proxy
+    extraEnv:
+      - name: OIDC_ISSUER_URL
+        value: ""  # e.g. https://dex.<cluster>.<base-domain>
+      - name: OIDC_REDIRECT_URL
+        value: ""  # e.g. https://kagent.<cluster>.<base-domain>/oauth2/callback
+      # Release name prefix: the kagent subchart names the UI service
+      # "<release>-ui". The umbrella release is agentic-platform, so:
+      - name: UPSTREAM_URL
+        value: http://agentic-platform-ui:8080
+    extraArgs:
+      provider: oidc
+      oidc-issuer-url: "$(OIDC_ISSUER_URL)"
+      redirect-url: "$(OIDC_REDIRECT_URL)"
+      upstream: "$(UPSTREAM_URL)"
+      email-domain: "*"
+      pass-authorization-header: true
+      set-authorization-header: true
+      approval-prompt: auto
+      scope: "openid profile email groups"
+      cookie-secure: true
+      cookie-samesite: lax
+      skip-jwt-bearer-tokens: true
+      skip-auth-route: "^/(health|login)$"
+      skip-auth-regex: "^/(login|_next/static|_next/image|login-bg\\.(jpg|png|webp)|logo-.*\\.png|favicon\\.ico).*$"
+      custom-templates-dir: /templates
+    service:
+      type: ClusterIP
+      portNumber: 4180
+
+  # --- Disable bundled agents / tools not applicable to GS clusters ---
+  # All redundant with existing GS stack or irrelevant:
+  #   muster aggregates MCP servers; GS has its own Grafana + mcp-observability-platform;
+  #   cluster uses Cilium (not Istio/kgateway); argo-rollouts not standard.
+  grafana-mcp:
+    enabled: false
+  kmcp:
+    enabled: false
+  kagent-tools:
+    enabled: false
+  k8s-agent:
+    enabled: false
+  kgateway-agent:
+    enabled: false
+  istio-agent:
+    enabled: false
+  promql-agent:
+    enabled: false
+  observability-agent:
+    enabled: false
+  argo-rollouts-agent:
+    enabled: false
+  helm-agent:
+    enabled: false
+  cilium-policy-agent:
+    enabled: false
+  cilium-manager-agent:
+    enabled: false
+  cilium-debug-agent:
+    enabled: false
+  querydoc:
+    enabled: false
+
+  # --- Routing (read by umbrella templates/kagent/, not passed to subchart) ---
+  # Expose kagent controller API through agentgateway (JWT-validated).
+  # Creates AgentgatewayBackend + HTTPRoute in the release namespace.
+  controllerRoute:
+    enabled: false
+    # Path prefix on the agentgateway Gateway hostname where the kagent API is
+    # mounted. Stripped (URLRewrite) before forwarding to the controller.
+    pathPrefix: /kagent
+    # Hostname that must be declared on the agentgateway Gateway.
+    # Example: agentgateway.<cluster>.<base-domain>
+    hostname: ""
+  # Expose kagent UI. Creates an HTTPRoute on the public Gateway pointing at
+  # oauth2-proxy (when enabled) or the UI service directly (dev only).
+  # Supply oauth2-proxy credentials and set uiRoute.enabled: true together.
+  uiRoute:
+    enabled: false
+    hostname: ""  # e.g. kagent.<cluster>.<base-domain>
+    parentRef:
+      name: giantswarm-default
+      namespace: envoy-gateway-system
+
 # Platform Postgres — CloudNativePG Cluster for kagent (and future Klaus sessions).
 # The CNPG operator and its CRDs are a cluster-level prerequisite (like Gateway
 # API CRDs): they must be installed before enabling this. Flip `enabled: false`

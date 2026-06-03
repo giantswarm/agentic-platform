@@ -206,7 +206,7 @@
         },
         "kagent": {
             "type": "object",
-            "description": "kagent subchart values (pass-through). All keys forwarded to the kagent chart. Only `enabled` and `namespaceOverride` are documented here; the subchart's own values.yaml governs the rest.",
+            "description": "kagent subchart values (pass-through) plus umbrella routing config. Subchart keys are forwarded to the kagent chart; `controllerRoute` and `uiRoute` are consumed by umbrella templates only.",
             "additionalProperties": true,
             "properties": {
                 "enabled": {
@@ -216,6 +216,33 @@
                 "namespaceOverride": {
                     "type": "string",
                     "description": "Target namespace for all kagent resources. Must match postgres.namespace when postgres.enabled is true."
+                },
+                "controllerRoute": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "Expose kagent controller API through agentgateway (JWT-validated). Creates AgentgatewayBackend + HTTPRoute in the release namespace.",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "pathPrefix": {"type": "string"},
+                        "hostname": {"type": "string"}
+                    }
+                },
+                "uiRoute": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "Expose kagent UI on the public Gateway. Pair with oauth2-proxy.enabled: true and Dex credentials.",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "hostname": {"type": "string"},
+                        "parentRef": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "name": {"type": "string"},
+                                "namespace": {"type": "string"}
+                            }
+                        }
+                    }
                 }
             }
         },
