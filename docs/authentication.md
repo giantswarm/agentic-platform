@@ -163,6 +163,38 @@ muster still validates downstream as a second layer. Token exchange (§3) is
 unaffected: agentgateway only ever sees the inbound token; muster's internal
 RFC 8693 exchanges happen behind it.
 
+### Why muster signs its own tokens now
+
+Before agentgateway, muster was the **only** enforcement point: it ran the OAuth
+server (DCR/CIMD), held the session state, and validated every request itself. A
+token only had to mean something *to muster*, so an opaque session reference was
+enough — nothing else ever needed to read it.
+
+agentgateway changes that. It is now an **independent** enforcement and
+observability layer sitting in front of muster, and edge validation
+(`oauthMode: validate`) means agentgateway must decide *on its own* whether a
+token is valid — without a round-trip back to muster on every request. That only
+works if the token is a **self-contained, signed JWT** whose signature
+agentgateway can verify statelessly against a published key set. An opaque
+session token is unverifiable by anyone but muster, so it can't gate a second,
+independent component.
+
+So muster takes on an issuer role it did not have before (`enableJWTMode: true`):
+
+- **Signs its own JWTs** (`iss=muster`) with the `jwt-signing-key` (EC P-256),
+  instead of handing out opaque session tokens.
+- **Publishes `/.well-known/jwks.json`** so agentgateway can fetch the public key
+  and verify signatures at the edge.
+- **Audience-binds** each token to `resourceIdentifier` (`agentgateway-host/mcp`),
+  so a token minted for this platform cannot be replayed at an unrelated
+  resource — agentgateway checks that `aud` matches the hostname the client
+  actually dialled.
+
+This is additive, not a replacement: muster still validates downstream as the
+second layer (and token exchange in §3 is untouched). The signed-JWT capability
+exists purely so a *second*, independent component can trust the token without
+asking muster.
+
 Edge validation needs a JWKS to verify token signatures. There are two
 topologies, and they differ in whether the JWKS NetworkPolicy egress rule is
 required.
