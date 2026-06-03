@@ -20,7 +20,7 @@ annotations:
   io.giantswarm.application.team: bumblebee
 dependencies:
   - name: muster
-    version: 0.1.230-961353df24e4508046b8411685850768cb62dc4b
+    version: 0.1.235-dev.feat-jwt-signing-key-helm.2026-06-03.09-55-10
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v1.2.1
