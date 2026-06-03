@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bumped bundled `muster` to `0.1.242-dev.fix-cilium-egress-ingress-gateway` (muster#788: CNP egress rule for Cilium-managed ingress gateway VIP, correct `app.kubernetes.io/name=envoy` selector).
+- Bumped bundled `muster` to `0.1.240` (stable; CNP ingress-gateway egress fix pending muster#788).
 - Bumped bundled `agentic-platform-mcps` to `0.2.0` (stable release).
 
 ## [0.5.0] - 2026-05-29
