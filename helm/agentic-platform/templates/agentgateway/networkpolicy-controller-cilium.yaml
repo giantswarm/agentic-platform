@@ -16,7 +16,7 @@ spec:
     # xDS from data-plane pods spawned by this controller.
     - fromEndpoints:
         - matchLabels:
-            gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
+            agentgateway: {{ .Values.gateway.name }}
       toPorts:
         - ports:
             - port: "9978"

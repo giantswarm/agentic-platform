@@ -17,7 +17,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
+              agentgateway: {{ .Values.gateway.name }}
       ports:
         - port: 9978
           protocol: TCP
