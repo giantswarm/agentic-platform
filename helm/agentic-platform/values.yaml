@@ -17,9 +17,19 @@ ingress:
   mode: muster-direct          # muster-direct | agentgateway-muster | agentgateway-direct
   parentRefs: []               # ALL modes: public Gateway, shared by both rendered routes
   hostnames: []                # ALL modes: muster public hostname(s)
-  httpRoute:                   # applied to both rendered HTTPRoutes
+  httpRoute:                   # shared base, applied to both rendered HTTPRoutes
     annotations: {}
     labels: {}
+    # Optional per-route overrides, merged on top of the shared maps above
+    # (per-route keys win on collision). `muster` = the muster `/` route;
+    # `mcp` = the agentgateway `/mcp` route. Use for diverging cert-manager
+    # issuers, Envoy route policies, etc., without forking the shared block.
+    muster:
+      annotations: {}
+      labels: {}
+    mcp:
+      annotations: {}
+      labels: {}
   backendTrafficPolicy:        # agentgateway-* modes only; preserves WWW-Authenticate
     enabled: false
     timeout: "0s"
@@ -124,6 +134,13 @@ extraObjects: []
 muster:
   image:
     registry: gsoci.azurecr.io
+  # Pin muster's Service name as the single source of truth for it. The umbrella
+  # owns muster's public route and its backendRef reads this exact key (see the
+  # "agentic-platform.musterFullname" helper); agentic-platform-mcps.musterUrl
+  # references the same name. The muster sub-chart uses fullnameOverride verbatim
+  # for its Service, so all three stay in lockstep regardless of release name or
+  # any future change to muster's naming algorithm — no silent backendRef drift.
+  fullnameOverride: agentic-platform-muster
   # muster's CRDs (MCPServer / Workflow) now ship via the companion
   # agentic-platform-crds chart, not the muster sub-chart. The currently
   # pinned muster (0.1.197) still defaults `crds.install: true`, so we MUST

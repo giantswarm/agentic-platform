@@ -143,6 +143,32 @@
                         },
                         "labels": {
                             "type": "object"
+                        },
+                        "muster": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Per-route overrides for the muster `/` route, merged over the shared annotations/labels.",
+                            "properties": {
+                                "annotations": {
+                                    "type": "object"
+                                },
+                                "labels": {
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "mcp": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Per-route overrides for the agentgateway `/mcp` route, merged over the shared annotations/labels.",
+                            "properties": {
+                                "annotations": {
+                                    "type": "object"
+                                },
+                                "labels": {
+                                    "type": "object"
+                                }
+                            }
                         }
                     }
                 },

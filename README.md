@@ -102,7 +102,7 @@ helm install agentic-platform \
 |---|---|---|
 | `global.registry` | `gsoci.azurecr.io` | Default container image registry. |
 | `ingress.mode` | `muster-direct` | Request topology selector. `muster-direct` (client → muster, no agentgateway data plane), `agentgateway-muster` (client → agentgateway `/mcp` → muster), or `agentgateway-direct` (client → agentgateway `/mcp` → servers; **not yet supported**). See [Ingress topology](#ingress-topology). |
-| `ingress.parentRefs` | `[]` | **All modes.** The public `Gateway`(s) both rendered routes attach to (typically `envoy-gateway-system/giantswarm-default`). Required in `agentgateway-*` modes. |
+| `ingress.parentRefs` | `[]` | **All modes (required).** The public `Gateway`(s) both rendered routes attach to (typically `envoy-gateway-system/giantswarm-default`). Render fails if empty — the muster `/` route always attaches to it. |
 | `ingress.hostnames` | `[]` | **All modes.** muster's public hostname(s); must match the OAuth callback URL. |
 | `ingress.backendTrafficPolicy.enabled` | `false` | Render route-scoped `BackendTrafficPolicy` objects (preserve `WWW-Authenticate`, set `requestTimeout: 0s`): one over muster's `/` route in **all** modes, plus one over the agentgateway `/mcp` route in `agentgateway-*` modes. |
 | `agentgateway.enabled` | `false` | Install the agentgateway controller dependency. Must be `true` in `agentgateway-*` modes. |
@@ -235,16 +235,20 @@ The request topology is selected by a single declared selector, `ingress.mode`, 
 
 The mechanism is Gateway-API path-specificity. The umbrella **always** renders muster's public `/` catch-all route (`templates/ingress/muster-httproute.yaml`). In the `agentgateway-*` modes it additionally renders a more-specific `/mcp` route that steals MCP traffic into agentgateway, while OAuth / `.well-known` / DCR stay on muster's `/` route.
 
-Both rendered routes attach to the public Gateway and use the muster hostname(s). `parentRefs` and `hostnames` are now set **once** under `ingress.*` and shared by both routes — they must match the OAuth callback URL from `muster.oauth.mcpClient.publicUrl`. The umbrella's `ingress.parentRefs` guard rejects install in `agentgateway-*` modes until it is set; in `muster-direct` mode neither the agentgateway controller nor any data-plane object is installed.
+Both rendered routes attach to the public Gateway and use the muster hostname(s). `parentRefs` and `hostnames` are now set **once** under `ingress.*` and shared by both routes — they must match the OAuth callback URL from `muster.oauth.mcpClient.publicUrl`. The umbrella's `ingress.parentRefs` guard rejects install in **every** mode (including `muster-direct`) until it is set — the muster `/` route always needs a Gateway to attach to. In `muster-direct` mode neither the agentgateway controller nor any data-plane object is installed.
 
 ```yaml
 ingress:
   mode: muster-direct          # muster-direct | agentgateway-muster | agentgateway-direct
-  parentRefs: []               # ALL modes: the public Gateway both rendered routes attach to
+  parentRefs: []               # ALL modes (required): the public Gateway both rendered routes attach to
   hostnames: []                # ALL modes: muster public hostname(s)
-  httpRoute:
+  httpRoute:                   # shared base, applied to both routes
     annotations: {}
     labels: {}
+    # Optional per-route overrides, merged over the shared maps above
+    # (per-route keys win). `muster` = the `/` route; `mcp` = the `/mcp` route.
+    muster: {}                 # { annotations: {}, labels: {} }
+    mcp: {}                    # { annotations: {}, labels: {} }
   backendTrafficPolicy:        # agentgateway-* modes only
     enabled: false
     timeout: "0s"

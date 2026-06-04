@@ -7,12 +7,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "labels.common" . | nindent 4 }}
-    {{- with .Values.ingress.httpRoute.labels }}
-    {{- toYaml . | nindent 4 }}
+    {{- with (include "agentic-platform.httpRouteLabels" (dict "ctx" . "route" "mcp")) }}
+    {{- . | nindent 4 }}
     {{- end }}
-  {{- with .Values.ingress.httpRoute.annotations }}
+  {{- with (include "agentic-platform.httpRouteAnnotations" (dict "ctx" . "route" "mcp")) }}
   annotations:
-    {{- toYaml . | nindent 4 }}
+    {{- . | nindent 4 }}
   {{- end }}
 spec:
   parentRefs:

@@ -51,19 +51,16 @@ emits nothing (empty string = falsy). Gated templates use:
 {{- end -}}
 
 {{/*
-Fully-qualified name of the muster service, owned by the umbrella release.
-Mirrors the muster sub-chart's own "muster.fullname" exactly (chart name
-"muster", no nameOverride): when the release name already contains "muster"
-the sub-chart collapses to just the release name, otherwise it appends
-"-muster". Keeping these in lockstep ensures the route's backendRef always
-points at the real muster Service, even for a release named "*muster*".
+Fully-qualified name of the muster service. Single source of truth: the umbrella
+pins muster.fullnameOverride (see values.yaml), which the muster sub-chart uses
+verbatim for its Service name. Reading that same key here — rather than
+re-deriving the sub-chart's release-name naming algorithm — guarantees the
+public route's backendRef and the agentic-platform-mcps musterUrl always target
+the real muster Service, and turns a misconfiguration into a loud render-time
+failure instead of a silent 503.
 */}}
 {{- define "agentic-platform.musterFullname" -}}
-{{- if contains "muster" .Release.Name -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-muster" .Release.Name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
+{{- required "muster.fullnameOverride must be set — the umbrella owns muster's public route and its backendRef targets this exact Service name" .Values.muster.fullnameOverride -}}
 {{- end -}}
 
 {{/*
@@ -71,6 +68,31 @@ Port muster listens on; defaults to 8090 when unset from parent context.
 */}}
 {{- define "agentic-platform.musterServicePort" -}}
 {{- .Values.muster.service.port | default 8090 -}}
+{{- end -}}
+
+{{/*
+Merged HTTPRoute labels for a named route. The shared base
+(ingress.httpRoute.labels) applies to every route; optional per-route overrides
+(ingress.httpRoute.<route>.labels) win on key collision, letting a downstream
+diverge one route without forking the whole block. Emits nothing when both are
+empty. Usage:
+  {{- include "agentic-platform.httpRouteLabels" (dict "ctx" . "route" "muster") }}
+*/}}
+{{- define "agentic-platform.httpRouteLabels" -}}
+{{- $h := .ctx.Values.ingress.httpRoute -}}
+{{- $merged := merge (deepCopy (dig .route "labels" dict $h)) ($h.labels | default dict) -}}
+{{- with $merged }}{{- toYaml . }}{{- end -}}
+{{- end -}}
+
+{{/*
+Merged HTTPRoute annotations for a named route — same precedence as
+httpRouteLabels (per-route ingress.httpRoute.<route>.annotations override the
+shared ingress.httpRoute.annotations). Emits nothing when both are empty.
+*/}}
+{{- define "agentic-platform.httpRouteAnnotations" -}}
+{{- $h := .ctx.Values.ingress.httpRoute -}}
+{{- $merged := merge (deepCopy (dig .route "annotations" dict $h)) ($h.annotations | default dict) -}}
+{{- with $merged }}{{- toYaml . }}{{- end -}}
 {{- end -}}
 
 {{/*
@@ -87,8 +109,8 @@ inconsistent. Rendered exactly once via templates/validate.yaml.
 {{- fail "ingress.mode=agentgateway-direct requires a DCR-capable IdP (RFC 7591/8707), e.g. Zitadel; not yet supported" -}}
 {{- end -}}
 {{- $isAgentgateway := or (eq $mode "agentgateway-muster") (eq $mode "agentgateway-direct") -}}
-{{- if and $isAgentgateway (not .Values.ingress.parentRefs) -}}
-{{- fail "ingress.parentRefs is required in agentgateway-* modes (the public Gateway both routes attach to)" -}}
+{{- if not .Values.ingress.parentRefs -}}
+{{- fail "ingress.parentRefs is required in all modes — the umbrella-owned muster `/` route (and the agentgateway `/mcp` route in agentgateway-* modes) attaches to it; an empty parentRefs renders a route bound to no Gateway, leaving muster unreachable while install reports success" -}}
 {{- end -}}
 {{- /* viaMuster only matters when the mcps sub-chart is installed; with no MCP
 servers there is nothing to route, so the consistency check is scoped to mcps.enabled. */ -}}

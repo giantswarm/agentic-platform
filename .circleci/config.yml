@@ -17,7 +17,10 @@ jobs:
           name: install helm + make
           command: |
             command -v make >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq make)
-            curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+            # Pinned (not `main`) so a mid-queue Helm minor can't change behaviour;
+            # 3.17.x is well past OCI dependency GA (3.8). Avoids the curl|bash pattern.
+            curl -fsSL https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz | tar xz -C /tmp
+            sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
             helm version
       - run:
           name: verify ingress mode guards

@@ -9,17 +9,24 @@ CHART_DIR ?= helm/agentic-platform
 # Subchart-quieting flags: the muster/valkey subcharts emit their own render-time
 # `fail`s when run without secrets, which would mask the ingress.mode guards we
 # are exercising here. Disable them so the umbrella's validate.yaml guard is the
-# only thing that can fail a render. parentRefs[0].name satisfies the
-# agentgateway-* parentRefs guard so we isolate the guard under test.
-VM_QUIET := --set valkey.enabled=false \
-            --set muster.muster.oauth.server.enabled=false \
-            --set muster.muster.oauth.server.storage.type=memory \
-            --set ingress.parentRefs[0].name=x
+# only thing that can fail a render.
+VM_QUIET_BASE := --set valkey.enabled=false \
+                 --set muster.muster.oauth.server.enabled=false \
+                 --set muster.muster.oauth.server.storage.type=memory
+# parentRefs[0].name satisfies the all-modes parentRefs guard so we isolate the
+# guard under test. Use VM_QUIET_BASE (no parentRefs) to exercise that guard.
+VM_QUIET := $(VM_QUIET_BASE) --set ingress.parentRefs[0].name=x
 
 .PHONY: verify-modes
 verify-modes: ## Assert ingress.mode fail-guards fire (mode 3 + consistency guards).
 	@echo "====> $@"
 	@helm dependency build $(CHART_DIR) >/dev/null
+	@echo "--> muster-direct with empty parentRefs must fail"
+	@if helm template t $(CHART_DIR) $(VM_QUIET_BASE) --set ingress.mode=muster-direct >/tmp/vm-parents.out 2>&1; then \
+		echo "FAIL: empty-parentRefs guard did not fire (render succeeded)"; cat /tmp/vm-parents.out; exit 1; \
+	elif ! grep -q "ingress.parentRefs is required in all modes" /tmp/vm-parents.out; then \
+		echo "FAIL: empty-parentRefs check failed for the wrong reason"; cat /tmp/vm-parents.out; exit 1; \
+	else echo "ok: empty-parentRefs guard"; fi
 	@echo "--> agentgateway-direct must be blocked with the DCR message"
 	@if helm template t $(CHART_DIR) $(VM_QUIET) --set ingress.mode=agentgateway-direct >/tmp/vm-direct.out 2>&1; then \
 		echo "FAIL: direct-mode guard did not fire (render succeeded)"; cat /tmp/vm-direct.out; exit 1; \
