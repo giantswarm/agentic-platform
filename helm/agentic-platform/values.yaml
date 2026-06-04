@@ -217,14 +217,14 @@ valkey:
     auth:
       enabled: true
       # Required: name of the Secret with key `valkey-password`. Conventionally
-      # the same Secret referenced from `muster.muster.oauth.server.existingSecret`
-      # — operators ship one Secret carrying every OAuth + Valkey credential.
-      # Ship via the umbrella's `extraObjects:` or pre-create out of band.
+      # Valkey password is set via per-cluster secret-values override:
+      # valkey.valkey.auth.aclUsers.default.password (same value as
+      # muster.muster.oauth.server.storage.valkey.password).
       usersExistingSecret: ""
       aclUsers:
         default:
           permissions: "~* &* +@all"
-          passwordKey: valkey-password
+          passwordKey: ""
     dataStorage:
       enabled: true
       requestedSize: 1Gi
