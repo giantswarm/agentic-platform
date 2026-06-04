@@ -7,3 +7,32 @@ networkPolicy:
       - 10.0.0.0/8
       - 172.16.0.0/12
       - 192.168.0.0/16
+
+# Exercise the kubernetes-flavor NetworkPolicy for the kagent controller.
+kagent:
+  enabled: true
+  namespaceOverride: kagent
+  database:
+    postgres:
+      bundled:
+        enabled: true
+
+muster:
+  muster:
+    oauth:
+      server:
+        enabled: false
+        storage:
+          type: memory
+  gatewayAPI:
+    httpRoute:
+      parentRefs:
+        - name: giantswarm-default
+          namespace: envoy-gateway-system
+          group: gateway.networking.k8s.io
+          kind: Gateway
+      hostnames:
+        - muster.ci.example.com
+
+valkey:
+  enabled: false
