@@ -50,6 +50,11 @@ spec:
         image:
           reference: {{ .Values.postgres.vector.extensionImage.reference | quote }}
   {{- end }}
+  # TODO(backup): add barmanObjectStore / ObjectStore once a target bucket exists.
+  # Backup is optional for function but needed for PITR on production clusters.
+  # CNPG Barman supports S3, Azure Blob, GCS, and S3-compatible (MinIO via
+  # endpointURL) — pick credentials per cloud (IRSA on EKS, azureCredentials on
+  # Azure, static key for MinIO).
   # Enable built-in CNPG PodMonitor for metrics scraping.
   # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
   monitoring:
