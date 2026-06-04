@@ -202,7 +202,6 @@
                     }
                 }
             }
-        }
         },
         "kagent": {
             "type": "object",
