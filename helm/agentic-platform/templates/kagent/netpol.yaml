@@ -1,12 +1,11 @@
 {{- if and .Values.kagent.enabled .Values.networkPolicy.enabled }}
 {{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $controllerPort := "8083" }}
+{{- $clusterName := .Values.postgres.clusterName | default "agentic-platform-pg" }}
 
 {{- if eq .Values.networkPolicy.flavor "cilium" }}
-# Allow the agentgateway data-plane (in the release namespace) to reach the
-# kagent controller (in the kagent namespace) on the controller API port.
-# Without this, Cilium blocks cross-namespace traffic and the HTTPRoute times out.
 ---
+# Egress from agentgateway data-plane to the kagent controller (cross-namespace).
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -22,14 +21,14 @@ spec:
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/component: controller
-            app.kubernetes.io/name: {{ include "name" . }}
-            k8s:io.kubernetes.pod.namespace: {{ $kagentNs }}
+            app.kubernetes.io/name: kagent
+            io.kubernetes.pod.namespace: {{ $kagentNs }}
       toPorts:
         - ports:
             - port: {{ $controllerPort | quote }}
               protocol: TCP
 ---
-# Allow ingress to the kagent controller from agentgateway pods (cross-namespace).
+# Ingress to the kagent controller: agentgateway (cross-namespace) + intra-namespace.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -41,26 +40,102 @@ spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/component: controller
-      app.kubernetes.io/name: {{ include "name" . }}
+      app.kubernetes.io/name: kagent
   ingress:
     - fromEndpoints:
         - matchLabels:
             gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
-            k8s:io.kubernetes.pod.namespace: {{ .Release.Namespace }}
+            io.kubernetes.pod.namespace: {{ .Release.Namespace }}
       toPorts:
         - ports:
             - port: {{ $controllerPort | quote }}
               protocol: TCP
-    # Allow intra-namespace traffic (UI → controller, agents → controller).
     - fromEndpoints:
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: {{ $kagentNs }}
+            io.kubernetes.pod.namespace: {{ $kagentNs }}
+---
+# Egress from the kagent controller: DNS, Postgres, Kubernetes API, OTLP.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-kagent-controller-egress
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/name: kagent
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: coredns
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: k8s-dns-node-cache
+      toPorts:
+        - ports:
+            - port: "1053"
+              protocol: UDP
+            - port: "1053"
+              protocol: TCP
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - toEntities:
+        - kube-apiserver
+    - toEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "4317"
+              protocol: TCP
+---
+# CNPG cluster policies: inter-instance egress for streaming replication,
+# and ingress from the kagent controller.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-pg-cluster
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      cnpg.io/cluster: {{ $clusterName }}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            cnpg.io/cluster: {{ $clusterName }}
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "8000"
+              protocol: TCP
+    - toEntities:
+        - kube-apiserver
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: controller
+            app.kubernetes.io/name: kagent
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
 
 {{- else if eq .Values.networkPolicy.flavor "kubernetes" }}
-# Restrict kagent controller ingress: only the release namespace (agentgateway)
-# and the kagent namespace (UI, agents) may reach port 8083.
-# This prevents direct access bypassing agentgateway's JWT validation
-# (the controller's trusted-proxy mode does not verify JWT signatures).
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -73,7 +148,7 @@ spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/component: controller
-      app.kubernetes.io/name: {{ include "name" . }}
+      app.kubernetes.io/name: kagent
   policyTypes: [Ingress]
   ingress:
     - from:

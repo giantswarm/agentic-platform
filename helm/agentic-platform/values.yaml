@@ -610,7 +610,7 @@ postgres:
   storage:
     size: 20Gi
     # EKS: gp3. Azure: managed-premium. on-prem: rook-ceph or local-path.
-    storageClass: gp3
+    storageClass: ""  # leave empty to use the cluster default storage class
   # Operand image. Leave empty for the CNPG operator's default image.
   # For pgvector without the ImageVolume approach (CNPG < 1.29 / PG < 18),
   # supply a pgvector-bundled image here (e.g. a custom build from

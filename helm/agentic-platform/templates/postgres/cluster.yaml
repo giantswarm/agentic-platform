@@ -18,7 +18,9 @@ spec:
   {{- end }}
   storage:
     size: {{ .Values.postgres.storage.size | default "20Gi" | quote }}
-    storageClass: {{ .Values.postgres.storage.storageClass | default "gp3" | quote }}
+    {{- if .Values.postgres.storage.storageClass }}
+    storageClass: {{ .Values.postgres.storage.storageClass | quote }}
+    {{- end }}
   bootstrap:
     initdb:
       database: {{ $db.name | default "kagent" }}
@@ -48,10 +50,15 @@ spec:
         image:
           reference: {{ .Values.postgres.vector.extensionImage.reference | quote }}
   {{- end }}
-  # TODO(backup): add barmanObjectStore / ObjectStore once a target bucket exists.
-  # Backup is optional for function but needed for PITR on production clusters.
-  # CNPG Barman supports S3, Azure Blob, GCS, and S3-compatible (MinIO via
-  # endpointURL) — pick credentials per cloud (IRSA on EKS, azureCredentials on
-  # Azure, static key for MinIO). See postgres.backup in values.yaml (§5 of
-  # subplan-platform-components) and the CNPG Barman docs.
+  # Enable built-in CNPG PodMonitor for metrics scraping.
+  # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
+  monitoring:
+    enablePodMonitor: true
+    podMonitorMetricRelabelings:
+      - sourceLabels: [__name__]
+        regex: cnpg_.*
+        action: keep
+    podMonitorRelabelings:
+      - targetLabel: observability_giantswarm_io_tenant
+        replacement: giantswarm
 {{- end }}
