@@ -345,6 +345,9 @@ agentic-platform-mcps:
 #         - { name: cnpg-dsn, mountPath: /etc/cnpg, readOnly: true }
 kagent:
   enabled: false
+  # Pull all kagent images from the GS-retagged registry instead of cr.kagent.dev.
+  # Requires retagger images: kagent-controller, kagent-ui, kagent-app, kagent-skills-init.
+  registry: gsoci.azurecr.io/giantswarm
   # Keep kagent resources in the kagent namespace separate from the umbrella's
   # release namespace. The kagent subchart renders every resource's namespace
   # via its `kagent.namespace` helper, so this override is honored everywhere.
