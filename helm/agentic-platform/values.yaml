@@ -378,6 +378,10 @@ kagent:
     env:
       - name: METRICS_BIND_ADDRESS
         value: ":8080"
+      # false: HTTP scrape, no cert needed. The network policy on port 8083
+      # already restricts access; HTTP on :8080 is acceptable for in-cluster
+      # scraping. Set to "true" + configure ServiceMonitor tlsConfig with a
+      # cert-manager-issued CA if HTTPS is required.
       - name: METRICS_SECURE
         value: "false"
       - name: OTEL_EXPORTER_OTLP_HEADERS
