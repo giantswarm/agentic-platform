@@ -9,7 +9,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      agentgateway: {{ .Values.gateway.name }}
+      gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
   policyTypes: [Ingress, Egress]
   ingress:
     - from:
