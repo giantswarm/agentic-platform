@@ -222,7 +222,8 @@
                     "description": "ServiceMonitor for controller-runtime Prometheus metrics. Requires Prometheus Operator CRDs.",
                     "properties": {
                         "enabled": {"type": "boolean"},
-                        "interval": {"type": "string"}
+                        "interval": {"type": "string"},
+                        "tenant": {"type": "string", "description": "observability.giantswarm.io/tenant label value for Mimir routing."}
                     }
                 },
                 "controllerRoute": {

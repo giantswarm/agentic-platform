@@ -364,20 +364,24 @@ kagent:
 
   controller:
     auth:
-      # unsecure: kagent trusts any request. Acceptable when agentgateway sits in
-      # front and validates JWTs before forwarding — see templates/kagent/.
-      # Switch to trusted-proxy + oauth2-proxy.enabled: true for full prod auth.
-      mode: unsecure
+      # trusted-proxy: reads Authorization: Bearer JWT, decodes claims without
+      # signature verification. oauth2-proxy (or agentgateway) must validate the
+      # JWT before forwarding. Use "unsecure" for local dev without a front proxy.
+      mode: trusted-proxy
       userIdClaim: sub
     # Expose controller-runtime Prometheus metrics on :8080 (HTTP, no TLS).
     # The default --metrics-bind-address is "0" (disabled) and the chart never
     # sets it. We enable it here and wire a ServiceMonitor via extraObjects.
     # metrics-secure=false avoids needing a cert for the in-cluster scrape.
+    # X-Scope-OrgID routes OTLP traces and logs to the correct Loki/Tempo
+    # tenant. The configmap template has no headers field so we inject via env.
     env:
       - name: METRICS_BIND_ADDRESS
         value: ":8080"
       - name: METRICS_SECURE
         value: "false"
+      - name: OTEL_EXPORTER_OTLP_HEADERS
+        value: "X-Scope-OrgID=giantswarm"
 
   # Model provider — Anthropic by default.
   # Pre-create the API key Secret before enabling kagent:
@@ -393,12 +397,14 @@ kagent:
 
   # ServiceMonitor for controller-runtime Prometheus metrics.
   # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
+  # The tenant label routes metrics to the correct Mimir tenant.
   serviceMonitor:
     enabled: true
     interval: 60s
+    tenant: giantswarm
 
-  # OTel — send traces and logs to the GS Observability Platform OTLP gateway.
-  # The same endpoint agentgateway and muster use (kube-system otlp-gateway).
+  # OTel — traces and logs to the GS Observability Platform OTLP gateway.
+  # X-Scope-OrgID header routes to the correct Loki/Tempo tenant.
   otel:
     tracing:
       enabled: true
@@ -424,7 +430,7 @@ kagent:
   #     --from-literal=client-secret=<dex-client-secret> \
   #     --from-literal=cookie-secret=$(openssl rand -base64 32)
   oauth2-proxy:
-    enabled: false
+    enabled: true
     redis:
       enabled: false
     sessionStorage:
@@ -571,8 +577,8 @@ kagent:
   # oauth2-proxy (when enabled) or the UI service directly (dev only).
   # Supply oauth2-proxy credentials and set uiRoute.enabled: true together.
   uiRoute:
-    enabled: false
-    hostname: ""  # e.g. kagent.<cluster>.<base-domain>
+    enabled: true
+    hostname: ""  # Required: kagent.<cluster>.<base-domain>
     parentRef:
       name: giantswarm-default
       namespace: envoy-gateway-system
