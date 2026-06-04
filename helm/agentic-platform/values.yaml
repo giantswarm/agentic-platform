@@ -388,9 +388,9 @@ kagent:
         value: "X-Scope-OrgID=giantswarm"
 
   # Model provider — Anthropic by default.
-  # Pre-create the API key Secret before enabling kagent:
-  #   kubectl create secret generic kagent-anthropic -n kagent \
-  #     --from-literal=ANTHROPIC_API_KEY=<key>
+  # Set kagent.providers.anthropic.apiKey in the per-cluster secret values
+  # (SOPS-encrypted). When apiKey is set alongside apiKeySecretRef, the chart
+  # creates the Secret automatically — no manual pre-creation needed.
   providers:
     default: anthropic
     anthropic:
@@ -398,6 +398,7 @@ kagent:
       model: claude-sonnet-4-6
       apiKeySecretRef: kagent-anthropic
       apiKeySecretKey: ANTHROPIC_API_KEY
+      apiKey: ""  # Set per-cluster in secret-values; chart creates the Secret
 
   # ServiceMonitor for controller-runtime Prometheus metrics.
   # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
