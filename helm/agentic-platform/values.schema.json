@@ -216,6 +216,15 @@
                     "type": "string",
                     "description": "Target namespace for all kagent resources. Must match postgres.namespace when postgres.enabled is true."
                 },
+                "serviceMonitor": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "ServiceMonitor for controller-runtime Prometheus metrics. Requires Prometheus Operator CRDs.",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "interval": {"type": "string"}
+                    }
+                },
                 "controllerRoute": {
                     "type": "object",
                     "additionalProperties": false,

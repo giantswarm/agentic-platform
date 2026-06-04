@@ -369,6 +369,15 @@ kagent:
       # Switch to trusted-proxy + oauth2-proxy.enabled: true for full prod auth.
       mode: unsecure
       userIdClaim: sub
+    # Expose controller-runtime Prometheus metrics on :8080 (HTTP, no TLS).
+    # The default --metrics-bind-address is "0" (disabled) and the chart never
+    # sets it. We enable it here and wire a ServiceMonitor via extraObjects.
+    # metrics-secure=false avoids needing a cert for the in-cluster scrape.
+    env:
+      - name: METRICS_BIND_ADDRESS
+        value: ":8080"
+      - name: METRICS_SECURE
+        value: "false"
 
   # Model provider — Anthropic by default.
   # Pre-create the API key Secret before enabling kagent:
@@ -381,6 +390,12 @@ kagent:
       model: claude-sonnet-4-6
       apiKeySecretRef: kagent-anthropic
       apiKeySecretKey: ANTHROPIC_API_KEY
+
+  # ServiceMonitor for controller-runtime Prometheus metrics.
+  # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
+  serviceMonitor:
+    enabled: true
+    interval: 60s
 
   # OTel — send traces and logs to the GS Observability Platform OTLP gateway.
   # The same endpoint agentgateway and muster use (kube-system otlp-gateway).
