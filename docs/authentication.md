@@ -1,10 +1,23 @@
 # Authentication flow
 
-How a request authenticates against the agentic platform once the agentgateway
-ingress route is in place. This document covers **only authentication** — TLS
-termination details and the broader networking/NetworkPolicy model are
-described elsewhere (`README.md` → *Public HTTPRoute* and the
-`networkpolicy-dataplane-*` templates).
+How a request authenticates against the agentic platform. This document covers
+**only authentication** — TLS termination details and the broader
+networking/NetworkPolicy model are described elsewhere (`README.md` →
+*Ingress topology* and the `networkpolicy-dataplane-*` templates).
+
+The request topology is selected by `ingress.mode` (see `README.md` →
+*Ingress topology*):
+
+- **`muster-direct`** (default) — client → muster directly. There is **one** hop:
+  the public Gateway → muster. No agentgateway data plane exists.
+- **`agentgateway-muster`** / **`agentgateway-direct`** — client → agentgateway
+  `/mcp` → muster (or, in `agentgateway-direct`, the servers). Here a second
+  Gateway API hop (agentgateway) sits in front of muster.
+
+This document narrates the **`agentgateway-*`** topology, where agentgateway is
+present. In `muster-direct` mode, drop the agentgateway hop: the client reaches
+muster directly over the public hop and muster enforces OAuth exactly as
+described below.
 
 Each section is one slice of the story with its own diagram:
 
@@ -13,16 +26,20 @@ Each section is one slice of the story with its own diagram:
 3. [Token handling at muster — `forward` vs `exchange`](#3-token-handling-at-muster)
 4. [Edge JWT validation (`oauthMode: validate`) and JWKS](#4-edge-jwt-validation-and-jwks)
 
-The only URL a client is ever given is **`agentgateway.<cluster>.<base>/mcp`**.
-muster is a backend implementation detail; clients never address it for `/mcp`.
+In the `agentgateway-*` modes, the only URL a client is ever given is
+**`agentgateway.<cluster>.<base>/mcp`**; muster is a backend implementation
+detail and clients never address it for `/mcp`. In `muster-direct` mode the
+client is given muster's own `/mcp` URL directly.
 
 ---
 
 ## 1. The request path
 
-Two Gateway API hops sit in front of muster. The **public** hop terminates TLS
-and owns the hostname; the **agentgateway** hop is the observability and policy
-choke point. Authentication itself is still enforced by muster at the end.
+In the `agentgateway-*` modes, two Gateway API hops sit in front of muster. The
+**public** hop terminates TLS and owns the hostname; the **agentgateway** hop is
+the observability and policy choke point. Authentication itself is still
+enforced by muster at the end. (In `muster-direct` mode only the public hop
+exists, routing straight to muster.)
 
 ```mermaid
 flowchart LR
@@ -49,8 +66,8 @@ What each component is responsible for, in auth terms:
 | Hop | Template | Auth responsibility |
 |---|---|---|
 | envoy `giantswarm-default` | (cluster ingress, not this chart) | Terminates TLS, owns the public hostname. |
-| `HTTPRoute` | `templates/agentgateway/httproute.yaml` | Routes `/mcp` to the agentgateway Service:8080. Gated on `gateway.httpRoute.parentRefs`. Without it the agentgateway hostname does not exist. |
-| `BackendTrafficPolicy` | `templates/agentgateway/backendtrafficpolicy.yaml` | **Critical for auth:** a cluster-wide error-pages `BackendTrafficPolicy` rewrites 4xx/5xx to branded HTML and strips upstream headers — including `WWW-Authenticate`. A route-scoped policy takes precedence and preserves muster's `401 … WWW-Authenticate` challenge, without which clients cannot discover where to authenticate. Also sets `requestTimeout: 0s` so long-lived MCP/SSE streams are not killed. |
+| `HTTPRoute` (`/mcp`) | `templates/agentgateway/httproute.yaml` | Routes `/mcp` to the agentgateway Service:8080. Rendered in the `agentgateway-*` modes (`ingress.mode`); reads `ingress.parentRefs` / `ingress.hostnames`. Without it the agentgateway `/mcp` route does not exist. (muster's public `/` route, `templates/ingress/muster-httproute.yaml`, is always rendered.) |
+| `BackendTrafficPolicy` | `templates/agentgateway/backendtrafficpolicy.yaml` | **Critical for auth:** a cluster-wide error-pages `BackendTrafficPolicy` rewrites 4xx/5xx to branded HTML and strips upstream headers — including `WWW-Authenticate`. A route-scoped policy (enabled via `ingress.backendTrafficPolicy.enabled`, `agentgateway-*` modes only) takes precedence and preserves muster's `401 … WWW-Authenticate` challenge, without which clients cannot discover where to authenticate. Also sets `requestTimeout: 0s` (`ingress.backendTrafficPolicy.timeout`) so long-lived MCP/SSE streams are not killed. |
 | agentgateway proxy | `gateway.yaml` + `agentgatewayparameters.yaml` | By default `auth.passthrough` — forwards the bearer token to muster unvalidated. Optionally validates at the edge (§4). |
 | muster | `muster` sub-chart | Enforces OAuth, validates the token, aggregates downstream MCP servers, and performs token exchange where needed (§3). |
 
@@ -59,9 +76,11 @@ What each component is responsible for, in auth terms:
 ## 2. OAuth discovery
 
 A fresh client arrives with no token. It must discover the authorization server
-before it can authenticate. The challenge is served by muster but must survive
-the journey back through both gateway hops — that is what the route-scoped
-`BackendTrafficPolicy` guarantees.
+before it can authenticate. In the `agentgateway-*` modes the challenge is
+served by muster but must survive the journey back through both gateway hops —
+that is what the route-scoped `BackendTrafficPolicy` (`ingress.backendTrafficPolicy`)
+guarantees. (In `muster-direct` mode the challenge travels only the single
+public hop, and no `BackendTrafficPolicy` is rendered.)
 
 The keystone is `muster.oauth.server.resourceIdentifier`, set in shared-configs
 to `agentgateway-host/mcp`. It makes muster advertise the **agentgateway**
@@ -156,10 +175,14 @@ agentic-platform-mcps:
 
 ## 4. Edge JWT validation and JWKS
 
-By default agentgateway runs `auth.passthrough`: it forwards the token to muster
+This section applies only to the `agentgateway-*` modes (in `muster-direct` mode
+there is no agentgateway and muster is the sole validator). By default
+agentgateway runs `auth.passthrough`: it forwards the token to muster
 without inspecting it, and muster is the only validator. Optionally, agentgateway
 can validate the JWT **at the edge** (`oauthMode: validate`) as a first layer —
-muster still validates downstream as a second layer. Token exchange (§3) is
+muster still validates downstream as a second layer. Edge JWT validation is the
+relevant model for `agentgateway-direct`, where agentgateway must gate traffic
+on its own. Token exchange (§3) is
 unaffected: agentgateway only ever sees the inbound token; muster's internal
 RFC 8693 exchanges happen behind it.
 
@@ -217,6 +240,10 @@ flowchart TD
 ```
 
 ### When `gateway.jwksEgress` is required
+
+`gateway.jwksEgress` is an `agentgateway-*` data-plane knob (most relevant to
+`agentgateway-direct`, where agentgateway validates JWTs at the edge against an
+external key set).
 
 The data-plane NetworkPolicy
 (`networkpolicy-dataplane-{cilium,kubernetes}.yaml`) allows the proxy egress to

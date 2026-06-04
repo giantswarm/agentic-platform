@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Single `ingress.mode` topology selector (`muster-direct` | `agentgateway-muster` | `agentgateway-direct`) that declares the whole request topology in one place. The umbrella now owns **both** public routes — muster's `/` catch-all (new `templates/ingress/muster-httproute.yaml`, rendered in all modes) and the agentgateway `/mcp` interception route — fed from a single shared `ingress.parentRefs` / `ingress.hostnames`, so the two routes can no longer drift. A template-time guard (`templates/validate.yaml`) fails fast on an invalid mode, on `ingress.parentRefs` missing in agentgateway modes, and on `agentgateway.enabled` / `agentic-platform-mcps.agentgateway.viaMuster` disagreeing with the mode.
+- `agentgateway.enabled` (default `false`) gates the agentgateway controller dependency via `condition: agentgateway.enabled` in `Chart.yaml`. In the default `muster-direct` mode the controller, its `GatewayClass`, the data-plane `Gateway`/`AgentgatewayParameters`, and the data-plane NetworkPolicies are **not installed**.
+- `agentgateway-direct` mode is modelled but **fail-guarded** — install is blocked with a clear message until a DCR-capable IdP (RFC 7591/8707) lands.
+- `make verify-modes` target (wired into a new CircleCI branch test job) asserts the fail-guards fire; `ci/test-full-stack-values.yaml` now exercises the previously-untested `agentgateway-muster` path.
+
 ### Changed
 
 - Bumped bundled `muster` to `0.2.1` (stable; muster#772 JWT signing-key wiring fix + `jwt_key.go` enabling edge JWT validation, and the CNP ingress-gateway egress fix from muster#788).
 - Bumped bundled `agentic-platform-mcps` to `0.2.0` (stable release).
+
+### Removed
+
+- **Breaking:** `gateway.enabled`, `gateway.httpRoute.*`, and `gateway.backendTrafficPolicy.*` are removed — replaced by `ingress.mode` (topology switch), `ingress.parentRefs` / `ingress.hostnames` (shared route attachment), and `ingress.backendTrafficPolicy.*`. The retained `gateway.*` keys now hold data-plane *infrastructure* only and apply in `agentgateway-*` modes. `muster.gatewayAPI.enabled` is now `false` (the umbrella renders muster's public route) — set `ingress.parentRefs` / `ingress.hostnames` instead of `muster.gatewayAPI.httpRoute.*`.
 
 ## [0.5.0] - 2026-05-29
 

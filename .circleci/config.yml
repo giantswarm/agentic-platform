@@ -2,7 +2,25 @@ version: 2.1
 orbs:
   architect: giantswarm/architect@6.10.0
 
+jobs:
+  test-ingress-modes:
+    docker:
+      # Bundles helm 3; same image family used by lint-chart in Makefile.gen.app.mk.
+      - image: quay.io/giantswarm/helm-chart-testing:v3.0.0-rc.1
+    steps:
+      - checkout
+      - run:
+          name: verify ingress mode guards
+          command: make verify-modes
+
 workflows:
+  test:
+    jobs:
+      - test-ingress-modes:
+          # Run on every branch push (PR-time); tag-only release flow is separate.
+          filters:
+            tags:
+              ignore: /.*/
   package-and-push-chart-on-tag:
     jobs:
     - architect/push-to-app-catalog:
