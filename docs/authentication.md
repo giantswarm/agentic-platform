@@ -67,7 +67,7 @@ What each component is responsible for, in auth terms:
 |---|---|---|
 | envoy `giantswarm-default` | (cluster ingress, not this chart) | Terminates TLS, owns the public hostname. |
 | `HTTPRoute` (`/mcp`) | `templates/agentgateway/httproute.yaml` | Routes `/mcp` to the agentgateway Service:8080. Rendered in the `agentgateway-*` modes (`ingress.mode`); reads `ingress.parentRefs` / `ingress.hostnames`. Without it the agentgateway `/mcp` route does not exist. (muster's public `/` route, `templates/ingress/muster-httproute.yaml`, is always rendered.) |
-| `BackendTrafficPolicy` | `templates/agentgateway/backendtrafficpolicy.yaml` | **Critical for auth:** a cluster-wide error-pages `BackendTrafficPolicy` rewrites 4xx/5xx to branded HTML and strips upstream headers — including `WWW-Authenticate`. A route-scoped policy (enabled via `ingress.backendTrafficPolicy.enabled`, `agentgateway-*` modes only) takes precedence and preserves muster's `401 … WWW-Authenticate` challenge, without which clients cannot discover where to authenticate. Also sets `requestTimeout: 0s` (`ingress.backendTrafficPolicy.timeout`) so long-lived MCP/SSE streams are not killed. |
+| `BackendTrafficPolicy` | `templates/agentgateway/backendtrafficpolicy.yaml` (agentgateway `/mcp` route) and `templates/ingress/muster-backendtrafficpolicy.yaml` (muster `/` route) | **Critical for auth:** a cluster-wide error-pages `BackendTrafficPolicy` rewrites 4xx/5xx to branded HTML and strips upstream headers — including `WWW-Authenticate`. A route-scoped policy (enabled via `ingress.backendTrafficPolicy.enabled`) takes precedence and preserves muster's `401 … WWW-Authenticate` challenge, without which clients cannot discover where to authenticate. The umbrella renders one over the agentgateway `/mcp` route (`agentgateway-*` modes only) and a complementary one over muster's `/` route (**all** modes) — the latter matters in `muster-direct`, where muster serves `/mcp` directly. Both also set `requestTimeout: 0s` (`ingress.backendTrafficPolicy.timeout`) so long-lived MCP/SSE streams are not killed. |
 | agentgateway proxy | `gateway.yaml` + `agentgatewayparameters.yaml` | By default `auth.passthrough` — forwards the bearer token to muster unvalidated. Optionally validates at the edge (§4). |
 | muster | `muster` sub-chart | Enforces OAuth, validates the token, aggregates downstream MCP servers, and performs token exchange where needed (§3). |
 
@@ -80,7 +80,9 @@ before it can authenticate. In the `agentgateway-*` modes the challenge is
 served by muster but must survive the journey back through both gateway hops —
 that is what the route-scoped `BackendTrafficPolicy` (`ingress.backendTrafficPolicy`)
 guarantees. (In `muster-direct` mode the challenge travels only the single
-public hop, and no `BackendTrafficPolicy` is rendered.)
+public hop, but muster's `/` route still carries its own route-scoped
+`BackendTrafficPolicy` so the same cluster-wide error-pages policy cannot strip
+`WWW-Authenticate` from the `401` muster serves on `/mcp`.)
 
 The keystone is `muster.oauth.server.resourceIdentifier`, set in shared-configs
 to `agentgateway-host/mcp`. It makes muster advertise the **agentgateway**
