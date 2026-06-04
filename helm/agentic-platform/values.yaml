@@ -451,7 +451,10 @@ kagent:
         mountPath: /templates
         readOnly: true
     config:
-      existingSecret: kagent-oauth2-proxy
+      existingSecret: ""  # set clientID/clientSecret/cookieSecret via secret values instead
+      clientID: ""
+      clientSecret: ""
+      cookieSecret: ""
     extraEnv:
       - name: OIDC_ISSUER_URL
         value: ""  # e.g. https://dex.<cluster>.<base-domain>
