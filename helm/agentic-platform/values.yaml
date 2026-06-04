@@ -438,16 +438,21 @@ kagent:
   #     --from-literal=cookie-secret=$(openssl rand -base64 32)
   oauth2-proxy:
     enabled: true
+    # Co-locate with kagent resources so the templates ConfigMap (created in
+    # kagent namespace by the kagent chart) is reachable.
+    namespaceOverride: kagent
     redis:
       enabled: false
     sessionStorage:
       type: cookie
-    # The kagent chart creates kagent-oauth2-proxy-templates in kagent namespace
-    # (via namespaceOverride), but the oauth2-proxy pod runs in the release
-    # namespace — the ConfigMap is unreachable. Clear the mount and disable
-    # the custom-templates-dir arg; oauth2-proxy uses its built-in templates.
-    extraVolumes: []
-    extraVolumeMounts: []
+    extraVolumes:
+      - name: custom-templates
+        configMap:
+          name: kagent-oauth2-proxy-templates
+    extraVolumeMounts:
+      - name: custom-templates
+        mountPath: /templates
+        readOnly: true
     config:
       existingSecret: ""  # set clientID/clientSecret/cookieSecret via secret values instead
       clientID: ""
@@ -477,7 +482,7 @@ kagent:
       skip-jwt-bearer-tokens: true
       skip-auth-route: "^/(health|login)$"
       skip-auth-regex: "^/(login|_next/static|_next/image|login-bg\\.(jpg|png|webp)|logo-.*\\.png|favicon\\.ico).*$"
-
+      custom-templates-dir: /templates
     service:
       type: ClusterIP
       portNumber: 4180
