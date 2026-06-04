@@ -48,4 +48,10 @@ spec:
         image:
           reference: {{ .Values.postgres.vector.extensionImage.reference | quote }}
   {{- end }}
+  # TODO(backup): add barmanObjectStore / ObjectStore once a target bucket exists.
+  # Backup is optional for function but needed for PITR on production clusters.
+  # CNPG Barman supports S3, Azure Blob, GCS, and S3-compatible (MinIO via
+  # endpointURL) — pick credentials per cloud (IRSA on EKS, azureCredentials on
+  # Azure, static key for MinIO). See postgres.backup in values.yaml (§5 of
+  # subplan-platform-components) and the CNPG Barman docs.
 {{- end }}
