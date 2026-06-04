@@ -685,14 +685,3 @@ agentgateway:
     limits:
       cpu: 500m
       memory: 512Mi
-
-# DNSEndpoint — creates DNS records via external-dns (--source=crd).
-# Requires externaldns.k8s.io/v1alpha1 CRD and external-dns with
-# annotation-filter giantswarm.io/external-dns=managed.
-# Set hostnames to the public FQDNs that should resolve to the LB target(s).
-dnsEndpoint:
-  enabled: false
-  ttl: 300
-  recordType: A
-  targets: []    # e.g. ["10.x.x.x"] — the LoadBalancer IP
-  hostnames: []  # e.g. ["kagent.cluster.base", "agentgateway.cluster.base"]
