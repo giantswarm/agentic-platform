@@ -4,19 +4,25 @@ orbs:
 
 jobs:
   test-ingress-modes:
+    # cimg/base: CircleCI's convenience image (no custom entrypoint, passwordless
+    # sudo). We install a recent Helm here rather than reuse the lint-chart ct
+    # image — ct v3.0.0-rc.1 bundles Helm ~3.3, which predates OCI dependency
+    # support (GA in Helm 3.8), so `helm dependency build` of the oci:// sub-charts
+    # fails with "no repository definition for oci://…".
     docker:
-      # Bundles helm 3; same image family used by lint-chart in Makefile.gen.app.mk.
-      - image: quay.io/giantswarm/helm-chart-testing:v3.0.0-rc.1
+      - image: cimg/base:current
     steps:
       - checkout
       - run:
-          name: verify ingress mode guards
-          # The ct image bundles helm but not make (alpine); install it so the
-          # verify-modes target (the single source of truth, also run locally)
-          # can drive the guards.
+          name: install helm + make
           command: |
-            command -v make >/dev/null 2>&1 || apk add --no-cache make
-            make verify-modes
+            command -v make >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq make)
+            curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+            helm version
+      - run:
+          name: verify ingress mode guards
+          # verify-modes is the single source of truth, also run locally.
+          command: make verify-modes
 
 workflows:
   test:
