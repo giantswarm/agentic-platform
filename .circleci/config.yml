@@ -11,7 +11,12 @@ jobs:
       - checkout
       - run:
           name: verify ingress mode guards
-          command: make verify-modes
+          # The ct image bundles helm but not make (alpine); install it so the
+          # verify-modes target (the single source of truth, also run locally)
+          # can drive the guards.
+          command: |
+            command -v make >/dev/null 2>&1 || apk add --no-cache make
+            make verify-modes
 
 workflows:
   test:
