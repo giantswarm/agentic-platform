@@ -11,7 +11,9 @@ metadata:
   namespace: {{ $kagentNs }}
   labels:
     {{- include "labels.common" . | nindent 4 }}
-    observability.giantswarm.io/tenant: {{ .Values.kagent.serviceMonitor.tenant | default "giantswarm" }}
+    {{- with .Values.kagent.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   selector:
     matchLabels:

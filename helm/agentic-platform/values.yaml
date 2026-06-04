@@ -397,11 +397,13 @@ kagent:
 
   # ServiceMonitor for controller-runtime Prometheus metrics.
   # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
-  # The tenant label routes metrics to the correct Mimir tenant.
   serviceMonitor:
     enabled: true
     interval: 60s
-    tenant: giantswarm
+    # Extra labels on the ServiceMonitor metadata. The tenant label routes
+    # metrics to the correct Mimir instance in the GS Observability Platform.
+    labels:
+      observability.giantswarm.io/tenant: giantswarm
 
   # OTel — traces and logs to the GS Observability Platform OTLP gateway.
   # X-Scope-OrgID header routes to the correct Loki/Tempo tenant.

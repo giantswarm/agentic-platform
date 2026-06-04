@@ -223,7 +223,10 @@
                     "properties": {
                         "enabled": {"type": "boolean"},
                         "interval": {"type": "string"},
-                        "tenant": {"type": "string", "description": "observability.giantswarm.io/tenant label value for Mimir routing."}
+                        "labels": {
+                            "type": "object",
+                            "description": "Extra labels on the ServiceMonitor. Use observability.giantswarm.io/tenant to route to the correct Mimir instance."
+                        }
                     }
                 },
                 "controllerRoute": {
