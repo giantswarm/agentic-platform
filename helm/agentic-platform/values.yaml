@@ -347,10 +347,30 @@ agentic-platform-mcps:
 #         - { name: cnpg-dsn, mountPath: /etc/cnpg, readOnly: true }
 kagent:
   enabled: false
+  # Pull kagent images from the GS-retagged registry (retagger uses override_repo_name
+  # so the repository paths are flat, not the upstream kagent-dev/kagent/* hierarchy).
+  registry: gsoci.azurecr.io/giantswarm
+  controller:
+    image:
+      repository: kagent-controller
+    agentImage:
+      repository: kagent-app
+    skillsInitImage:
+      repository: kagent-skills-init
+  ui:
+    image:
+      repository: kagent-ui
   # Keep kagent resources in the kagent namespace separate from the umbrella's
   # release namespace. The kagent subchart renders every resource's namespace
   # via its `kagent.namespace` helper, so this override is honored everywhere.
   namespaceOverride: kagent
+
+  # DNSEndpoint resources for external-dns (--source=crd). Set enabled: true
+  # and provide the envoy gateway LB targets per cluster.
+  dnsEndpoint:
+    enabled: false
+    ttl: 300
+    targets: []
 
   # --- Security contexts (required by Kyverno restricted-PSS on GS clusters) ---
   podSecurityContext:

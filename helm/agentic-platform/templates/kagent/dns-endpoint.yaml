@@ -1,0 +1,45 @@
+{{- if and .Values.kagent.enabled .Values.kagent.dnsEndpoint.enabled }}
+{{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $targets := .Values.kagent.dnsEndpoint.targets }}
+{{- $ttl := .Values.kagent.dnsEndpoint.ttl | default 300 }}
+{{- if and .Values.kagent.uiRoute.enabled .Values.kagent.uiRoute.hostname }}
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: {{ include "name" . }}-kagent-ui
+  namespace: {{ $kagentNs }}
+  labels:
+    giantswarm.io/external-dns: managed
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpoints:
+    - dnsName: {{ .Values.kagent.uiRoute.hostname | quote }}
+      recordTTL: {{ $ttl }}
+      recordType: A
+      targets:
+        {{- range $targets }}
+        - {{ . | quote }}
+        {{- end }}
+{{- end }}
+{{- if and .Values.kagent.controllerRoute.enabled .Values.kagent.controllerRoute.hostname }}
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: {{ include "name" . }}-kagent-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    giantswarm.io/external-dns: managed
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpoints:
+    - dnsName: {{ .Values.kagent.controllerRoute.hostname | quote }}
+      recordTTL: {{ $ttl }}
+      recordType: A
+      targets:
+        {{- range $targets }}
+        - {{ . | quote }}
+        {{- end }}
+{{- end }}
+{{- end }}

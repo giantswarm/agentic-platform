@@ -61,6 +61,6 @@ dependencies:
   # When `postgres.enabled` is also true, configure the CNPG DSN wiring under
   # `kagent.database.postgres` — see values.yaml for the commented-out example.
   - name: kagent
-    version: 0.9.4
+    version: 0.9.5
     repository: oci://ghcr.io/kagent-dev/kagent/helm
     condition: kagent.enabled
