@@ -99,6 +99,12 @@ spec:
         - ports:
             - port: "4317"
               protocol: TCP
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
 ---
 # CNPG cluster policies: inter-instance egress for streaming replication,
 # and ingress from the kagent controller.
@@ -135,6 +141,99 @@ spec:
             - port: "5432"
               protocol: TCP
 
+{{- if index .Values.kagent "oauth2-proxy" "enabled" }}
+---
+# Allow envoy-gateway to reach oauth2-proxy (public gateway → UI route).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-oauth2-proxy-ingress
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: oauth2-proxy
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: envoy
+            io.kubernetes.pod.namespace: envoy-gateway-system
+      toPorts:
+        - ports:
+            - port: "4180"
+              protocol: TCP
+---
+# Allow oauth2-proxy: DNS, Dex OIDC (world:443), kagent UI backend.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-oauth2-proxy-egress
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: oauth2-proxy
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: coredns
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: k8s-dns-node-cache
+      toPorts:
+        - ports:
+            - port: "1053"
+              protocol: UDP
+            - port: "1053"
+              protocol: TCP
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: kagent
+            app.kubernetes.io/component: ui
+            io.kubernetes.pod.namespace: {{ $kagentNs }}
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+# Allow oauth2-proxy to reach the kagent UI.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-kagent-ui-ingress
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: kagent
+      app.kubernetes.io/component: ui
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: oauth2-proxy
+            io.kubernetes.pod.namespace: {{ $kagentNs }}
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+{{- end }}
 {{- else if eq .Values.networkPolicy.flavor "kubernetes" }}
 ---
 apiVersion: networking.k8s.io/v1
