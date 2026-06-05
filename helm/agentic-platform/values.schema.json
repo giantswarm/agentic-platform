@@ -226,6 +226,13 @@
                     },
                     "description": "cilium flavor only \u2014 vanilla NetworkPolicy has no FQDN equivalent."
                 },
+                "musterInClusterMcpPorts": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    },
+                    "description": "Extra in-cluster egress ports for muster \u2192 MCP backends on a ClusterIP whose pod listens on a non-80/443 port (cilium flavor only). Renders a supplementary CiliumNetworkPolicy; [] disables it."
+                },
                 "kubernetes": {
                     "type": "object",
                     "additionalProperties": false,

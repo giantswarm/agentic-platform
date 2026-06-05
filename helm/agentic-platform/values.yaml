@@ -92,9 +92,10 @@ networkPolicy:
   # cilium     — CiliumNetworkPolicy (entity selectors + FQDN egress)
   # kubernetes — vanilla networking.k8s.io/v1 NetworkPolicy
   #
-  # Only governs the agentgateway policies owned by this chart. Muster's
-  # ciliumNetworkPolicy is independent — set muster.ciliumNetworkPolicy.enabled
-  # to false when running the kubernetes flavor.
+  # Governs the agentgateway policies owned by this chart, plus the supplementary
+  # muster MCP-egress policy below. Muster's own ciliumNetworkPolicy is otherwise
+  # independent — set muster.ciliumNetworkPolicy.enabled to false when running
+  # the kubernetes flavor.
   flavor: cilium
   # Extra CIDR egress for in-cluster Gateway VIPs the entity selectors miss.
   # Example:
@@ -106,6 +107,15 @@ networkPolicy:
   #   additionalEgressFQDNs:
   #     - matchName: dex.example.gigantic.io
   additionalEgressFQDNs: []
+  # Extra in-cluster egress ports for muster -> MCP backends reached via a
+  # ClusterIP whose pod listens on a non-80/443 port (e.g. the in-cluster
+  # pro / runbooks MCP servers on 8080). Muster's own CNP permits cluster-entity
+  # egress only on 80/443, so those connections time out; this renders a
+  # supplementary CiliumNetworkPolicy that widens muster's egress to these ports
+  # (Cilium policies are additive — no sub-chart fork). cilium flavor only;
+  # [] disables the supplementary policy.
+  musterInClusterMcpPorts:
+    - 8080
   # CIDR replacements for the kubernetes flavor. Vanilla NetworkPolicy has no
   # entity selectors.
   kubernetes:
