@@ -143,7 +143,7 @@ spec:
 
 {{- if index .Values.kagent "oauth2-proxy" "enabled" }}
 ---
-# Allow envoy-gateway to reach oauth2-proxy (public gateway → UI route).
+# Ingress to oauth2-proxy: envoy (proxy port) + Prometheus (metrics port).
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -163,6 +163,12 @@ spec:
       toPorts:
         - ports:
             - port: "4180"
+              protocol: TCP
+    - fromEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "44180"
               protocol: TCP
 ---
 # Allow oauth2-proxy: DNS, Dex OIDC (world:443), kagent UI backend.
@@ -204,8 +210,14 @@ spec:
         - ports:
             - port: "8080"
               protocol: TCP
+    # world: public Dex hostname (e.g. dex.example.gigantic.io) when it
+    # resolves to a public IP. cluster: same hostname when it resolves to an
+    # internal LB VIP (private-range IP — Cilium classifies those as cluster,
+    # not world). Both are needed to cover Azure (internal LB) and AWS (public
+    # NLB) without per-cluster CIDR rules.
     - toEntities:
         - world
+        - cluster
       toPorts:
         - ports:
             - port: "443"
