@@ -367,9 +367,13 @@ kagent:
 
   controller:
     auth:
-      # trusted-proxy: reads Authorization: Bearer JWT, decodes claims without
-      # signature verification. oauth2-proxy (or agentgateway) must validate the
-      # JWT before forwarding. Use "unsecure" for local dev without a front proxy.
+      # Default on GS clusters. trusted-proxy reads Authorization: Bearer JWT and
+      # decodes claims WITHOUT signature verification — it relies on a front proxy
+      # having already validated the JWT. That boundary is agentgateway (which
+      # validates the JWT) for the controllerRoute path, and the netpols restrict
+      # controller ingress to agentgateway + the release/kagent namespaces, so the
+      # controller is never directly reachable. Use "unsecure" only for local dev
+      # without any front proxy.
       mode: trusted-proxy
       userIdClaim: sub
     # Expose controller-runtime Prometheus metrics on :8080 (HTTP, no TLS).
@@ -440,7 +444,10 @@ kagent:
   #     --from-literal=client-secret=<dex-client-secret> \
   #     --from-literal=cookie-secret=$(openssl rand -base64 32)
   oauth2-proxy:
-    enabled: true
+    # Off by default: oauth2-proxy crash-loops without a cookie secret and Dex
+    # client credentials. Enable together with uiRoute and supply the Secret
+    # documented above before flipping this to true.
+    enabled: false
     # Co-locate with kagent resources so the templates ConfigMap (created in
     # kagent namespace by the kagent chart) is reachable.
     namespaceOverride: kagent
@@ -593,7 +600,11 @@ kagent:
   # oauth2-proxy (when enabled) or the UI service directly (dev only).
   # Supply oauth2-proxy credentials and set uiRoute.enabled: true together.
   uiRoute:
-    enabled: true
+    # Off by default. An HTTPRoute with an empty hostname on the shared public
+    # Gateway matches ALL traffic to that Gateway, so a hostname is required
+    # (enforced in templates/kagent/validate.yaml). Enable together with
+    # oauth2-proxy.
+    enabled: false
     hostname: ""  # Required: kagent.<cluster>.<base-domain>
     parentRef:
       name: giantswarm-default

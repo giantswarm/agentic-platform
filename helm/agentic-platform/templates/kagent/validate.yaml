@@ -1,0 +1,28 @@
+{{- /*
+Render-time guards for the kagent / postgres wiring. These fail `helm template`
+(and therefore CI lint + install) early with an actionable message instead of
+producing a silently-broken release.
+*/ -}}
+{{- if .Values.kagent.enabled }}
+  {{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+
+  {{- /* An HTTPRoute with no hostname on the shared public Gateway matches ALL
+         traffic to that Gateway and forwards it to the kagent UI/oauth2-proxy. */ -}}
+  {{- if and .Values.kagent.uiRoute.enabled (not .Values.kagent.uiRoute.hostname) }}
+    {{- fail "kagent.uiRoute.enabled is true but kagent.uiRoute.hostname is empty. An HTTPRoute with no hostname on the shared public Gateway would capture all traffic to that Gateway. Set kagent.uiRoute.hostname (e.g. kagent.<cluster>.<base-domain>)." }}
+  {{- end }}
+
+  {{- /* Same footgun on the agentgateway path. */ -}}
+  {{- if and .Values.kagent.controllerRoute.enabled (not .Values.kagent.controllerRoute.hostname) }}
+    {{- fail "kagent.controllerRoute.enabled is true but kagent.controllerRoute.hostname is empty. Set kagent.controllerRoute.hostname to the agentgateway Gateway hostname (e.g. agentgateway.<cluster>.<base-domain>)." }}
+  {{- end }}
+
+  {{- /* The CNPG-generated DSN Secret lands in the Cluster's namespace; kagent
+         mounts it by name, so the two namespaces must match. */ -}}
+  {{- if .Values.postgres.enabled }}
+    {{- $pgNs := .Values.postgres.namespace | default .Release.Namespace }}
+    {{- if ne $pgNs $kagentNs }}
+      {{- fail (printf "postgres.namespace (%s) must equal kagent.namespaceOverride (%s) so the CNPG-generated DSN Secret is co-located with the kagent controller that mounts it." $pgNs $kagentNs) }}
+    {{- end }}
+  {{- end }}
+{{- end }}
