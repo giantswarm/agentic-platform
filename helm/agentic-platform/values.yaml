@@ -365,13 +365,6 @@ kagent:
   # via its `kagent.namespace` helper, so this override is honored everywhere.
   namespaceOverride: kagent
 
-  # DNSEndpoint resources for external-dns (--source=crd). Set enabled: true
-  # and provide the envoy gateway LB targets per cluster.
-  dnsEndpoint:
-    enabled: false
-    ttl: 300
-    targets: []
-
   # --- Security contexts (required by Kyverno restricted-PSS on GS clusters) ---
   podSecurityContext:
     runAsNonRoot: true
