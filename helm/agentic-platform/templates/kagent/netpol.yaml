@@ -210,17 +210,21 @@ spec:
         - ports:
             - port: "8080"
               protocol: TCP
-    # world: public Dex hostname (e.g. dex.example.gigantic.io) when it
-    # resolves to a public IP. cluster: same hostname when it resolves to an
-    # internal LB VIP (private-range IP — Cilium classifies those as cluster,
-    # not world). Both are needed to cover Azure (internal LB) and AWS (public
-    # NLB) without per-cluster CIDR rules.
+    # world: public Dex hostname resolves to a public IP (e.g. AWS public NLB).
+    # cluster: same hostname resolves to a private-range LB VIP (e.g. Azure
+    # internal LB at 10.x) — Cilium classifies private IPs as cluster, not world.
+    # Port 443 covers world (direct TLS) and cluster (LB VIP before DNAT).
+    # Port 10443 covers cluster after Azure LB DNAT: kube-proxy rewrites
+    # LB:443 → nodeport → Envoy pod:10443 (Envoy Gateway uses listener+10000
+    # internally to avoid root-privilege ports), so Cilium intercepts port 10443.
     - toEntities:
         - world
         - cluster
       toPorts:
         - ports:
             - port: "443"
+              protocol: TCP
+            - port: "10443"
               protocol: TCP
 ---
 # Allow oauth2-proxy to reach the kagent UI.
