@@ -357,27 +357,6 @@ kagent:
       repository: kagent-app
     skillsInitImage:
       repository: kagent-skills-init
-  ui:
-    image:
-      repository: kagent-ui
-  # Keep kagent resources in the kagent namespace separate from the umbrella's
-  # release namespace. The kagent subchart renders every resource's namespace
-  # via its `kagent.namespace` helper, so this override is honored everywhere.
-  namespaceOverride: kagent
-
-  # --- Security contexts (required by Kyverno restricted-PSS on GS clusters) ---
-  podSecurityContext:
-    runAsNonRoot: true
-    seccompProfile:
-      type: RuntimeDefault
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop: [ALL]
-    seccompProfile:
-      type: RuntimeDefault
-
-  controller:
     auth:
       # Default on GS clusters. trusted-proxy reads Authorization: Bearer JWT and
       # decodes claims WITHOUT signature verification — it relies on a front proxy
@@ -405,6 +384,27 @@ kagent:
         value: "false"
       - name: OTEL_EXPORTER_OTLP_HEADERS
         value: "X-Scope-OrgID=giantswarm"
+
+  ui:
+    image:
+      repository: kagent-ui
+
+  # Keep kagent resources in the kagent namespace separate from the umbrella's
+  # release namespace. The kagent subchart renders every resource's namespace
+  # via its `kagent.namespace` helper, so this override is honored everywhere.
+  namespaceOverride: kagent
+
+  # --- Security contexts (required by Kyverno restricted-PSS on GS clusters) ---
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
 
   # Model provider — Anthropic by default.
   # Set kagent.providers.anthropic.apiKey in the per-cluster secret values
@@ -501,6 +501,7 @@ kagent:
       scope: "openid profile email groups"
       cookie-secure: true
       cookie-samesite: lax
+      reverse-proxy: true
       skip-jwt-bearer-tokens: true
       skip-auth-route: "^/(health|login)$"
       skip-auth-regex: "^/(login|_next/static|_next/image|login-bg\\.(jpg|png|webp)|logo-.*\\.png|favicon\\.ico).*$"
