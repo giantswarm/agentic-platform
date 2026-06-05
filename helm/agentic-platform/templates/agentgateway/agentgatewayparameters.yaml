@@ -1,4 +1,4 @@
-{{- if and .Values.gateway.enabled .Values.gateway.parameters.enabled }}
+{{- if and (include "agentic-platform.ingress.agentgateway" .) .Values.gateway.parameters.enabled }}
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayParameters
 metadata:

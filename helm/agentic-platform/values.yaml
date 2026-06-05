@@ -2,10 +2,44 @@ global:
   registry: gsoci.azurecr.io
   imagePullSecrets: []
 
-# Data-plane Gateway. Reconciled by the agentgateway controller. Muster's
-# public HTTPRoute attaches to a separate Gateway (see muster.gatewayAPI).
+# === Ingress topology ===
+# mode selects the whole request topology. What each mode renders/consumes:
+#   muster-direct        client -> muster. Only ingress.parentRefs/hostnames used.
+#   agentgateway-muster  client -> agentgateway /mcp -> muster. Adds agentgateway
+#                        controller (agentgateway.enabled), data-plane Gateway
+#                        (gateway.*), /mcp route, optional ingress.backendTrafficPolicy.
+#                        Requires agentic-platform-mcps.agentgateway.viaMuster: true.
+#   agentgateway-direct  client -> agentgateway /mcp -> servers. As above plus
+#                        optional gateway.jwksEgress; viaMuster: false.
+#                        NOT YET SUPPORTED — install blocked (needs DCR-capable
+#                        IdP, RFC 7591/8707).
+ingress:
+  mode: muster-direct          # muster-direct | agentgateway-muster | agentgateway-direct
+  parentRefs: []               # ALL modes: public Gateway, shared by both rendered routes
+  hostnames: []                # ALL modes: muster public hostname(s)
+  httpRoute:                   # shared base, applied to both rendered HTTPRoutes
+    annotations: {}
+    labels: {}
+    # Optional per-route overrides, merged on top of the shared maps above
+    # (per-route keys win on collision). `muster` = the muster `/` route;
+    # `mcp` = the agentgateway `/mcp` route. Use for diverging cert-manager
+    # issuers, Envoy route policies, etc., without forking the shared block.
+    muster:
+      annotations: {}
+      labels: {}
+    mcp:
+      annotations: {}
+      labels: {}
+  backendTrafficPolicy:        # agentgateway-* modes only; preserves WWW-Authenticate
+    enabled: false
+    timeout: "0s"
+    annotations: {}
+    labels: {}
+
+# Data-plane infrastructure — agentgateway-* modes only. Reconciled by the
+# agentgateway controller. Both public routes (muster's `/` and the agentgateway
+# `/mcp`) are owned by the umbrella and configured via the `ingress.*` block above.
 gateway:
-  enabled: true
   name: agentgateway
   gatewayClassName: agentgateway
   listeners:
@@ -18,36 +52,12 @@ gateway:
   # Allow the data-plane to reach the JWKS endpoint for JWT validation
   # (oauthMode: validate). Required when the JWKS service runs on a port not
   # covered by the default cluster egress rules (80/443) — typically Dex on 5556.
-  jwksEgress:
+  jwksEgress:                  # agentgateway-direct only
     enabled: false
     namespace: giantswarm
     port: 5556
     # Optional extra pod label selectors to narrow the target beyond namespace.
     podSelector: {}
-
-  # Path-specific HTTPRoute intercepting /mcp on the muster public hostname.
-  # Routes <muster-hostname>/mcp to the agentgateway Service so both topologies
-  # (with and without agentgateway) share a single client-facing URL.
-  # Gateway API path-specificity (/mcp beats /) ensures /mcp goes to agentgateway
-  # while all other paths (OAuth, well-known, DCR) continue to muster directly.
-  # When parentRefs is empty this HTTPRoute is not rendered and /mcp is served
-  # by the muster catch-all route.
-  httpRoute:
-    parentRefs: []
-    hostnames: []
-    annotations: {}
-    labels: {}
-  # Route-scoped BackendTrafficPolicy on the ingress HTTPRoute. A cluster-wide
-  # BackendTrafficPolicy (gateway-giantswarm-default-error-pages) rewrites all
-  # 4xx/5xx to an HTML error page and strips upstream headers including
-  # WWW-Authenticate. A route-scoped policy takes precedence and prevents this,
-  # preserving the MCP OAuth challenge so clients can discover the authorization
-  # server. Set enabled: true on any cluster that has the error-pages override.
-  backendTrafficPolicy:
-    enabled: false
-    timeout: "0s"
-    annotations: {}
-    labels: {}
   parameters:
     enabled: true
     name: ""
@@ -124,6 +134,13 @@ extraObjects: []
 muster:
   image:
     registry: gsoci.azurecr.io
+  # Pin muster's Service name as the single source of truth for it. The umbrella
+  # owns muster's public route and its backendRef reads this exact key (see the
+  # "agentic-platform.musterFullname" helper); agentic-platform-mcps.musterUrl
+  # references the same name. The muster sub-chart uses fullnameOverride verbatim
+  # for its Service, so all three stay in lockstep regardless of release name or
+  # any future change to muster's naming algorithm — no silent backendRef drift.
+  fullnameOverride: agentic-platform-muster
   # muster's CRDs (MCPServer / Workflow) now ship via the companion
   # agentic-platform-crds chart, not the muster sub-chart. The currently
   # pinned muster (0.1.197) still defaults `crds.install: true`, so we MUST
@@ -150,25 +167,10 @@ muster:
       allowClusterIngress: true
   podAnnotations:
     application.giantswarm.io/team: bumblebee
+  # Disabled: the umbrella owns muster's public route now (see ingress.*). Gates
+  # only muster's HTTPRoute + its BackendTrafficPolicy; Service/Deployment untouched.
   gatewayAPI:
-    enabled: true
-    httpRoute:
-      enabled: true
-      # Attach to the cluster's public Gateway (not the umbrella's data-plane
-      # Gateway). Both fields are required; the muster sub-chart fails install
-      # otherwise. Example:
-      #   muster:
-      #     gatewayAPI:
-      #       httpRoute:
-      #         parentRefs:
-      #           - name: giantswarm-default
-      #             namespace: envoy-gateway-system
-      #             group: gateway.networking.k8s.io
-      #             kind: Gateway
-      #         hostnames:
-      #           - muster.<cluster>.<base-domain>
-      parentRefs: []
-      hostnames: []
+    enabled: false
   # OAuth resource-server protection is ON by default; the bundled Valkey
   # (see `valkey:` below) provides session storage. Operators must supply
   # the per-cluster OIDC fields below — muster's template-time fail-guards
@@ -297,13 +299,13 @@ agentic-platform-mcps:
     # in front of muster as the observability choke point for every MCP call
     # (protocol=mcp, gen_ai.tool.name, session id, latency logged via OTLP).
     enabled: true
-    # viaMuster: true  — routes all MCP traffic through muster instead of having
-    # agentgateway connect to each server directly. muster keeps all per-server
-    # connection logic, OAuth, and RFC 8693 token exchange. This is the current
-    # topology because a DCR-capable IdP (needed for the direct topology) is not
-    # yet available. When Zitadel or similar ships RFC 7591 + RFC 8707, this can
-    # be flipped to false and muster's aggregator role retired.
-    viaMuster: true
+    # viaMuster — when true, routes all MCP traffic through muster instead of
+    # having agentgateway connect to each server directly. muster keeps all
+    # per-server connection logic, OAuth, and RFC 8693 token exchange. The
+    # direct topology (false) needs a DCR-capable IdP, which is not yet
+    # available; when Zitadel or similar ships RFC 7591 + RFC 8707, muster's
+    # aggregator role can be retired.
+    viaMuster: false           # must match ingress.mode (guard-enforced): agentgateway-muster=>true, agentgateway-direct=>false
     # musterUrl — in-cluster address of the muster Service bundled in this
     # umbrella. The muster sub-chart always names its Service "<release>-muster"
     # and the standard GS deploy uses release=agentic-platform in the
@@ -321,6 +323,8 @@ agentic-platform-mcps:
   mcpServers: []
 
 agentgateway:
+  # Controller dependency install switch. Must be true for agentgateway-* ingress modes (validated against ingress.mode).
+  enabled: false
   image:
     registry: gsoci.azurecr.io
     tag: v1.2.1

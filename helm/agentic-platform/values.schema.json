@@ -28,9 +28,6 @@
             ],
             "additionalProperties": false,
             "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
                 "name": {
                     "type": "string",
                     "minLength": 1
@@ -90,27 +87,88 @@
                         }
                     }
                 },
+                "jwksEgress": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "integer"
+                        },
+                        "podSelector": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "ingress": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "mode"
+            ],
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "muster-direct",
+                        "agentgateway-muster",
+                        "agentgateway-direct"
+                    ]
+                },
+                "parentRefs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "hostnames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "httpRoute": {
                     "type": "object",
                     "additionalProperties": false,
                     "properties": {
-                        "parentRefs": {
-                            "type": "array",
-                            "items": {
-                                "type": "object"
-                            }
-                        },
-                        "hostnames": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
                         "annotations": {
                             "type": "object"
                         },
                         "labels": {
                             "type": "object"
+                        },
+                        "muster": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Per-route overrides for the muster `/` route, merged over the shared annotations/labels.",
+                            "properties": {
+                                "annotations": {
+                                    "type": "object"
+                                },
+                                "labels": {
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "mcp": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Per-route overrides for the agentgateway `/mcp` route, merged over the shared annotations/labels.",
+                            "properties": {
+                                "annotations": {
+                                    "type": "object"
+                                },
+                                "labels": {
+                                    "type": "object"
+                                }
+                            }
                         }
                     }
                 },
@@ -128,24 +186,6 @@
                             "type": "object"
                         },
                         "labels": {
-                            "type": "object"
-                        }
-                    }
-                },
-                "jwksEgress": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
-                        },
-                        "namespace": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "integer"
-                        },
-                        "podSelector": {
                             "type": "object"
                         }
                     }

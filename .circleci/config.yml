@@ -2,7 +2,39 @@ version: 2.1
 orbs:
   architect: giantswarm/architect@6.10.0
 
+jobs:
+  test-ingress-modes:
+    # cimg/base: CircleCI's convenience image (no custom entrypoint, passwordless
+    # sudo). We install a recent Helm here rather than reuse the lint-chart ct
+    # image — ct v3.0.0-rc.1 bundles Helm ~3.3, which predates OCI dependency
+    # support (GA in Helm 3.8), so `helm dependency build` of the oci:// sub-charts
+    # fails with "no repository definition for oci://…".
+    docker:
+      - image: cimg/base:current
+    steps:
+      - checkout
+      - run:
+          name: install helm + make
+          command: |
+            command -v make >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq make)
+            # Pinned (not `main`) so a mid-queue Helm minor can't change behaviour;
+            # 3.17.x is well past OCI dependency GA (3.8). Avoids the curl|bash pattern.
+            curl -fsSL https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz | tar xz -C /tmp
+            sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
+            helm version
+      - run:
+          name: verify ingress mode guards
+          # verify-modes is the single source of truth, also run locally.
+          command: make verify-modes
+
 workflows:
+  test:
+    jobs:
+      - test-ingress-modes:
+          # Run on every branch push (PR-time); tag-only release flow is separate.
+          filters:
+            tags:
+              ignore: /.*/
   package-and-push-chart-on-tag:
     jobs:
     - architect/push-to-app-catalog:
