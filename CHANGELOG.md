@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- In-cluster MCP backends that listen on a non-80/443 port (e.g. the bundled `pro` / `runbooks` MCP servers on `8080`, reached via a ClusterIP) were unreachable from muster — its sub-chart CNP permits cluster-entity egress only on 80/443, so those connections timed out and the corresponding `MCPServer`s went `Failed`. The umbrella now renders a supplementary `CiliumNetworkPolicy` (`<muster>-mcp-egress`) that widens muster's egress to `networkPolicy.musterInClusterMcpPorts` (default `[8080]`; cilium flavor only; Cilium policies are additive, so no sub-chart fork). Set to `[]` to disable.
 - **Muster Service name is now pinned** via `muster.fullnameOverride: agentic-platform-muster`, read directly by the umbrella's `agentic-platform.musterFullname` helper instead of re-deriving the muster sub-chart's release-name algorithm. The route `backendRef`, the `BackendTrafficPolicy` target, and `agentic-platform-mcps.musterUrl` now reference one source of truth that stays in lockstep with the sub-chart's Service regardless of release name or any future muster naming change. A blank override fails the render loudly rather than silently pointing the route at a non-existent Service (503).
 
 ### Changed
