@@ -25,6 +25,7 @@ dependencies:
   - name: agentgateway
     version: v1.2.1
     repository: oci://cr.agentgateway.dev/charts
+    condition: agentgateway.enabled
   # CRDs (agentgateway: AgentgatewayParameters / Policy / Backend; muster:
   # MCPServer / Workflow) now ship in the companion agentic-platform-crds
   # chart, NOT here. This chart renders the CRs that consume them, so the

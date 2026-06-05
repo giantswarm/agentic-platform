@@ -101,11 +101,16 @@ helm install agentic-platform \
 | Key | Default | Purpose |
 |---|---|---|
 | `global.registry` | `gsoci.azurecr.io` | Default container image registry. |
-| `gateway.name` | `agentgateway` | `Gateway` resource name. |
-| `gateway.gatewayClassName` | `agentgateway` | The `GatewayClass` the data plane attaches to. |
-| `gateway.listeners` | `[{name: http, port: 8080, protocol: HTTP}]` | Listener spec passed verbatim. |
-| `gateway.parameters.serviceType` | `ClusterIP` | Data-plane Service type (overrides controller-hardcoded LoadBalancer via `AgentgatewayParameters.spec.service`). |
-| `gateway.parameters.{pod,container}SecurityContext` | restricted-PSS compatible | Strategic-merge overlay on the data-plane Deployment. |
+| `ingress.mode` | `muster-direct` | Request topology selector. `muster-direct` (client → muster, no agentgateway data plane), `agentgateway-muster` (client → agentgateway `/mcp` → muster), or `agentgateway-direct` (client → agentgateway `/mcp` → servers; **not yet supported**). See [Ingress topology](#ingress-topology). |
+| `ingress.parentRefs` | `[]` | **All modes (required).** The public `Gateway`(s) both rendered routes attach to (typically `envoy-gateway-system/giantswarm-default`). Render fails if empty — the muster `/` route always attaches to it. |
+| `ingress.hostnames` | `[]` | **All modes.** muster's public hostname(s); must match the OAuth callback URL. |
+| `ingress.backendTrafficPolicy.enabled` | `false` | Render route-scoped `BackendTrafficPolicy` objects (preserve `WWW-Authenticate`, set `requestTimeout: 0s`): one over muster's `/` route in **all** modes, plus one over the agentgateway `/mcp` route in `agentgateway-*` modes. |
+| `agentgateway.enabled` | `false` | Install the agentgateway controller dependency. Must be `true` in `agentgateway-*` modes. |
+| `gateway.name` | `agentgateway` | `agentgateway-*` modes only. Data-plane `Gateway` resource name. |
+| `gateway.gatewayClassName` | `agentgateway` | `agentgateway-*` modes only. The `GatewayClass` the data plane attaches to. |
+| `gateway.listeners` | `[{name: http, port: 8080, protocol: HTTP}]` | `agentgateway-*` modes only. Listener spec passed verbatim. |
+| `gateway.parameters.serviceType` | `ClusterIP` | `agentgateway-*` modes only. Data-plane Service type (overrides controller-hardcoded LoadBalancer via `AgentgatewayParameters.spec.service`). |
+| `gateway.parameters.{pod,container}SecurityContext` | restricted-PSS compatible | `agentgateway-*` modes only. Strategic-merge overlay on the data-plane Deployment. |
 | `networkPolicy.enabled` | `true` | Master switch for the umbrella's network policies. |
 | `networkPolicy.flavor` | `cilium` | `cilium` → CiliumNetworkPolicy; `kubernetes` → vanilla NetworkPolicy (best-effort, no entity selectors / FQDN egress). |
 | `extraObjects` | `[]` | Arbitrary manifests rendered through `tpl` alongside the chart. |
@@ -129,7 +134,10 @@ Of the resources the umbrella manages, **only `AgentgatewayParameters` is vendor
 | `Gateway` (data-plane spawn trigger) | `gateway.networking.k8s.io/v1` (standard) | this umbrella (`templates/agentgateway/gateway.yaml`) | Coupled to agentgateway only via `gatewayClassName: agentgateway`. One per data plane. |
 | `AgentgatewayParameters` | `agentgateway.dev/v1alpha1` (**vendor-specific**) | this umbrella (`templates/agentgateway/agentgatewayparameters.yaml`) | The only agentgateway-vendor CR the umbrella ships. Strategic-merge overlay over the controller-rendered Deployment + Service; forces Service type ClusterIP by default. |
 | `CiliumNetworkPolicy` / `NetworkPolicy` (×4 — controller + data-plane, per flavor) | `cilium.io/v2` or `networking.k8s.io/v1` | this umbrella (`templates/agentgateway/networkpolicy-*.yaml`) | Two pods covered: controller and data-plane. Upstream agentgateway ships no policies. |
-| `HTTPRoute` (per app — muster, future tools) | `gateway.networking.k8s.io/v1` (standard) | each app's sub-chart | Attaches to the cluster's public Gateway (typically `envoy-gateway-system/giantswarm-default`), NOT to the umbrella's data-plane Gateway. |
+| `HTTPRoute` (muster public `/` route) | `gateway.networking.k8s.io/v1` (standard) | this umbrella (`templates/ingress/muster-httproute.yaml`) | Always rendered. Attaches to the public Gateway from `ingress.parentRefs` / `ingress.hostnames` (typically `envoy-gateway-system/giantswarm-default`), NOT to the umbrella's data-plane Gateway. |
+| `HTTPRoute` (agentgateway `/mcp` route) | `gateway.networking.k8s.io/v1` (standard) | this umbrella (`templates/agentgateway/httproute.yaml`) | `agentgateway-*` modes only. Reads the same `ingress.parentRefs` / `ingress.hostnames`; the more-specific `/mcp` path steals MCP traffic while OAuth / `.well-known` / DCR stay on muster's `/` route. |
+| `BackendTrafficPolicy` (muster `/` route) | `gateway.envoyproxy.io/v1alpha1` (standard Envoy Gateway) | this umbrella (`templates/ingress/muster-backendtrafficpolicy.yaml`) | All modes, gated on `ingress.backendTrafficPolicy.enabled`. Route-scoped over muster's `/` route to preserve muster's `401 … WWW-Authenticate` challenge against the cluster-wide error-pages policy — critical in `muster-direct`, where muster serves `/mcp` directly. |
+| `BackendTrafficPolicy` (agentgateway `/mcp` route) | `gateway.envoyproxy.io/v1alpha1` (standard Envoy Gateway) | this umbrella (`templates/agentgateway/backendtrafficpolicy.yaml`) | `agentgateway-*` modes only, gated on `ingress.backendTrafficPolicy.enabled`. Route-scoped over the `/mcp` route to preserve `WWW-Authenticate` and set `requestTimeout: 0s`. |
 | `Gateway` (public routing endpoint) | `gateway.networking.k8s.io/v1` (standard) | platform team | `envoy-gateway-system/giantswarm-default` — not owned by this chart. |
 
 ### OAuth secrets
@@ -211,28 +219,58 @@ agentic-platform-mcps:
 
 The `mcps.enabled` toggle deliberately lives in its **own** top-level block rather than under `agentic-platform-mcps.enabled`: the sub-chart's `values.schema.json` is strict (`additionalProperties: false`) and rejects an `enabled` key. Everything under `agentic-platform-mcps.*` is passed through to the sub-chart verbatim — see its [values reference](https://github.com/giantswarm/agentic-platform-mcps) for `defaults`, `identityProviders`, per-entry `auth`, and the `muster` / `agentgateway` rendering toggles. Even when enabled, the chart renders nothing until `mcpServers` is populated.
 
-### Public HTTPRoute (required for OAuth)
+### Ingress topology
 
 > For the end-to-end authentication story — the request path, OAuth discovery,
 > `forward` vs `exchange` token handling, and edge JWT validation / JWKS — see
 > [docs/authentication.md](./docs/authentication.md).
 
-The umbrella renders a `Gateway` for the **data plane** only — that Gateway is not exposed publicly and is not the right parent for muster's HTTPRoute. Muster's HTTPRoute must attach to the cluster's public Gateway (typically envoy-gateway-system) with hostnames that match the OAuth callback URL from `muster.oauth.mcpClient.publicUrl`.
+The request topology is selected by a single declared selector, `ingress.mode`, with three values:
 
-The muster sub-chart's fail-guard rejects install until both `parentRefs` and `hostnames` are set:
+| `ingress.mode` | Path | Renders |
+|---|---|---|
+| `muster-direct` (default) | client → muster `/` | muster public `/` route only — **no** agentgateway controller, **no** data-plane `Gateway`, **no** data-plane NetworkPolicies. |
+| `agentgateway-muster` | client → agentgateway `/mcp` → muster; everything else → muster | the above **+** agentgateway controller dependency, data-plane `Gateway`, `AgentgatewayParameters`, data-plane NetworkPolicies, `/mcp` `HTTPRoute`, and the optional route-scoped `BackendTrafficPolicy`. |
+| `agentgateway-direct` | client → agentgateway `/mcp` → servers | same as `agentgateway-muster`, plus the optional `gateway.jwksEgress` rule. **Not yet supported — install is blocked** (needs a DCR-capable IdP, RFC 7591/8707). |
+
+The mechanism is Gateway-API path-specificity. The umbrella **always** renders muster's public `/` catch-all route (`templates/ingress/muster-httproute.yaml`). In the `agentgateway-*` modes it additionally renders a more-specific `/mcp` route that steals MCP traffic into agentgateway, while OAuth / `.well-known` / DCR stay on muster's `/` route.
+
+Both rendered routes attach to the public Gateway and use the muster hostname(s). `parentRefs` and `hostnames` are now set **once** under `ingress.*` and shared by both routes — they must match the OAuth callback URL from `muster.oauth.mcpClient.publicUrl`. The umbrella's `ingress.parentRefs` guard rejects install in **every** mode (including `muster-direct`) until it is set — the muster `/` route always needs a Gateway to attach to. In `muster-direct` mode neither the agentgateway controller nor any data-plane object is installed.
 
 ```yaml
-muster:
-  gatewayAPI:
-    enabled: true
-    httpRoute:
-      parentRefs:
-        - name: giantswarm-default
-          namespace: envoy-gateway-system
-          group: gateway.networking.k8s.io
-          kind: Gateway
-      hostnames:
-        - muster.<cluster>.<base-domain>
+ingress:
+  mode: muster-direct          # muster-direct | agentgateway-muster | agentgateway-direct
+  parentRefs: []               # ALL modes (required): the public Gateway both rendered routes attach to
+  hostnames: []                # ALL modes: muster public hostname(s)
+  httpRoute:                   # shared base, applied to both routes
+    annotations: {}
+    labels: {}
+    # Optional per-route overrides, merged over the shared maps above
+    # (per-route keys win). `muster` = the `/` route; `mcp` = the `/mcp` route.
+    muster: {}                 # { annotations: {}, labels: {} }
+    mcp: {}                    # { annotations: {}, labels: {} }
+  backendTrafficPolicy:        # agentgateway-* modes only
+    enabled: false
+    timeout: "0s"
+    annotations: {}
+    labels: {}
+```
+
+In an `agentgateway-*` mode, also set `agentgateway.enabled: true` and the shared `ingress.parentRefs` / `ingress.hostnames`:
+
+```yaml
+agentgateway:
+  enabled: true
+
+ingress:
+  mode: agentgateway-muster
+  parentRefs:
+    - name: giantswarm-default
+      namespace: envoy-gateway-system
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  hostnames:
+    - muster.<cluster>.<base-domain>
 ```
 
 ## Observability
