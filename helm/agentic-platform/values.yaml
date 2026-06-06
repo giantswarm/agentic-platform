@@ -639,6 +639,14 @@ kagent:
     parentRef:
       name: giantswarm-default
       namespace: envoy-gateway-system
+    backendTrafficPolicy:
+      # A route-level BackendTrafficPolicy opts this route out of the gateway-wide
+      # error-pages responseOverride, which would otherwise replace 4xx bodies
+      # (including oauth2-proxy's sign-in redirect) with static HTML.
+      enabled: true
+      timeout: "60s"
+      annotations: {}
+      labels: {}
 
 # Platform Postgres — CloudNativePG Cluster for kagent (and future Klaus sessions).
 # The CNPG operator and its CRDs are a cluster-level prerequisite (like Gateway
