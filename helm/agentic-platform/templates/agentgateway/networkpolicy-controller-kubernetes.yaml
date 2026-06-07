@@ -14,6 +14,9 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   policyTypes: [Ingress, Egress]
   ingress:
+    # xDS from the provisioned data-plane pods. They carry
+    # `gateway.networking.k8s.io/gateway-name`; `agentgateway: agentgateway`
+    # is on the controller only, so select the data plane by gateway-name.
     - from:
         - podSelector:
             matchLabels:

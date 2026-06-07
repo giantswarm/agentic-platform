@@ -13,7 +13,10 @@ spec:
       app.kubernetes.io/name: agentgateway
       app.kubernetes.io/instance: {{ .Release.Name }}
   ingress:
-    # xDS from data-plane pods spawned by this controller.
+    # xDS from data-plane pods spawned by this controller. The provisioned
+    # data-plane pods carry `gateway.networking.k8s.io/gateway-name`; only the
+    # controller itself carries `agentgateway: agentgateway`, so the source
+    # selector here must use the gateway-name label to match the data plane.
     - fromEndpoints:
         - matchLabels:
             gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}

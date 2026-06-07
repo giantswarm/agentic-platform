@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `templates/kagent/ui-backendtrafficpolicy.yaml`: route-level `BackendTrafficPolicy` for the kagent UI `HTTPRoute`. The cluster-wide `gateway-giantswarm-default-error-pages` policy replaces all 4xx/5xx bodies with static HTML; without a route-level override, Envoy replaces oauth2-proxy's 403 sign-in page body (which meta-refreshes to `/login`) with that static page, breaking the login flow entirely. Any route-level `BackendTrafficPolicy` overrides the gateway-wide one, so this policy is rendered with `enabled: true` by default whenever `kagent.uiRoute.enabled: true`.
+
 ### Added
 
 - Single `ingress.mode` topology selector (`muster-direct` | `agentgateway-muster` | `agentgateway-direct`) that declares the whole request topology in one place. The umbrella now owns **both** public routes — muster's `/` catch-all (new `templates/ingress/muster-httproute.yaml`, rendered in all modes) and the agentgateway `/mcp` interception route — fed from a single shared `ingress.parentRefs` / `ingress.hostnames`, so the two routes can no longer drift. A template-time guard (`templates/validate.yaml`) fails fast on an invalid mode, on `ingress.parentRefs` empty in **any** mode (the umbrella-owned muster `/` route attaches to it — an empty `parentRefs` would otherwise render a route bound to no Gateway), and on `agentgateway.enabled` / `agentic-platform-mcps.agentgateway.viaMuster` disagreeing with the mode.
@@ -15,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make verify-modes` target (wired into a new CircleCI branch test job) asserts the fail-guards fire; `ci/test-full-stack-values.yaml` now exercises the previously-untested `agentgateway-muster` path.
 - Route-scoped `BackendTrafficPolicy` for muster's `/` route (new `templates/ingress/muster-backendtrafficpolicy.yaml`), rendered in **all** modes when `ingress.backendTrafficPolicy.enabled` is set — not just the agentgateway `/mcp` route. This preserves muster's `401 … WWW-Authenticate` challenge against the cluster-wide error-pages policy in `muster-direct` mode (where muster serves `/mcp` directly) and restores the pre-refactor `muster.gatewayAPI.backendTrafficPolicy` behavior on muster's own route.
 - Per-route `ingress.httpRoute.muster.{annotations,labels}` and `ingress.httpRoute.mcp.{annotations,labels}` overrides, merged on top of the shared `ingress.httpRoute.{annotations,labels}` (per-route keys win on collision). Lets a downstream diverge one route — e.g. a different cert-manager issuer or Envoy route policy per route — without forking the shared block.
+- `kagent-crds` (`v0.9.5`, `oci://ghcr.io/kagent-dev/kagent/helm`) bundled as a sub-chart. Installs the kagent CRDs (`Agent`, `AgentHarness`, `ModelConfig`, `MCPServer`, `RemoteMCPServer`, `Memory`, `ToolServer`, `SandboxAgent`). Must be installed before the `agentic-platform` chart when `kagent.enabled: true`. Note: upstream does not mark these CRDs `helm.sh/resource-policy: keep`; `helm uninstall agentic-platform-crds` will remove them and cascade to all kagent CRs.
+- `kagent` (`v0.9.5`, `oci://ghcr.io/kagent-dev/kagent/helm`) bundled as a conditional sub-chart (`kagent.enabled`, default `false`). All kagent resources land in `kagent.namespaceOverride` (default `kagent`) so they stay separate from the umbrella's release namespace. The `kagent-crds` chart is added to `agentic-platform-crds` as a prerequisite. Enabling kagent requires `agentic-platform-crds` to be installed first.
+- `kagent.oauth2-proxy.metrics.serviceMonitor.enabled: true` — Prometheus `ServiceMonitor` for the oauth2-proxy metrics endpoint (`:44180`), labelled `observability.giantswarm.io/tenant: giantswarm`.
+- `templates/kagent/netpol.yaml`: oauth2-proxy ingress CNP extended to allow scraping of the metrics port (`:44180`) from any cluster-entity source, and oauth2-proxy egress extended to include `cluster` alongside `world` on port 443 — required when the Dex hostname resolves to an internal LB VIP (private-range IP classified as `cluster` by Cilium, not `world`).
+- `postgres` block: opt-in CloudNativePG `Cluster` CR (`postgres.enabled`, default `false`) provisioning the kagent application database in a named `kagent` schema (not `public`). Supports pgvector via `postInitTemplateSQL` (any CNPG version, bundled image) or the ImageVolume approach (`postgres.vector.extensionImage.reference`, CNPG 1.29+/PG18). The CNPG operator and its CRDs remain a cluster-level prerequisite. An optional Klaus sessions database (`postgres.sessionsDatabase.enabled`, default `false`) is templated but left off pending the core-runtime persistence decision.
+- `templates/namespace.yaml`: renders the `kagent` `Namespace` when `kagent.namespaceOverride` differs from the release namespace, so fresh installs do not require manual namespace pre-creation.
+- `templates/kagent/controller-route.yaml`: opt-in `AgentgatewayBackend` + `HTTPRoute` (`kagent.controllerRoute.enabled`) exposing the kagent controller API through agentgateway with JWT validation.
+- `templates/kagent/netpol.yaml`: cross-namespace network policies for kagent (cilium and kubernetes flavors, gated on `networkPolicy.flavor`). Cilium: egress from agentgateway data-plane to kagent controller (port 8083) + ingress policy in the kagent namespace. Kubernetes: `NetworkPolicy` restricting kagent controller ingress to the release and kagent namespaces, preventing direct access that would bypass agentgateway JWT validation.
+- `templates/kagent/ui-httproute.yaml`: opt-in HTTPRoute (`kagent.uiRoute.enabled`) exposing the kagent UI on the public Gateway. When `oauth2-proxy.enabled: true` routes through oauth2-proxy (port 4180); otherwise routes directly to the UI (dev only). Placed in the kagent namespace to avoid cross-namespace backend refs.
+- `ci/test-postgres-values.yaml`: CI values file exercising the kagent+postgres path through `helm template`/lint.
+- `ci/test-kagent-routing-values.yaml`: CI values file exercising controllerRoute + uiRoute + oauth2-proxy.
+- Kagent defaults hardened for GS clusters: restricted-PSS `securityContext` applied at umbrella level (Kyverno requirement); bundled agents/tools disabled with comments explaining why and under what conditions to re-enable; Anthropic set as the default model provider (`claude-sonnet-4-6`); OTel traces and logs routed to `otlp-gateway.kube-system.svc:4317`; `controller.auth.mode: trusted-proxy` (agentgateway validates the JWT upstream and the netpols fence the controller); `oauth2-proxy` values pre-wired for Dex OIDC integration (`enabled: false` until Dex client credentials are provided).
 
 ### Fixed
 
@@ -23,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bumped bundled `muster` to `0.2.1` (stable; muster#772 JWT signing-key wiring fix + `jwt_key.go` enabling edge JWT validation, and the CNP ingress-gateway egress fix from muster#788).
+- Bumped bundled `muster` to `0.2.6` (includes the muster#772 JWT signing-key wiring fix + `jwt_key.go` enabling edge JWT validation, and the CNP ingress-gateway egress fix from muster#788).
 - Bumped bundled `agentic-platform-mcps` to `0.2.4` — corrects the `identityProviders` value schema (it was `additionalProperties: false` with no properties, forbidding every provider key and making `auth.mode: exchange` unconfigurable). Unblocks multi-cluster token-exchange consumers; `forward`-only installs are unaffected.
 
 ### Removed
