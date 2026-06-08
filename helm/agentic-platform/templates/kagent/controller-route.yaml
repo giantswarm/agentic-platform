@@ -13,10 +13,7 @@ metadata:
     {{- include "labels.common" . | nindent 4 }}
 spec:
   static:
-    # The kagent subchart names its controller Service `<release>-controller`,
-    # so derive the host from .Release.Name — not the umbrella chart name, which
-    # only matches when the release happens to be named "agentic-platform".
-    host: {{ printf "%s-controller.%s.svc.cluster.local" .Release.Name $ns }}
+    host: {{ printf "kagent-controller.%s.svc.cluster.local" $ns }}
     port: 8083
 ---
 # HTTPRoute — exposes the kagent API at <pathPrefix> on the agentgateway Gateway.

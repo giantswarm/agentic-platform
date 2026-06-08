@@ -357,6 +357,9 @@ agentic-platform-mcps:
 #         - { name: cnpg-dsn, mountPath: /etc/cnpg, readOnly: true }
 kagent:
   enabled: false
+  # Pin the release-independent name so the controller Service is always
+  # `kagent-controller` regardless of the umbrella release name.
+  fullnameOverride: kagent
   # Pull kagent images from the GS-retagged registry (retagger uses override_repo_name
   # so the repository paths are flat, not the upstream kagent-dev/kagent/* hierarchy).
   registry: gsoci.azurecr.io/giantswarm
