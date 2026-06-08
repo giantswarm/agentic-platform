@@ -1,6 +1,7 @@
 {{- if and .Values.kagent.enabled .Values.kagent.controllerRoute.enabled }}
 {{- $route := .Values.kagent.controllerRoute }}
 {{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $kagentFullname := .Values.kagent.fullnameOverride | default .Release.Name }}
 # AgentgatewayBackend — registers the kagent controller as a backend that
 # agentgateway can proxy to after JWT validation.
 ---
@@ -13,10 +14,7 @@ metadata:
     {{- include "labels.common" . | nindent 4 }}
 spec:
   static:
-    # The kagent subchart names its controller Service `<release>-controller`,
-    # so derive the host from .Release.Name — not the umbrella chart name, which
-    # only matches when the release happens to be named "agentic-platform".
-    host: {{ printf "%s-controller.%s.svc.cluster.local" .Release.Name $ns }}
+    host: {{ printf "%s-controller.%s.svc.cluster.local" $kagentFullname $ns }}
     port: 8083
 ---
 # HTTPRoute — exposes the kagent API at <pathPrefix> on the agentgateway Gateway.
