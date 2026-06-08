@@ -337,7 +337,7 @@ agentic-platform-mcps:
 #
 # When postgres.enabled is true, configure the CNPG DSN wiring below so kagent
 # uses the platform Postgres instead of its bundled instance. CNPG auto-generates
-# Secret `agentic-platform-pg-app` in the kagent namespace; mount its `uri` key:
+# Secret `kagent-pg-app` in the kagent namespace; mount its `uri` key:
 #
 #   kagent:
 #     database:
@@ -349,7 +349,7 @@ agentic-platform-mcps:
 #       volumes:
 #         - name: cnpg-dsn
 #           secret:
-#             secretName: agentic-platform-pg-app
+#             secretName: kagent-pg-app
 #             items: [{ key: uri, path: uri }]
 #       volumeMounts:
 #         - { name: cnpg-dsn, mountPath: /etc/cnpg, readOnly: true }
@@ -473,6 +473,7 @@ kagent:
     # client credentials. Enable together with uiRoute and supply the Secret
     # documented above before flipping this to true.
     enabled: false
+    fullnameOverride: kagent-oauth2-proxy
     # Co-locate with kagent resources so the templates ConfigMap (created in
     # kagent namespace by the kagent chart) is reachable.
     namespaceOverride: kagent
@@ -498,10 +499,9 @@ kagent:
         value: ""  # e.g. https://dex.<cluster>.<base-domain>
       - name: OIDC_REDIRECT_URL
         value: ""  # e.g. https://kagent.<cluster>.<base-domain>/oauth2/callback
-      # Release name prefix: the kagent subchart names the UI service
-      # "<release>-ui". The umbrella release is agentic-platform, so:
+      # kagent.fullnameOverride=kagent, so the UI service is kagent-ui.
       - name: UPSTREAM_URL
-        value: http://agentic-platform-ui:8080
+        value: http://kagent-ui:8080
     extraArgs:
       provider: oidc
       oidc-issuer-url: "$(OIDC_ISSUER_URL)"
@@ -674,7 +674,7 @@ postgres:
   # Must match kagent.namespaceOverride — the CNPG-generated Secret is created
   # in the Cluster's namespace and kagent mounts it by name.
   namespace: kagent
-  clusterName: agentic-platform-pg
+  clusterName: kagent-pg
   instances: 3
   storage:
     size: 20Gi
