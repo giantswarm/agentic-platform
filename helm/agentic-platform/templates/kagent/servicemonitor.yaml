@@ -1,0 +1,57 @@
+{{- if and .Values.kagent.enabled .Values.kagent.serviceMonitor.enabled }}
+{{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $releaseName := .Release.Name }}
+# Headless Service exposing the kagent controller metrics port (:8080).
+# The upstream controller-service.yaml only exposes port 8083 (API). We add a
+# separate Service here so the ServiceMonitor below can target it without
+# patching the subchart's single-port Service template.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $releaseName }}-kagent-controller-metrics
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+    app.kubernetes.io/component: kagent-metrics
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/instance: {{ $releaseName }}
+    app.kubernetes.io/component: controller
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+# ServiceMonitor for the kagent controller's controller-runtime Prometheus metrics.
+# Requires the Prometheus Operator CRD (monitoring.coreos.com/v1).
+# The controller exposes metrics at :8080/metrics (HTTP, no TLS) when
+# METRICS_BIND_ADDRESS=:8080 and METRICS_SECURE=false are set.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "name" . }}-kagent-controller
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+    {{- with .Values.kagent.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "name" . | quote }}
+      app.kubernetes.io/instance: {{ $releaseName | quote }}
+      app.kubernetes.io/component: kagent-metrics
+  namespaceSelector:
+    matchNames:
+      - {{ $kagentNs }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: http
+      interval: {{ .Values.kagent.serviceMonitor.interval | default "60s" }}
+{{- end }}

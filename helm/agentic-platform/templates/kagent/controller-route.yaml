@@ -1,0 +1,55 @@
+{{- if and .Values.kagent.enabled .Values.kagent.controllerRoute.enabled }}
+{{- $route := .Values.kagent.controllerRoute }}
+{{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $kagentFullname := .Values.kagent.fullnameOverride | default .Release.Name }}
+# AgentgatewayBackend — registers the kagent controller as a backend that
+# agentgateway can proxy to after JWT validation.
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: kagent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  static:
+    host: {{ printf "%s-controller.%s.svc.cluster.local" $kagentFullname $ns }}
+    port: 8083
+---
+# HTTPRoute — exposes the kagent API at <pathPrefix> on the agentgateway Gateway.
+# Path prefix is stripped (URLRewrite) before forwarding so the controller
+# receives requests at /api/... as it expects.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kagent-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Release.Namespace }}
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  {{- if $route.hostname }}
+  hostnames:
+    - {{ $route.hostname | quote }}
+  {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ $route.pathPrefix }}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: kagent
+          kind: AgentgatewayBackend
+          group: agentgateway.dev
+{{- end }}

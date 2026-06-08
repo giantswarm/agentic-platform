@@ -20,11 +20,12 @@ annotations:
   io.giantswarm.application.team: bumblebee
 dependencies:
   - name: muster
-    version: 0.2.1
+    version: 0.2.6
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v1.2.1
     repository: oci://cr.agentgateway.dev/charts
+    condition: agentgateway.enabled
   # CRDs (agentgateway: AgentgatewayParameters / Policy / Backend; muster:
   # MCPServer / Workflow) now ship in the companion agentic-platform-crds
   # chart, NOT here. This chart renders the CRs that consume them, so the
@@ -47,6 +48,19 @@ dependencies:
   # `agentic-platform-mcps` value namespace because the sub-chart's strict
   # values.schema.json (additionalProperties: false) rejects an `enabled` key.
   - name: agentic-platform-mcps
-    version: 0.2.0
+    version: 0.2.4
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: mcps.enabled
+  # kagent — Kubernetes-native AI agent runtime (controller + UI). Opt-in via
+  # `kagent.enabled`. CRDs ship in the companion agentic-platform-crds chart
+  # (install first). The kagent subchart has no strict values schema, so the
+  # `enabled` key lives directly under `kagent:` (no separate toggle namespace
+  # needed). Default namespace is overridden to `kagent` via
+  # `kagent.namespaceOverride`; the chart renders every resource namespace
+  # explicitly via its `kagent.namespace` helper.
+  # When `postgres.enabled` is also true, configure the CNPG DSN wiring under
+  # `kagent.database.postgres` — see values.yaml for the commented-out example.
+  - name: kagent
+    version: 0.9.5
+    repository: oci://ghcr.io/kagent-dev/kagent/helm
+    condition: kagent.enabled

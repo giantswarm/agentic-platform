@@ -9,3 +9,22 @@ checks:
     # expose a value to override it. Our own umbrella ships no PDBs, so
     # disabling the check globally only relaxes it on the sub-chart.
     - pdb-unhealthy-pod-eviction-policy
+
+    # The following checks fail on kagent bundled sub-charts (querydoc,
+    # grafana-mcp, bundled postgresql, oauth2-proxy, oauth2-proxy/redis).
+    # kube-linter renders with default chart values so these components are
+    # present even though our values.yaml disables most of them. We cannot
+    # edit upstream templates.
+
+    # querydoc + grafana-mcp + postgresql + redis lack readOnlyRootFilesystem.
+    - no-read-only-root-fs
+
+    # querydoc + grafana-mcp do not set runAsNonRoot in their upstream defaults.
+    - run-as-non-root
+
+    # grafana-mcp uses a :latest image tag upstream.
+    - latest-tag
+
+    # oauth2-proxy + redis do not set CPU/memory limits in their upstream defaults.
+    - unset-cpu-requirements
+    - unset-memory-requirements

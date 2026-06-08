@@ -1,0 +1,17 @@
+{{- if and .Values.kagent.namespaceOverride (ne .Values.kagent.namespaceOverride .Release.Namespace) }}
+# Ensure the kagent namespace exists when it differs from the release namespace.
+# On clusters where the namespace is pre-created (e.g. graveler), Kubernetes
+# applies this as a no-op. On fresh installs the namespace is created here;
+# note that Helm applies all resources in a single pass, so kagent resources
+# referencing this namespace may require a second apply if the controller
+# starts before the namespace is Ready. In practice this is not an issue
+# because Kubernetes accepts namespace-scoped resources against a namespace
+# that exists as an API object, even if it is not yet fully propagated.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.kagent.namespaceOverride }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    application.giantswarm.io/team: {{ index .Chart.Annotations "io.giantswarm.application.team" | quote }}
+{{- end }}

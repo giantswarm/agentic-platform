@@ -1,0 +1,33 @@
+{{- if and .Values.kagent.enabled .Values.kagent.uiRoute.enabled .Values.kagent.uiRoute.backendTrafficPolicy.enabled }}
+{{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $btp := .Values.kagent.uiRoute.backendTrafficPolicy }}
+# A route-level BackendTrafficPolicy targeting this HTTPRoute overrides the
+# gateway-wide gateway-giantswarm-default-error-pages responseOverride, which
+# replaces any 4xx/5xx body with a static HTML page. oauth2-proxy returns 403
+# with a body that meta-refreshes to /login; without this policy Envoy swallows
+# that body and the browser lands on a dead error page instead of the login flow.
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ include "name" . }}-ui
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+    {{- with $btp.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $btp.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ include "name" . }}-ui
+      namespace: {{ $kagentNs }}
+  timeout:
+    http:
+      requestTimeout: {{ $btp.timeout | quote }}
+{{- end }}
