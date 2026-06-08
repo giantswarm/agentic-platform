@@ -13,6 +13,7 @@ spec:
     spec:
       template:
         spec:
+          automountServiceAccountToken: true
           securityContext:
             {{- toYaml .Values.gateway.parameters.podSecurityContext | nindent 12 }}
           {{- with .Values.gateway.parameters.dataPlaneVolumes }}
