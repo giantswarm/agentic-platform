@@ -36,6 +36,13 @@ spec:
     - toEntities: ["kube-apiserver"]
     - toEndpoints:
         - matchLabels:
+            app.kubernetes.io/name: {{ include "agentic-platform.musterFullname" . }}
+      toPorts:
+        - ports:
+            - port: "8090"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
             io.kubernetes.pod.namespace: kube-system
             k8s-app: kube-dns
         - matchLabels:
