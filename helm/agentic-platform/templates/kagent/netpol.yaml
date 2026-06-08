@@ -134,6 +134,15 @@ spec:
   ingress:
     - fromEndpoints:
         - matchLabels:
+            cnpg.io/cluster: {{ $clusterName }}
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "8000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
             app.kubernetes.io/component: controller
             app.kubernetes.io/name: kagent
       toPorts:
