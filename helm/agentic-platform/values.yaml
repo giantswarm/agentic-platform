@@ -400,9 +400,11 @@ kagent:
     image:
       repository: kagent-ui
 
-  # Keep kagent resources in the kagent namespace separate from the umbrella's
-  # release namespace. The kagent subchart renders every resource's namespace
-  # via its `kagent.namespace` helper, so this override is honored everywhere.
+  # Keep kagent core resources in a dedicated namespace separate from the
+  # umbrella release namespace. NOTE: the bundled agent subcharts each need
+  # their own namespaceOverride — the `kagent.namespace` helper resolves
+  # .Values.namespaceOverride from the subchart's own scope, which does not
+  # inherit this parent value. Each agent block below sets it explicitly.
   namespaceOverride: kagent
 
   # --- Security contexts (required by Kyverno restricted-PSS on GS clusters) ---
@@ -565,56 +567,67 @@ kagent:
   # Potential future use: test against mcp-kubernetes to compare coverage.
   k8s-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # kgateway / Envoy Gateway API specialist. Not applicable: GS uses Envoy Gateway,
   # not kgateway. Enable only if kgateway is adopted.
   kgateway-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # Istio service mesh expert. Not applicable: GS clusters use Cilium, not Istio.
   istio-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # PromQL query generation from natural language.
   # Potential future use: test against mcp-prometheus to compare output quality.
   promql-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # Prometheus/Grafana observability expert. Depends on grafana-mcp and promql-agent.
   # Enable only if both dependencies above are also enabled.
   observability-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # Argo Rollouts canary/blue-green conversion specialist.
   # Not applicable: Argo Rollouts is not standard on GS clusters.
   argo-rollouts-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # Helm release lifecycle and chart repository expert.
   # Potential future use: evaluate for operators managing GS app catalog releases.
   helm-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # Generates CiliumNetworkPolicy YAML from natural language.
   # Potential future use: GS runs Cilium everywhere; this could be genuinely
   # useful for network policy authoring. Enable to evaluate.
   cilium-policy-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # Cilium CNI installation, upgrades, ClusterMesh, Hubble, BGP management.
   # Potential future use: useful for GS SREs managing Cilium on MCs.
   cilium-manager-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # Advanced Cilium diagnostics: BPF map inspection, endpoint debug, PCAP.
   # Potential future use: useful for GS SREs debugging network issues.
   cilium-debug-agent:
     enabled: false
+    namespaceOverride: kagent
 
   # kagent's own MCP server controller (reconciles MCPServer CRDs).
   # Disabled: muster fills this role in the GS platform.
   kmcp:
     enabled: false
+    namespaceOverride: kagent
 
   # --- Routing (read by umbrella templates/kagent/, not passed to subchart) ---
   # Expose kagent controller API through agentgateway (JWT-validated).
