@@ -34,7 +34,7 @@ spec:
             value: /
       backendRefs:
         {{- if $oauth2proxyEnabled }}
-        - name: {{ printf "%s-oauth2-proxy" .Release.Name }}
+        - name: {{ index .Values.kagent "oauth2-proxy" "fullnameOverride" | default (printf "%s-oauth2-proxy" .Release.Name) }}
           port: 4180
         {{- else }}
         - name: {{ printf "%s-ui" .Release.Name }}
