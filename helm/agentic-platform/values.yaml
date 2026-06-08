@@ -150,7 +150,7 @@ muster:
   # references the same name. The muster sub-chart uses fullnameOverride verbatim
   # for its Service, so all three stay in lockstep regardless of release name or
   # any future change to muster's naming algorithm — no silent backendRef drift.
-  fullnameOverride: agentic-platform-muster
+  fullnameOverride: muster
   # muster's CRDs (MCPServer / Workflow) now ship via the companion
   # agentic-platform-crds chart, not the muster sub-chart. The currently
   # pinned muster (0.1.197) still defaults `crds.install: true`, so we MUST
@@ -316,12 +316,10 @@ agentic-platform-mcps:
     # available; when Zitadel or similar ships RFC 7591 + RFC 8707, muster's
     # aggregator role can be retired.
     viaMuster: false           # must match ingress.mode (guard-enforced): agentgateway-muster=>true, agentgateway-direct=>false
-    # musterUrl — in-cluster address of the muster Service bundled in this
-    # umbrella. The muster sub-chart always names its Service "<release>-muster"
-    # and the standard GS deploy uses release=agentic-platform in the
-    # agentic-platform namespace, making this a fixed value. Override only if
-    # the release name or namespace differs.
-    musterUrl: "http://agentic-platform-muster.agentic-platform.svc.cluster.local:8090/mcp"
+    # musterUrl — in-cluster address of the muster Service. Stable because
+    # muster.fullnameOverride pins the Service name to `muster` regardless
+    # of the umbrella release name. Override only if the namespace differs.
+    musterUrl: "http://muster.agentic-platform.svc.cluster.local:8090/mcp"
 
   # Flat list of MCP servers. Required per entry: cluster, group, url. See the
   # sub-chart values for `defaults`, `identityProviders`, and per-entry `auth`.
