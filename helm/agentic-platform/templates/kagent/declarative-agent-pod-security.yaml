@@ -1,0 +1,44 @@
+{{- if .Values.kagent.enabled }}
+{{- $ns := .Values.kagent.namespaceOverride | default "kagent" }}
+# kagent's declarative agent sub-charts (e.g. cilium-policy-agent, promql-agent)
+# render Agent CRs without podSecurityContext/securityContext in their deployment
+# spec, so the Deployments the kagent controller creates from them are blocked by
+# GS's Kyverno restricted-PSS policies. This ClusterPolicy mutates those Deployments
+# at admission time, adding the required fields only when absent.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: {{ include "name" . }}-kagent-declarative-pod-security
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  annotations:
+    policies.kyverno.io/title: Kagent declarative agent pod security
+    policies.kyverno.io/description: >-
+      Adds restricted-PSS securityContext fields to Deployments created by the
+      kagent controller in the {{ $ns }} namespace when those fields are absent.
+spec:
+  rules:
+  - name: add-pod-security-context
+    match:
+      any:
+      - resources:
+          kinds: [Deployment]
+          namespaces: [{{ $ns }}]
+    mutate:
+      patchStrategicMerge:
+        spec:
+          template:
+            spec:
+              securityContext:
+                +(runAsNonRoot): true
+                +(seccompProfile):
+                  type: RuntimeDefault
+              containers:
+              - (name): "?*"
+                securityContext:
+                  +(allowPrivilegeEscalation): false
+                  +(capabilities):
+                    drop: [ALL]
+                  +(seccompProfile):
+                    type: RuntimeDefault
+{{- end }}
