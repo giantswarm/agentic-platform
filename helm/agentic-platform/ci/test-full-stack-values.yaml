@@ -16,7 +16,14 @@ agentgateway:
 mcps:
   enabled: true
 
+networkPolicy:
+  flavor: kubernetes
+
 muster:
+  ciliumNetworkPolicy:
+    enabled: false
+  networkPolicy:
+    flavor: kubernetes
   muster:
     oauth:
       server:

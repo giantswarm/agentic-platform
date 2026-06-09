@@ -1,8 +1,6 @@
 # kagent controller with its bundled postgres, no oauth2-proxy, no routing.
 # Covers the CRD surface (Agent / ModelConfig / etc.) and the kagent controller
 # startup path in kind without requiring an OIDC endpoint or CNPG operator.
-# See ci/lint-only/test-kagent-routing-values.yaml for the full oauth2-proxy +
-# route exposure scenario (requires existingSecret and a live OIDC endpoint).
 kagent:
   enabled: true
   namespaceOverride: kagent
@@ -21,7 +19,14 @@ ingress:
   hostnames:
     - muster.ci.example.com
 
+networkPolicy:
+  flavor: kubernetes
+
 muster:
+  ciliumNetworkPolicy:
+    enabled: false
+  networkPolicy:
+    flavor: kubernetes
   muster:
     oauth:
       server:

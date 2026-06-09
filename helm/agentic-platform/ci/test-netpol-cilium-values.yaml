@@ -1,6 +1,5 @@
 # Mirror of test-netpol-kubernetes-values.yaml for the cilium flavor.
-# Overrides the helm-extra-args default (kubernetes) back to cilium so the
-# CiliumNetworkPolicy templates render and are exercised. Cilium CRDs are
+# CiliumNetworkPolicy templates render and are exercised here; Cilium CRDs are
 # installed as a workflow prereq (no Cilium agent needed).
 ingress:
   mode: agentgateway-muster

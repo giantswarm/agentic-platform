@@ -10,7 +10,14 @@ ingress:
   hostnames:
     - muster.ci.example.com
 
+networkPolicy:
+  flavor: kubernetes
+
 muster:
+  ciliumNetworkPolicy:
+    enabled: false
+  networkPolicy:
+    flavor: kubernetes
   muster:
     oauth:
       server:
