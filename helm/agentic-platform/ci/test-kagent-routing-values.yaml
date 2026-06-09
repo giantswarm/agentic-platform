@@ -27,18 +27,23 @@ kagent:
     config:
       clientID: oauth2-proxy
       clientSecret: oauth2-proxy-secret
-      cookieSecret: Y2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbQ==
-      # Use Dex (installed as CI prereq) as the OIDC provider. Without a valid
-      # provider config oauth2-proxy defaults to Google, attempts OIDC discovery
-      # against accounts.google.com (no internet in kind), and crashes.
-      configFile: |-
-        email_domains = [ "*" ]
-        provider = "oidc"
-        oidc_issuer_url = "http://dex.dex.svc.cluster.local:5556"
-        redirect_url = "https://kagent.ci.example.com/oauth2/callback"
-        upstreams = [ "file:///dev/null" ]
-        cookie_secure = false
-        skip_provider_button = true
+      # 32 raw bytes — the chart stores this via b64enc in the K8s Secret and the
+      # pod receives it back as the original string. oauth2-proxy needs exactly
+      # 16, 24, or 32 bytes for AES; a base64-encoded value that decodes to a
+      # non-power-of-16 length fails at startup.
+      cookieSecret: changemechangemechangemechangeme
+    # The kagent chart wires OIDC config via extraArgs that reference these env
+    # vars using $(VAR_NAME) K8s substitution. Overriding extraEnv here fills
+    # the OIDC_ISSUER_URL and OIDC_REDIRECT_URL slots that the chart leaves empty
+    # by default; UPSTREAM_URL is included to preserve the full list (Helm
+    # replaces lists, not merges them).
+    extraEnv:
+      - name: OIDC_ISSUER_URL
+        value: http://dex.dex.svc.cluster.local:5556
+      - name: OIDC_REDIRECT_URL
+        value: https://kagent.ci.example.com/oauth2/callback
+      - name: UPSTREAM_URL
+        value: http://kagent-ui:8080
     readinessProbe:
       enabled: false
   database:
