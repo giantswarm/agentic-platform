@@ -14,6 +14,9 @@ sources:
   - https://github.com/giantswarm/agentic-platform
 appVersion: "0.1.0"
 version: 0.2.0
+maintainers:
+  - name: team-bumblebee
+    email: team-bumblebee@giantswarm.io
 annotations:
   io.giantswarm.application.audience: all
   io.giantswarm.application.managed: "true"
