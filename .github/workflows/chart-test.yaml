@@ -56,7 +56,7 @@ jobs:
       # Cluster resource.
       - name: install CNPG operator (prerequisite)
         run: |
-          helm install cnpg cnpg/cloudnative-pg \
+          helm install cnpg cloudnative-pg \
             --repo https://cloudnative-pg.github.io/charts \
             --namespace cnpg-system --create-namespace --wait \
             --version 0.28.2 --timeout 120s
