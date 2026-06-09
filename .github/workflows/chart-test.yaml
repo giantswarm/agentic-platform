@@ -73,9 +73,22 @@ jobs:
             --values ci/dex-values.yaml \
             --version 0.24.1 --wait --timeout 60s
 
+      # Envoy Gateway CRDs — required by fixtures that set backendTrafficPolicy.enabled=true.
+      # Only the CRDs are needed; no EG controller runs in kind.
+      - name: install Envoy Gateway CRDs (prerequisite)
+        run: |
+          curl -sL https://github.com/envoyproxy/gateway/releases/download/v1.3.2/install.yaml \
+            | python3 -c "
+import sys, yaml
+docs = [d for d in yaml.safe_load_all(sys.stdin)
+        if d and d.get('kind') == 'CustomResourceDefinition']
+print(yaml.dump_all(docs))" \
+            | kubectl apply --server-side -f -
+          kubectl wait --for=condition=Established --timeout=60s \
+            crd/backendtrafficpolicies.gateway.envoyproxy.io
+
       # Cilium CRDs — required by test-netpol-cilium-values.yaml. Only the CRDs
-      # are needed; no Cilium agent runs in kind. helm show crds extracts the
-      # CRD manifests without installing the chart itself.
+      # are needed; no Cilium agent runs in kind.
       - name: install Cilium CRDs (prerequisite)
         run: |
           kubectl apply --server-side -f \
