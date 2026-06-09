@@ -8,7 +8,7 @@ ingress:
   hostnames:
     - muster.ci.example.com
   backendTrafficPolicy:
-    enabled: true
+    enabled: false
 
 agentgateway:
   enabled: true
