@@ -81,6 +81,7 @@ jobs:
             -o /tmp/eg-install.yaml
           python3 -c "import yaml; f=open('/tmp/eg-install.yaml'); docs=[d for d in yaml.safe_load_all(f) if d and d.get('kind')=='CustomResourceDefinition']; print(yaml.dump_all(docs))" \
             | kubectl apply --server-side -f -
+          sleep 2
           kubectl wait --for=condition=Established --timeout=60s \
             crd/backendtrafficpolicies.gateway.envoyproxy.io
 
@@ -90,6 +91,7 @@ jobs:
         run: |
           kubectl apply --server-side -f \
             https://raw.githubusercontent.com/cilium/cilium/v1.17.4/pkg/k8s/apis/cilium.io/client/crds/v2/ciliumnetworkpolicies.yaml
+          sleep 2
           kubectl wait --for=condition=Established --timeout=30s \
             crd/ciliumnetworkpolicies.cilium.io
 
@@ -100,6 +102,7 @@ jobs:
         run: |
           kubectl apply --server-side -f \
             https://raw.githubusercontent.com/kyverno/kyverno/v1.12.6/config/crds/kyverno/kyverno.io_clusterpolicies.yaml
+          sleep 2
           kubectl wait --for=condition=Established --timeout=30s \
             crd/clusterpolicies.kyverno.io
 
@@ -109,6 +112,7 @@ jobs:
         run: |
           kubectl apply --server-side -f \
             https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.78.2/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+          sleep 2
           kubectl wait --for=condition=Established --timeout=30s \
             crd/servicemonitors.monitoring.coreos.com
 
