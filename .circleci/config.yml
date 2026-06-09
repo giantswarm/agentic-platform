@@ -2,10 +2,6 @@ version: 2.1
 orbs:
   architect: giantswarm/architect@9.2.0
 
-# Branch-time tests (ingress-mode guards, ct lint, ct install) moved to
-# .github/workflows/chart-test.yaml so the required check context lives in
-# GitHub Actions and can be wired into branch protection. CircleCI is kept
-# for the tag-triggered release push only.
 
 workflows:
   package-and-push-chart-on-tag:
