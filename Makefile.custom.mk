@@ -56,3 +56,9 @@ verify: ## Assert ingress.mode fail-guards fire (mode 3 + consistency guards).
 		echo "ok: valid config renders"; \
 	else echo "FAIL: a valid agentgateway-muster config was rejected"; exit 1; fi
 	@echo "All guards verified."
+
+.PHONY: helm-test
+helm-test: ## Run helm unit tests (helm-unittest plugin required).
+	@echo "====> $@"
+	@helm dependency build $(CHART_DIR) >/dev/null
+	@helm unittest $(CHART_DIR)

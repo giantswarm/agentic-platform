@@ -25,6 +25,12 @@ jobs:
       - name: verify ingress-mode guards
         run: make verify
 
+      - name: install helm-unittest plugin
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version 0.8.2
+
+      - name: helm unit tests
+        run: make helm-test
+
       - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
 
       # Gateway API v1 CRDs are a cluster-level prerequisite (not shipped by
@@ -47,6 +53,41 @@ jobs:
           helm install agentic-platform-crds helm/agentic-platform-crds \
             --namespace agentic-platform-crds --create-namespace --wait \
             --timeout 120s
+
+      # CNPG operator — required by test-postgres-values.yaml, which exercises
+      # the kagent + CloudNativePG Cluster path. The operator watches for Cluster
+      # CRs cluster-wide; it needs to be running before the app chart installs the
+      # Cluster resource.
+      - name: install CNPG operator (prerequisite)
+        run: |
+          helm install cnpg cnpg/cloudnative-pg \
+            --repo https://cloudnative-pg.github.io/charts \
+            --namespace cnpg-system --create-namespace --wait \
+            --version 0.28.2 --timeout 120s
+
+      # Dex — minimal in-cluster OIDC IdP required by test-kagent-routing-values.yaml.
+      # oauth2-proxy does discovery against OIDC_ISSUER_URL on startup; without a
+      # live endpoint the pod crashloops and ct install fails. Config in ci/dex-values.yaml:
+      # HTTP issuer at http://dex.dex.svc.cluster.local:5556, static client oauth2-proxy.
+      - name: install Dex (prerequisite)
+        run: |
+          helm install dex dex \
+            --repo https://charts.dexidp.io \
+            --namespace dex --create-namespace \
+            --values ci/dex-values.yaml \
+            --version 0.24.1 --wait --timeout 60s
+
+      # kagent-oauth2-proxy secret for test-kagent-routing-values.yaml.
+      # Keys match what the kagent oauth2-proxy subchart expects (client-id,
+      # client-secret, cookie-secret) and the static client registered in Dex above.
+      - name: create kagent-oauth2-proxy secret (prerequisite)
+        run: |
+          kubectl create namespace kagent --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic kagent-oauth2-proxy \
+            --namespace kagent \
+            --from-literal=client-id=oauth2-proxy \
+            --from-literal=client-secret=oauth2-proxy-secret \
+            --from-literal=cookie-secret=Y2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbQ==
 
       # Lint all charts (agentic-platform + agentic-platform-crds).
       - name: ct lint

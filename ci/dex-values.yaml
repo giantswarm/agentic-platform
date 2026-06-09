@@ -1,0 +1,23 @@
+# Minimal Dex config for kind CI. HTTP only (no TLS), in-memory storage.
+# A static client matching the kagent-oauth2-proxy secret created in the
+# chart-test workflow lets oauth2-proxy complete OIDC discovery on startup
+# and the test-kagent-routing fixture can install cleanly.
+config:
+  issuer: http://dex.dex.svc.cluster.local:5556
+  storage:
+    type: memory
+  oauth2:
+    skipApprovalScreen: true
+  staticClients:
+    - id: oauth2-proxy
+      secret: oauth2-proxy-secret
+      redirectURIs:
+        - https://kagent.ci.example.com/oauth2/callback
+      name: oauth2-proxy
+  enablePasswordDB: true
+  staticPasswords:
+    - email: ci@example.com
+      # bcrypt of "password"
+      hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+      username: ci
+      userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"

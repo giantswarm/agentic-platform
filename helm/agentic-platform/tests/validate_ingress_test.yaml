@@ -1,0 +1,92 @@
+suite: validateIngress guards
+
+# Shared base values for most tests. Individual tests override what they need.
+templates:
+  - validate.yaml
+
+tests:
+  - it: rejects an unknown ingress.mode
+    set:
+      ingress.mode: bogus
+      ingress.parentRefs[0].name: gw
+    asserts:
+      - failedTemplate:
+          errorMessage: "must be one of: muster-direct, agentgateway-muster, agentgateway-direct"
+
+  - it: rejects agentgateway-direct (not yet supported)
+    set:
+      ingress.mode: agentgateway-direct
+      ingress.parentRefs[0].name: gw
+    asserts:
+      - failedTemplate:
+          errorMessage: "requires a DCR-capable IdP"
+
+  - it: rejects empty parentRefs in muster-direct mode
+    set:
+      ingress.mode: muster-direct
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress.parentRefs is required in all modes"
+
+  - it: rejects empty parentRefs in agentgateway-muster mode
+    set:
+      ingress.mode: agentgateway-muster
+      agentgateway.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress.parentRefs is required in all modes"
+
+  - it: rejects agentgateway-muster with viaMuster=false when mcps enabled
+    set:
+      ingress.mode: agentgateway-muster
+      ingress.parentRefs[0].name: gw
+      agentgateway.enabled: true
+      mcps.enabled: true
+      agentic-platform-mcps.agentgateway.viaMuster: false
+    asserts:
+      - failedTemplate:
+          errorMessage: "viaMuster=true"
+
+  - it: rejects agentgateway.enabled=false in agentgateway-muster mode
+    set:
+      ingress.mode: agentgateway-muster
+      ingress.parentRefs[0].name: gw
+      agentgateway.enabled: false
+    asserts:
+      - failedTemplate:
+          errorMessage: "agentgateway.enabled must be true"
+
+  - it: rejects agentgateway.enabled=true in muster-direct mode
+    set:
+      ingress.mode: muster-direct
+      ingress.parentRefs[0].name: gw
+      agentgateway.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "agentgateway.enabled must be false"
+
+  - it: accepts a valid muster-direct config
+    set:
+      ingress.mode: muster-direct
+      ingress.parentRefs[0].name: gw
+      agentgateway.enabled: false
+      muster.muster.oauth.server.enabled: false
+      muster.muster.oauth.server.storage.type: memory
+      valkey.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: accepts a valid agentgateway-muster config
+    set:
+      ingress.mode: agentgateway-muster
+      ingress.parentRefs[0].name: gw
+      agentgateway.enabled: true
+      mcps.enabled: true
+      agentic-platform-mcps.agentgateway.viaMuster: true
+      muster.muster.oauth.server.enabled: false
+      muster.muster.oauth.server.storage.type: memory
+      valkey.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
