@@ -99,7 +99,7 @@ jobs:
       - name: install Kyverno CRDs (prerequisite)
         run: |
           kubectl apply --server-side -f \
-            https://raw.githubusercontent.com/kyverno/kyverno/v1.12.6/config/crds/kyverno.io_clusterpolicies.yaml
+            https://raw.githubusercontent.com/kyverno/kyverno/v1.12.6/config/crds/kyverno/kyverno.io_clusterpolicies.yaml
           kubectl wait --for=condition=Established --timeout=30s \
             crd/clusterpolicies.kyverno.io
 
