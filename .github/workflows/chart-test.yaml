@@ -87,9 +87,9 @@ jobs:
 
       # Lint all charts (agentic-platform + agentic-platform-crds).
       - name: ct lint
-        run: ct lint --all
+        run: ct lint --config ct.yaml --all
 
       # Install the app chart against each ci/*.yaml fixture. CRDs are already
       # Established from the prerequisite step above.
       - name: ct install
-        run: ct install --charts helm/agentic-platform
+        run: ct install --config ct.yaml --charts helm/agentic-platform
