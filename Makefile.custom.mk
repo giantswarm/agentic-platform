@@ -17,8 +17,8 @@ VM_QUIET_BASE := --set valkey.enabled=false \
 # guard under test. Use VM_QUIET_BASE (no parentRefs) to exercise that guard.
 VM_QUIET := $(VM_QUIET_BASE) --set ingress.parentRefs[0].name=x
 
-.PHONY: verify-modes
-verify-modes: ## Assert ingress.mode fail-guards fire (mode 3 + consistency guards).
+.PHONY: verify
+verify: ## Assert ingress.mode fail-guards fire (mode 3 + consistency guards).
 	@echo "====> $@"
 	@helm dependency build $(CHART_DIR) >/dev/null
 	@echo "--> muster-direct with empty parentRefs must fail"
@@ -55,4 +55,4 @@ verify-modes: ## Assert ingress.mode fail-guards fire (mode 3 + consistency guar
 	@if helm template t $(CHART_DIR) $(VM_QUIET) --set ingress.mode=agentgateway-muster --set agentgateway.enabled=true --set mcps.enabled=true --set agentic-platform-mcps.agentgateway.viaMuster=true >/dev/null 2>&1; then \
 		echo "ok: valid config renders"; \
 	else echo "FAIL: a valid agentgateway-muster config was rejected"; exit 1; fi
-	@echo "All mode guards verified."
+	@echo "All guards verified."

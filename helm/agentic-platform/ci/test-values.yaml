@@ -10,3 +10,14 @@ ingress:
       kind: Gateway
   hostnames:
     - muster.ci.example.com
+
+muster:
+  muster:
+    oauth:
+      server:
+        enabled: false
+        storage:
+          type: memory
+
+valkey:
+  enabled: false

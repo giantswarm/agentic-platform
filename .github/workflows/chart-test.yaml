@@ -1,0 +1,58 @@
+name: chart-test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  chart-test:
+    name: chart-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        with:
+          version: v3.17.3
+
+      - uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+
+      # Static render guards — no cluster needed.
+      - name: verify ingress-mode guards
+        run: make verify
+
+      - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+
+      # Gateway API v1 CRDs are a cluster-level prerequisite (not shipped by
+      # this chart — see README). Install the standard channel which covers
+      # Gateway, HTTPRoute, and GatewayClass.
+      - name: install Gateway API CRDs
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+          kubectl wait --for=condition=Established --timeout=60s \
+            crd/gateways.gateway.networking.k8s.io \
+            crd/httproutes.gateway.networking.k8s.io \
+            crd/gatewayclasses.gateway.networking.k8s.io
+
+      # agentic-platform-crds must be installed before the app chart so that
+      # all agentgateway / muster / kagent CRDs are Established when the app
+      # chart's CRs are applied.
+      - name: install agentic-platform-crds (prerequisite)
+        run: |
+          helm dependency build helm/agentic-platform-crds
+          helm install agentic-platform-crds helm/agentic-platform-crds \
+            --namespace agentic-platform-crds --create-namespace --wait \
+            --timeout 120s
+
+      # Lint all charts (agentic-platform + agentic-platform-crds).
+      - name: ct lint
+        run: ct lint --all
+
+      # Install the app chart against each ci/*.yaml fixture. CRDs are already
+      # Established from the prerequisite step above.
+      - name: ct install
+        run: ct install --charts helm/agentic-platform

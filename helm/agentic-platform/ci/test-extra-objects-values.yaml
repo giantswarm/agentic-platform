@@ -10,6 +10,17 @@ ingress:
   hostnames:
     - muster.ci.example.com
 
+muster:
+  muster:
+    oauth:
+      server:
+        enabled: false
+        storage:
+          type: memory
+
+valkey:
+  enabled: false
+
 extraObjects:
   - apiVersion: v1
     kind: ConfigMap
