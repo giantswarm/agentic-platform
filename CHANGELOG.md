@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentgateway.image.tag` updated from `v1.2.1` to `v2.2.1` to match the chart version bumped in PR #45. The v1.2.1 controller binary ignored `KGW_XDS_SERVICE_NAME` and hardcoded the data plane's `XDS_ADDRESS` from the Gateway name, so the data plane could not reach the xDS server when `fullnameOverride: agentgateway-controller` renamed the controller Service. The v2.2.1 binary reads `KGW_XDS_SERVICE_NAME` and passes the correct address. The now-removed `proxy.image` block was a v1-only values path; the data plane image is managed internally by the v2 controller.
+
 - `templates/kagent/ui-httproute.yaml`: oauth2-proxy backend name now resolves `oauth2-proxy.fullnameOverride` from values (falling back to `<release>-oauth2-proxy`), so the `HTTPRoute` points at the correct service when `fullnameOverride: kagent-oauth2-proxy` is set.
 
 - Bundled kagent declarative agents (`cilium-policy-agent`, `promql-agent`, and all others) now deploy into the `kagent` namespace. The kagent `kagent.namespace` helper resolves `namespaceOverride` from the subchart's own `.Values` scope; the parent chart's `kagent.namespaceOverride: kagent` is not visible there, so agents were landing in the Helm release namespace (`agentic-platform`). Both `default-model-config` (ModelConfig) and `kagent-tool-server` (RemoteMCPServer) live in `kagent` and are resolved by bare name within the agent's own namespace, causing every agent to show `Accepted=False`. Each bundled agent subchart block now sets `namespaceOverride: kagent` explicitly.
