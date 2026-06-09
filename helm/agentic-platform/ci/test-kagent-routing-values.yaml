@@ -17,6 +17,11 @@ kagent:
       clientID: oauth2-proxy
       clientSecret: oauth2-proxy-secret
       cookieSecret: Y2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbQ==
+    # Disable the /ready probe in CI: v7.6.0 uses /ready which blocks until
+    # OIDC initialization completes. Dex startup timing makes this unreliable
+    # as a Helm --wait gate; the container starting is sufficient for install.
+    readinessProbe:
+      enabled: false
     extraEnv:
       - name: OIDC_ISSUER_URL
         # In-cluster Dex installed as a CI prereq (ci/dex-values.yaml).
