@@ -4,6 +4,7 @@ chart-dirs:
   - helm
 remote: origin
 target-branch: main
+validate-maintainers: false
 # 600s for pod readiness: muster + agentgateway + kagent (with bundled postgres)
 # take longer than the 300s default.
 timeout: 600
