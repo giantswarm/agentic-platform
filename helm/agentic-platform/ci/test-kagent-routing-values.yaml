@@ -28,19 +28,19 @@ kagent:
       clientID: oauth2-proxy
       clientSecret: oauth2-proxy-secret
       cookieSecret: Y2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbQ==
-    # Disable the /ready probe in CI: v7.6.0 uses /ready which blocks until
-    # OIDC initialization completes. Dex startup timing makes this unreliable
-    # as a Helm --wait gate; the container starting is sufficient for install.
+      # Use Dex (installed as CI prereq) as the OIDC provider. Without a valid
+      # provider config oauth2-proxy defaults to Google, attempts OIDC discovery
+      # against accounts.google.com (no internet in kind), and crashes.
+      configFile: |-
+        email_domains = [ "*" ]
+        provider = "oidc"
+        oidc_issuer_url = "http://dex.dex.svc.cluster.local:5556"
+        redirect_url = "https://kagent.ci.example.com/oauth2/callback"
+        upstreams = [ "file:///dev/null" ]
+        cookie_secure = false
+        skip_provider_button = true
     readinessProbe:
       enabled: false
-    extraEnv:
-      - name: OIDC_ISSUER_URL
-        # In-cluster Dex installed as a CI prereq (ci/dex-values.yaml).
-        value: http://dex.dex.svc.cluster.local:5556
-      - name: OIDC_REDIRECT_URL
-        value: https://kagent.ci.example.com/oauth2/callback
-      - name: UPSTREAM_URL
-        value: http://agentic-platform-ui:8080
   database:
     postgres:
       bundled:
