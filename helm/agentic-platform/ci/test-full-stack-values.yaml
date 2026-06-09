@@ -13,11 +13,115 @@ ingress:
 agentgateway:
   enabled: true
 
+gateway:
+  parameters:
+    enabled: true
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      capabilities:
+        drop: ["ALL"]
+      seccompProfile:
+        type: RuntimeDefault
+
 mcps:
   enabled: true
 
+agentic-platform-mcps:
+  agentgateway:
+    viaMuster: true
+
+kagent:
+  enabled: true
+  namespaceOverride: kagent
+  ui:
+    startupProbe:
+      httpGet:
+        path: /health
+        port: http
+      periodSeconds: 5
+      initialDelaySeconds: 1
+      failureThreshold: 30
+  controllerRoute:
+    enabled: true
+    hostname: agentgateway.ci.example.com
+    pathPrefix: /kagent
+  uiRoute:
+    enabled: true
+    hostname: kagent.ci.example.com
+    parentRef:
+      name: giantswarm-default
+      namespace: envoy-gateway-system
+  oauth2-proxy:
+    enabled: true
+    config:
+      clientID: oauth2-proxy
+      clientSecret: oauth2-proxy-secret
+      # 32 raw bytes — the chart stores this via b64enc in the K8s Secret and the
+      # pod receives it back as the original string. oauth2-proxy requires exactly
+      # 16, 24, or 32 bytes for AES.
+      cookieSecret: changemechangemechangemechangeme
+    # The kagent chart wires OIDC config via extraArgs using $(VAR_NAME) K8s
+    # substitution. OIDC_ISSUER_URL and OIDC_REDIRECT_URL are empty by default;
+    # UPSTREAM_URL must be included because Helm replaces lists, not merges them.
+    extraEnv:
+      - name: OIDC_ISSUER_URL
+        value: http://dex.dex.svc.cluster.local:5556
+      - name: OIDC_REDIRECT_URL
+        value: https://kagent.ci.example.com/oauth2/callback
+      - name: UPSTREAM_URL
+        value: http://kagent-ui:8080
+    readinessProbe:
+      enabled: false
+  database:
+    postgres:
+      urlFile: /etc/cnpg/uri
+      vectorEnabled: true
+      bundled:
+        enabled: false
+  controller:
+    volumes:
+      - name: cnpg-dsn
+        secret:
+          secretName: kagent-pg-app
+          items:
+            - key: uri
+              path: uri
+    volumeMounts:
+      - name: cnpg-dsn
+        mountPath: /etc/cnpg
+        readOnly: true
+
+postgres:
+  enabled: true
+  namespace: kagent
+  instances: 1
+  storage:
+    size: 5Gi
+    storageClass: standard
+  vector:
+    enabled: true
+    extensionImage:
+      reference: ghcr.io/cloudnative-pg/pgvector:0.8.0-17-bookworm
+  applicationDatabase:
+    name: kagent
+    owner: kagent
+    schema: kagent
+
 networkPolicy:
+  enabled: true
   flavor: kubernetes
+  kubernetes:
+    apiServerCIDR: 10.0.0.1/32
+    worldExcludedCIDRs:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
 
 muster:
   ciliumNetworkPolicy:
@@ -30,10 +134,6 @@ muster:
         enabled: false
         storage:
           type: memory
-
-agentic-platform-mcps:
-  agentgateway:
-    viaMuster: true
 
 valkey:
   enabled: false
