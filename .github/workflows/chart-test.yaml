@@ -78,11 +78,8 @@ jobs:
       - name: install Envoy Gateway CRDs (prerequisite)
         run: |
           curl -sL https://github.com/envoyproxy/gateway/releases/download/v1.3.2/install.yaml \
-            | python3 -c "
-import sys, yaml
-docs = [d for d in yaml.safe_load_all(sys.stdin)
-        if d and d.get('kind') == 'CustomResourceDefinition']
-print(yaml.dump_all(docs))" \
+            -o /tmp/eg-install.yaml
+          python3 -c "import yaml; f=open('/tmp/eg-install.yaml'); docs=[d for d in yaml.safe_load_all(f) if d and d.get('kind')=='CustomResourceDefinition']; print(yaml.dump_all(docs))" \
             | kubectl apply --server-side -f -
           kubectl wait --for=condition=Established --timeout=60s \
             crd/backendtrafficpolicies.gateway.envoyproxy.io
