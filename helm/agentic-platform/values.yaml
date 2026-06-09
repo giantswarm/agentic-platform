@@ -724,15 +724,10 @@ agentgateway:
   fullnameOverride: agentgateway-controller
   image:
     registry: gsoci.azurecr.io
-    tag: v1.2.1
+    tag: v2.2.1
   controller:
     image:
       repository: giantswarm/agentgateway-controller
-  proxy:
-    image:
-      registry: gsoci.azurecr.io
-      repository: giantswarm/agentgateway
-      tag: v1.2.1
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   podSecurityContext:
