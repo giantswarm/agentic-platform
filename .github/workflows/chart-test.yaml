@@ -93,6 +93,25 @@ jobs:
           kubectl wait --for=condition=Established --timeout=30s \
             crd/ciliumnetworkpolicies.cilium.io
 
+      # Kyverno CRDs — required by fixtures that enable kagent, which renders a
+      # ClusterPolicy for declarative-agent pod security. Only the CRDs are needed;
+      # no Kyverno controller runs in kind.
+      - name: install Kyverno CRDs (prerequisite)
+        run: |
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/kyverno/kyverno/v1.12.6/config/crds/kyverno.io_clusterpolicies.yaml
+          kubectl wait --for=condition=Established --timeout=30s \
+            crd/clusterpolicies.kyverno.io
+
+      # Prometheus Operator CRDs — required by fixtures that enable kagent with
+      # serviceMonitor enabled (default). Only the CRDs are needed; no operator runs.
+      - name: install Prometheus Operator CRDs (prerequisite)
+        run: |
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.78.2/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+          kubectl wait --for=condition=Established --timeout=30s \
+            crd/servicemonitors.monitoring.coreos.com
+
       # Lint all charts (agentic-platform + agentic-platform-crds).
       - name: ct lint
         run: ct lint --config ct.yaml --all

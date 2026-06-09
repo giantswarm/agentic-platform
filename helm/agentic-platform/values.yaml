@@ -432,6 +432,12 @@ kagent:
       apiKeySecretKey: ANTHROPIC_API_KEY
       apiKey: ""  # Set per-cluster in secret-values; chart creates the Secret
 
+  # ClusterPolicy that mutates Deployments created by the kagent controller to
+  # add restricted-PSS securityContext fields when absent.
+  # Requires the Kyverno CRDs (kyverno.io/v1).
+  kyvernoPolicy:
+    enabled: true
+
   # ServiceMonitor for controller-runtime Prometheus metrics.
   # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
   serviceMonitor:
