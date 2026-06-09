@@ -81,7 +81,6 @@ kagent:
   database:
     postgres:
       urlFile: /etc/cnpg/uri
-      vectorEnabled: true
       bundled:
         enabled: false
   controller:
@@ -104,10 +103,6 @@ postgres:
   storage:
     size: 5Gi
     storageClass: standard
-  vector:
-    enabled: true
-    extensionImage:
-      reference: ghcr.io/cloudnative-pg/pgvector:0.8.0-17-bookworm
   applicationDatabase:
     name: kagent
     owner: kagent
