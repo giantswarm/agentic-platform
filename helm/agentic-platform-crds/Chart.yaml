@@ -27,7 +27,7 @@ dependencies:
   # deletes them and cascades to every agentgateway CR cluster-wide. There is
   # no knob to inject the annotation. Tracked upstream — see README.
   - name: agentgateway-crds
-    version: v1.2.1
+    version: v2.2.1
     repository: oci://cr.agentgateway.dev/charts
   # muster CRDs (MCPServer / Workflow). CRD-only chart split out of the muster
   # app chart. These CRDs ARE marked `helm.sh/resource-policy: keep` and

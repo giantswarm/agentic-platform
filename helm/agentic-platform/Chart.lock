@@ -4,7 +4,7 @@ dependencies:
   version: 0.3.1
 - name: agentgateway
   repository: oci://cr.agentgateway.dev/charts
-  version: v1.2.1
+  version: v2.2.1
 - name: valkey
   repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.2
@@ -14,5 +14,5 @@ dependencies:
 - name: kagent
   repository: oci://ghcr.io/kagent-dev/kagent/helm
   version: 0.9.6
-digest: sha256:be88768748b9058e39032970dd1ebe2c7afee8e3f4f1baf50ebfae29bbd134d1
-generated: "2026-06-08T20:29:58.237924227Z"
+digest: sha256:53d04a7495ed079f44f7d415b9beb7ddb51d5bfd90114e776b5c1321cf04eb6e
+generated: "2026-06-09T05:06:28.247895779Z"
