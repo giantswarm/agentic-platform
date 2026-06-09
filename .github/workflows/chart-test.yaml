@@ -90,9 +90,8 @@ jobs:
       # CRD manifests without installing the chart itself.
       - name: install Cilium CRDs (prerequisite)
         run: |
-          helm show crds cilium \
-            --repo https://helm.cilium.io \
-            --version 1.17.4 | kubectl apply --server-side -f -
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/cilium/cilium/v1.17.4/pkg/k8s/apis/cilium.io/client/crds/v2/ciliumnetworkpolicies.yaml
           kubectl wait --for=condition=Established --timeout=30s \
             crd/ciliumnetworkpolicies.cilium.io
 
