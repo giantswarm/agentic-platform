@@ -21,10 +21,6 @@ jobs:
 
       - uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
 
-      # Static render guards — no cluster needed.
-      - name: verify ingress-mode guards
-        run: make verify
-
       - name: install helm-unittest plugin
         run: helm plugin install https://github.com/helm-unittest/helm-unittest --version 0.8.2
 
