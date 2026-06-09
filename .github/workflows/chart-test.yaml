@@ -85,6 +85,17 @@ jobs:
             --from-literal=client-secret=oauth2-proxy-secret \
             --from-literal=cookie-secret=Y2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbQ==
 
+      # Cilium CRDs — required by test-netpol-cilium-values.yaml. Only the CRDs
+      # are needed; no Cilium agent runs in kind. helm show crds extracts the
+      # CRD manifests without installing the chart itself.
+      - name: install Cilium CRDs (prerequisite)
+        run: |
+          helm show crds cilium \
+            --repo https://helm.cilium.io \
+            --version 1.17.4 | kubectl apply --server-side -f -
+          kubectl wait --for=condition=Established --timeout=30s \
+            crd/ciliumnetworkpolicies.cilium.io
+
       # Lint all charts (agentic-platform + agentic-platform-crds).
       - name: ct lint
         run: ct lint --config ct.yaml --all
