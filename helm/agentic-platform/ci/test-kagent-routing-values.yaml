@@ -1,6 +1,17 @@
 kagent:
   enabled: true
   namespaceOverride: kagent
+  # Override the default startup probe (failureThreshold: 3, periodSeconds: 1 = 4s
+  # window) with a generous failureThreshold so resource contention in the kind
+  # single-node CI cluster does not kill the container before nginx starts.
+  ui:
+    startupProbe:
+      httpGet:
+        path: /health
+        port: http
+      periodSeconds: 5
+      initialDelaySeconds: 1
+      failureThreshold: 30
   controllerRoute:
     enabled: true
     hostname: agentgateway.ci.example.com

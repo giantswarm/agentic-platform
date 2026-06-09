@@ -123,4 +123,21 @@ jobs:
       # Install the app chart against each ci/*.yaml fixture. CRDs are already
       # Established from the prerequisite step above.
       - name: ct install
-        run: ct install --config ct.yaml --charts helm/agentic-platform
+        run: |
+          # Watchdog: dump pod and CRD condition state every 30s. Output stays in
+          # the step log even if ct install fails, giving a snapshot of what was
+          # blocking Helm's --wait loop.
+          (while true; do
+            sleep 30
+            echo "=== $(date -u '+%H:%M:%SZ') cluster state ==="
+            kubectl get pods -A -o wide 2>/dev/null || true
+            echo "--- agentgatewaybackends ---"
+            kubectl get agentgatewaybackends -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}: {.status.conditions}{"\n"}{end}' 2>/dev/null || true
+            echo "--- deployments ---"
+            kubectl get deployments -A 2>/dev/null || true
+          done) &
+          WATCHDOG_PID=$!
+          ct install --config ct.yaml --charts helm/agentic-platform
+          EXIT=$?
+          kill $WATCHDOG_PID 2>/dev/null || true
+          exit $EXIT
