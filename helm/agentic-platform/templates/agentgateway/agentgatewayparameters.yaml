@@ -22,6 +22,9 @@ spec:
           {{- end }}
           containers:
             - name: agentgateway
+              {{- with .Values.agentgateway.proxy.image }}
+              image: "{{ .registry }}/{{ .repository }}:{{ .tag }}"
+              {{- end }}
               securityContext:
                 {{- toYaml .Values.gateway.parameters.containerSecurityContext | nindent 16 }}
               {{- with .Values.gateway.parameters.dataPlaneEnv }}
