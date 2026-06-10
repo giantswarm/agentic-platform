@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Set `AGW_XDS_SERVICE_NAME: agentgateway-controller` in the controller's `extraEnv`. The bundled agentgateway chart (v2.2.1) uses the `KGW_` env prefix while the controller binary reads `AGW_`; without this, `XdsServiceName` falls back to the default `"agentgateway"`, pointing data-plane pods at the Gateway LoadBalancer service (which has no ready endpoints on first boot) instead of the controller service, deadlocking the initial rollout.
+- Downgrade bundled agentgateway and agentgateway-crds charts from `v2.2.1` back to `v1.2.1`. The upstream project released `v2.2.x` before resetting semver to `v1.0.0`; `v2.2.1` is older than `v1.0.0` and was incorrectly treated as an upgrade (agentgateway/agentgateway#1249). Block the bogus `v2.2.x` range in `renovate.json5`.
+
+- `templates/agentgateway/agentgatewayparameters.yaml`: data-plane image override moved from the deployment container spec to `spec.image.registry/repository/tag`. Drops `AGW_XDS_SERVICE_NAME` from `controller.extraEnv` and removes the explicit controller image tag pin: the v1.2.1 chart already sets `AGW_XDS_SERVICE_NAME: agentgateway-controller` correctly via `fullnameOverride`, and the controller image tag defaults to the chart's `appVersion` (`v1.2.1`) when unset.
 
 - `templates/kagent/ui-httproute.yaml`: oauth2-proxy backend name now resolves `oauth2-proxy.fullnameOverride` from values (falling back to `<release>-oauth2-proxy`), so the `HTTPRoute` points at the correct service when `fullnameOverride: kagent-oauth2-proxy` is set.
 
