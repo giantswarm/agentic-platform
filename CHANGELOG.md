@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.github/workflows/chart-test.yaml`: `chart-test` GitHub Actions job that runs `make helm-test` (helm-unittest covering all `validateIngress` guard branches), `ct lint` across all charts, and `ct install` against `helm/agentic-platform` using the `ci/*.yaml` fixtures. Replaces the CircleCI `test-ingress-modes` job.
 - `ct.yaml`: chart-testing configuration (`chart-dirs: [helm]`, `helm-extra-args: --timeout 600s`).
 - `ci/dex-values.yaml`: minimal in-memory Dex config for the kind CI cluster; provides an OIDC discovery endpoint so oauth2-proxy can start without crashlooping.
-- `helm/agentic-platform/tests/validate_ingress_test.yaml`: 9 helm-unittest tests covering every `validateIngress` guard branch (7 negative `failedTemplate` assertions, 2 positive render checks).
+- `helm/agentic-platform/tests/validate_ingress_test.yaml`: 8 helm-unittest tests covering every `validateIngress` guard branch (6 negative `failedTemplate` assertions, 2 positive render checks).
 - `make helm-test` target: runs `helm unittest helm/agentic-platform` (requires the helm-unittest plugin).
 
 ### Changed
