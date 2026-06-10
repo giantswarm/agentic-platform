@@ -10,9 +10,9 @@ dependencies:
   version: 0.1.2
 - name: agentic-platform-mcps
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.2.4
+  version: 0.2.5
 - name: kagent
   repository: oci://ghcr.io/kagent-dev/kagent/helm
   version: 0.9.6
-digest: sha256:9d16d2d2dc22138f1760bab65a4e9b05b97e249ce3cbbc9404eab682d0a3e69f
-generated: "2026-06-09T06:18:17.794440657Z"
+digest: sha256:f227e91cd32c03c1d4dc7b0246da45de9ced2b2c9c825d9bf2cb5c5b2393bb5f
+generated: "2026-06-09T23:17:13.816200244Z"
