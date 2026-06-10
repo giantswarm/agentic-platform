@@ -793,7 +793,6 @@ agentgateway:
     image:
       registry: gsoci.azurecr.io
       repository: giantswarm/agentgateway
-      tag: v1.2.1
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   podSecurityContext:
