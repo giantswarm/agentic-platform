@@ -786,12 +786,9 @@ agentgateway:
   fullnameOverride: agentgateway-controller
   image:
     registry: gsoci.azurecr.io
-    tag: v1.2.1
   controller:
     image:
       repository: giantswarm/agentgateway-controller
-    extraEnv:
-      AGW_XDS_SERVICE_NAME: agentgateway-controller
   proxy:
     image:
       registry: gsoci.azurecr.io
