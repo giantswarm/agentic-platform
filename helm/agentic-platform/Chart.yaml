@@ -23,7 +23,7 @@ annotations:
   io.giantswarm.application.team: bumblebee
 dependencies:
   - name: muster
-    version: 0.3.2
+    version: 0.3.10
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v2.2.1
@@ -51,7 +51,7 @@ dependencies:
   # `agentic-platform-mcps` value namespace because the sub-chart's strict
   # values.schema.json (additionalProperties: false) rejects an `enabled` key.
   - name: agentic-platform-mcps
-    version: 0.2.4
+    version: 0.2.5
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: mcps.enabled
   # kagent — Kubernetes-native AI agent runtime (controller + UI). Opt-in via
@@ -67,3 +67,13 @@ dependencies:
     version: 0.9.6
     repository: oci://ghcr.io/kagent-dev/kagent/helm
     condition: kagent.enabled
+  # Klaus Gateway — channel front door (Slack, CLI, web) for Klaus instances.
+  # Forwards Slack turns to kagent via A2A; kagent orchestrates the agent pod.
+  # The ChannelRoute CRD is managed inline by the sub-chart's `crd.install: true`,
+  # so no companion crds chart is needed.
+  # The alias maps the hyphenated chart name to a YAML-safe values key.
+  - name: klaus-gateway
+    alias: klausGateway
+    version: 0.0.41-dev.feat-channel-a2a.2026-06-09.14-45-31
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    condition: klausGateway.enabled

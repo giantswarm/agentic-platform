@@ -1,0 +1,47 @@
+{{- if .Values.agentgateway.enabled }}
+{{- /*
+TODO: drop this file once the agentgateway subchart is bumped past the fix in
+https://github.com/agentgateway/agentgateway/commit/cde3b1b3 (Gateway API v1.5.0, chart
+released after v2.2.1). The upstream main already grants gateway.networking.k8s.io/listenersets
+(standard group); v2.2.1 only had gateway.networking.x-k8s.io/xlistenersets (experimental).
+Before removing, confirm the new chart tarball's role.yaml includes gateway.networking.k8s.io
+in the listenersets rules.
+*/ -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agentgateway-listenerset-{{ .Release.Name }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+rules:
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - listenersets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - listenersets/status
+  verbs:
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agentgateway-listenerset-{{ .Release.Name }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agentgateway-listenerset-{{ .Release.Name }}
+subjects:
+- kind: ServiceAccount
+  name: agentgateway-controller
+  namespace: {{ .Release.Namespace }}
+{{- end }}

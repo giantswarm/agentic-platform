@@ -1,7 +1,7 @@
 dependencies:
 - name: muster
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.3.2
+  version: 0.3.10
 - name: agentgateway
   repository: oci://cr.agentgateway.dev/charts
   version: v2.2.1
@@ -10,9 +10,12 @@ dependencies:
   version: 0.1.2
 - name: agentic-platform-mcps
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.2.4
+  version: 0.2.5
 - name: kagent
   repository: oci://ghcr.io/kagent-dev/kagent/helm
   version: 0.9.6
-digest: sha256:9d16d2d2dc22138f1760bab65a4e9b05b97e249ce3cbbc9404eab682d0a3e69f
-generated: "2026-06-09T06:18:17.794440657Z"
+- name: klaus-gateway
+  repository: oci://gsoci.azurecr.io/charts/giantswarm
+  version: 0.0.41-dev.feat-channel-a2a.2026-06-09.14-45-31
+digest: sha256:320e7b3ab17f2d4cccadd22b267736eed1e36b3cb720714fc482ccf38dd3be44
+generated: "2026-06-10T13:18:41.744139624+02:00"
