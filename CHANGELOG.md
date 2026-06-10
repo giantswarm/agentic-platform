@@ -9,19 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `.github/workflows/chart-test.yaml`: `chart-test` GitHub Actions job that runs `make verify` (ingress-mode render guards), `ct lint` across all charts, and `ct install` against `helm/agentic-platform` using the `ci/*.yaml` fixtures. Replaces the CircleCI `test-ingress-modes` job.
-- `ct.yaml`: chart-testing configuration (`chart-dirs: [helm]`, `timeout: 600`).
-- `ci/test-kagent-basic-values.yaml`: ct install fixture for the kagent controller with bundled postgres, no oauth2-proxy. Covers the kagent CRD surface without requiring a live OIDC endpoint.
-- `ci/lint-only/`: subdirectory for fixtures that require external prereqs (CNPG operator, OIDC endpoint, private registry) and cannot install in kind; chart-testing only scans `ci/*.yaml` so these run for lint only.
+- `.github/workflows/chart-test.yaml`: `chart-test` GitHub Actions job that runs `make helm-test` (helm-unittest covering all `validateIngress` guard branches), `ct lint` across all charts, and `ct install` against `helm/agentic-platform` using the `ci/*.yaml` fixtures. Replaces the CircleCI `test-ingress-modes` job.
+- `ct.yaml`: chart-testing configuration (`chart-dirs: [helm]`, `helm-extra-args: --timeout 600s`).
+- `ci/dex-values.yaml`: minimal in-memory Dex config for the kind CI cluster; provides an OIDC discovery endpoint so oauth2-proxy can start without crashlooping.
+- `helm/agentic-platform/tests/validate_ingress_test.yaml`: 9 helm-unittest tests covering every `validateIngress` guard branch (7 negative `failedTemplate` assertions, 2 positive render checks).
+- `make helm-test` target: runs `helm unittest helm/agentic-platform` (requires the helm-unittest plugin).
 
 ### Changed
 
-- `make verify-modes` renamed to `make verify`; the target is unchanged but the name is now consistent with convention.
-- `ci-values.yaml`, `test-values.yaml`, `test-extra-objects-values.yaml`, `test-restricted-values.yaml`: explicitly disable `valkey` and `muster.oauth.server` (both default to enabled) so these fixtures can install in kind without external storage dependencies.
+- `ci-values.yaml` renamed to `ci/test-muster-direct-values.yaml`; updated to disable `valkey` and `muster.oauth.server` and set `networkPolicy.flavor: kubernetes` so the fixture installs in kind without external storage or Cilium dependencies.
+- `ci/test-netpol-kubernetes-values.yaml` renamed to `ci/test-netpol-cilium-values.yaml`; reworked to exercise Cilium-flavor `CiliumNetworkPolicy` templates (Cilium CRDs installed as a workflow prereq; no Cilium agent required).
+- `ci/test-full-stack-values.yaml`: expanded to cover the full agentgateway-muster stack including Dex-backed oauth2-proxy, bundled CNPG postgres, kubernetes-flavor NetworkPolicies, and Envoy Gateway `AgentgatewayParameters` security contexts.
 
 ### Removed
 
-- CircleCI `test-ingress-modes` job: static render tests now run inside the `chart-test` GitHub Actions workflow.
+- CircleCI `test-ingress-modes` job: ingress-mode guard coverage moves into `make helm-test` (helm-unittest) in the `chart-test` GitHub Actions workflow.
+- `make verify-modes` Makefile target: replaced by `make helm-test`.
+- `ci/lint-only/` directory: chart-testing does not recurse into subdirectories, so fixtures there were never reached by `ct lint` or `ct install`; removed to eliminate the misleading directory.
+- `ci/test-values.yaml`, `ci/test-extra-objects-values.yaml`, `ci/test-restricted-values.yaml`, `ci/test-kagent-routing-values.yaml`, `ci/test-mcps-values.yaml`, `ci/test-postgres-values.yaml`, `ci/test-private-registry-values.yaml`: replaced by the three `ci/test-*.yaml` fixtures above, which cover the same surface areas with real cluster prereqs.
 
 ### Fixed
 

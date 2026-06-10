@@ -34,6 +34,8 @@ muster:
 kagent:
   enabled: true
   namespaceOverride: kagent
+  kyvernoPolicy:
+    enabled: true
   database:
     postgres:
       bundled:

@@ -39,6 +39,8 @@ agentic-platform-mcps:
 kagent:
   enabled: true
   namespaceOverride: kagent
+  kyvernoPolicy:
+    enabled: true
   ui:
     startupProbe:
       httpGet:
