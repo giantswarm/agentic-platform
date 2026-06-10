@@ -10,6 +10,10 @@
 # resources with a status.conditions field to reach Ready=True; the agentgateway
 # controller sets an initial non-True condition until the data-plane confirms the
 # backend is reachable, which can outlast the install timeout).
+#
+# hook-delete-policy is hook-failed only: Helm updates the resource in place on
+# upgrade rather than delete-then-recreate, so there is no window where the
+# backend registration is absent while agentgateway is routing live traffic.
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
@@ -18,7 +22,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-delete-policy": hook-failed
   labels:
     {{- include "labels.common" . | nindent 4 }}
 spec:
