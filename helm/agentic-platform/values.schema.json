@@ -341,6 +341,138 @@
         }
       }
     },
+    "klausGateway": {
+      "type": "object",
+      "description": "klaus-gateway subchart values (pass-through). Subchart keys are forwarded; only the umbrella-controlled keys are validated here.",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Install the klaus-gateway subchart.",
+          "default": false
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "registry": {
+              "type": "string"
+            }
+          }
+        },
+        "agentgateway": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Sub-chart's own agentgateway dependency. Keep false to reuse the umbrella's bundled agentgateway."
+            }
+          }
+        },
+        "crd": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "install": {
+              "type": "boolean",
+              "description": "Manage the ChannelRoute CRD inline. No companion crds chart needed."
+            }
+          }
+        },
+        "routing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "store": {
+              "type": "string",
+              "enum": ["memory", "crd"],
+              "description": "Route persistence. memory is stateless; crd requires the controller."
+            },
+            "defaultTTL": {
+              "type": "string"
+            }
+          }
+        },
+        "lifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "driver": {
+              "type": "string",
+              "enum": ["operator", "static"],
+              "description": "operator provisions Klaus instances via the Klaus operator; static uses staticInstances."
+            },
+            "staticInstances": {
+              "type": "string",
+              "description": "Comma-separated static instance URLs. Required when driver is static."
+            }
+          }
+        },
+        "upstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "agentgatewayURL": {
+              "type": "string",
+              "description": "Data-plane agentgateway service URL. Empty disables proxying."
+            }
+          }
+        },
+        "observability": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "otlpEndpoint": {
+              "type": "string",
+              "description": "OTLP trace export endpoint. Empty disables tracing."
+            }
+          }
+        },
+        "slack": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "secretName": {
+              "type": "string",
+              "description": "Secret containing bot-token, signing-secret, and app-token. Required when slack.enabled is true."
+            }
+          }
+        },
+        "cli": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          }
+        },
+        "a2a": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "defaultAgent": {
+              "type": "string",
+              "description": "Fallback agentRef when the channel does not supply one."
+            },
+            "kagentA2ABaseURL": {
+              "type": "string",
+              "description": "kagent A2A base URL (without trailing agent name). Required when a2a.enabled is true."
+            }
+          }
+        }
+      }
+    },
     "postgres": {
       "type": "object",
       "additionalProperties": false,

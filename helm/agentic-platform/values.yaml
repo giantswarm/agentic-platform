@@ -718,6 +718,68 @@ postgres:
     name: sessions
     owner: sessions
 
+# Klaus Gateway — channel front door (Slack, CLI, web) for Klaus instances.
+# Disabled by default; set klausGateway.enabled: true to deploy.
+# The chart's own agentgateway sub-dependency is disabled here because the
+# umbrella already manages the agentgateway controller via the `agentgateway`
+# dependency above; set upstream.agentgatewayURL to the data-plane service
+# URL once the agentgateway deployment is known (typically post-install).
+klausGateway:
+  enabled: false
+
+  image:
+    registry: gsoci.azurecr.io
+
+  # Do not deploy a second agentgateway; reuse the umbrella's.
+  agentgateway:
+    enabled: false
+
+  # ChannelRoute CRD managed inline by the sub-chart.
+  crd:
+    install: true
+
+  # Routing persistence. "memory" is stateless (routes lost on restart).
+  # Switch to "crd" + controller.enabled: true for durable routes.
+  routing:
+    store: memory
+    defaultTTL: "24h"
+
+  # Lifecycle driver. Set to "static" + staticInstances for clusters without
+  # the operator. "operator" (default) provisions Klaus instances on demand via
+  # the Klaus operator MCP endpoint.
+  lifecycle:
+    driver: operator
+    staticInstances: ""
+
+  # Point at the bundled agentgateway data-plane service once deployed.
+  # Empty disables proxying; the gateway talks directly to instance BaseURLs.
+  upstream:
+    agentgatewayURL: ""
+
+  # OTLP trace export. Set to the cluster OTLP gateway endpoint to enable.
+  observability:
+    otlpEndpoint: ""
+
+  # Slack channel adapter. Provide a Secret with bot-token / signing-secret /
+  # app-token before setting enabled: true.
+  slack:
+    enabled: false
+    mode: events
+    secretName: ""
+
+  # CLI channel adapter (remote klausctl users). Off by default.
+  cli:
+    enabled: false
+
+  # A2A client adapter. Forwards Slack turns directly to the kagent A2A
+  # endpoint; kagent becomes the single orchestrator.
+  # defaultAgent is the fallback agentRef when the channel does not supply one.
+  a2a:
+    enabled: false
+    defaultAgent: "klaud-coding"
+    # Required when a2a.enabled is true. Full base URL without trailing agent name.
+    kagentA2ABaseURL: "http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent"
+
 agentgateway:
   # Controller dependency install switch. Must be true for agentgateway-* ingress modes (validated against ingress.mode).
   enabled: false
