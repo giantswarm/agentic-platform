@@ -263,6 +263,16 @@
           "type": "string",
           "description": "Target namespace for all kagent resources. Must match postgres.namespace when postgres.enabled is true."
         },
+        "kyvernoPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ClusterPolicy that mutates Deployments created by the kagent controller to add restricted-PSS securityContext fields. Requires Kyverno CRDs (kyverno.io/v1).",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          }
+        },
         "serviceMonitor": {
           "type": "object",
           "additionalProperties": false,

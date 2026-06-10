@@ -4,12 +4,25 @@
 {{- $kagentFullname := .Values.kagent.fullnameOverride | default .Release.Name }}
 # AgentgatewayBackend — registers the kagent controller as a backend that
 # agentgateway can proxy to after JWT validation.
+#
+# Rendered as a post-install/post-upgrade hook so that Helm's --wait loop does
+# not block on status.conditions for this CRD (Helm v3.13+ waits for all CRD
+# resources with a status.conditions field to reach Ready=True; the agentgateway
+# controller sets an initial non-True condition until the data-plane confirms the
+# backend is reachable, which can outlast the install timeout).
+#
+# hook-delete-policy is hook-failed only: Helm updates the resource in place on
+# upgrade rather than delete-then-recreate, so there is no window where the
+# backend registration is absent while agentgateway is routing live traffic.
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
 metadata:
   name: kagent
   namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": hook-failed
   labels:
     {{- include "labels.common" . | nindent 4 }}
 spec:

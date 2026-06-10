@@ -1,0 +1,10 @@
+# chart-testing (ct) configuration.
+# https://github.com/helm/chart-testing/blob/main/doc/ct_lint-and-install.md
+chart-dirs:
+  - helm
+remote: origin
+target-branch: main
+# Pass --timeout 600s directly to helm install/upgrade. The ct.yaml `timeout`
+# integer key is not forwarded to helm --timeout (Helm falls back to its 5m
+# default); helm-extra-args inserts the flag verbatim and bypasses that.
+helm-extra-args: --timeout 600s

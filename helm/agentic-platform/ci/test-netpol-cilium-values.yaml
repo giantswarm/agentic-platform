@@ -1,0 +1,45 @@
+# Mirror of test-netpol-kubernetes-values.yaml for the cilium flavor.
+# CiliumNetworkPolicy templates render and are exercised here; Cilium CRDs are
+# installed as a workflow prereq (no Cilium agent needed).
+ingress:
+  mode: agentgateway-muster
+  parentRefs:
+    - name: giantswarm-default
+      namespace: envoy-gateway-system
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  hostnames:
+    - muster.ci.example.com
+
+agentgateway:
+  enabled: true
+
+networkPolicy:
+  enabled: true
+  flavor: cilium
+  musterInClusterMcpPorts: []
+
+muster:
+  ciliumNetworkPolicy:
+    enabled: true
+  networkPolicy:
+    flavor: cilium
+  muster:
+    oauth:
+      server:
+        enabled: false
+        storage:
+          type: memory
+
+kagent:
+  enabled: true
+  namespaceOverride: kagent
+  kyvernoPolicy:
+    enabled: true
+  database:
+    postgres:
+      bundled:
+        enabled: true
+
+valkey:
+  enabled: false

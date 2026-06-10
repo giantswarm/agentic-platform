@@ -1,0 +1,143 @@
+name: chart-test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  chart-test:
+    name: chart-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        with:
+          version: v3.17.3
+
+      - uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+
+      - name: install helm-unittest plugin
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version 0.8.2
+
+      - name: helm unit tests
+        run: make helm-test
+
+      - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+
+      # Gateway API v1 CRDs are a cluster-level prerequisite (not shipped by
+      # this chart — see README). Install the standard channel which covers
+      # Gateway, HTTPRoute, and GatewayClass.
+      - name: install Gateway API CRDs
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+          kubectl wait --for=condition=Established --timeout=60s \
+            crd/gateways.gateway.networking.k8s.io \
+            crd/httproutes.gateway.networking.k8s.io \
+            crd/gatewayclasses.gateway.networking.k8s.io
+
+      # agentic-platform-crds must be installed before the app chart so that
+      # all agentgateway / muster / kagent CRDs are Established when the app
+      # chart's CRs are applied.
+      - name: install agentic-platform-crds (prerequisite)
+        run: |
+          helm dependency build helm/agentic-platform-crds
+          helm install agentic-platform-crds helm/agentic-platform-crds \
+            --namespace agentic-platform-crds --create-namespace --wait \
+            --timeout 120s
+
+      # CNPG operator — required by test-postgres-values.yaml, which exercises
+      # the kagent + CloudNativePG Cluster path. The operator watches for Cluster
+      # CRs cluster-wide; it needs to be running before the app chart installs the
+      # Cluster resource.
+      - name: install CNPG operator (prerequisite)
+        run: |
+          helm install cnpg cloudnative-pg \
+            --repo https://cloudnative-pg.github.io/charts \
+            --namespace cnpg-system --create-namespace --wait \
+            --version 0.28.2 --timeout 120s
+
+      # Dex — minimal in-cluster OIDC IdP required by test-kagent-routing-values.yaml.
+      # oauth2-proxy does discovery against OIDC_ISSUER_URL on startup; without a
+      # live endpoint the pod crashloops and ct install fails. Config in ci/dex-values.yaml:
+      # HTTP issuer at http://dex.dex.svc.cluster.local:5556, static client oauth2-proxy.
+      - name: install Dex (prerequisite)
+        run: |
+          helm install dex dex \
+            --repo https://charts.dexidp.io \
+            --namespace dex --create-namespace \
+            --values ci/dex-values.yaml \
+            --version 0.24.1 --wait --timeout 60s
+
+      # Envoy Gateway CRDs — required by fixtures that set backendTrafficPolicy.enabled=true.
+      # Only the CRDs are needed; no EG controller runs in kind.
+      - name: install Envoy Gateway CRDs (prerequisite)
+        run: |
+          curl -sL https://github.com/envoyproxy/gateway/releases/download/v1.3.2/install.yaml \
+            -o /tmp/eg-install.yaml
+          python3 -c "import yaml; f=open('/tmp/eg-install.yaml'); docs=[d for d in yaml.safe_load_all(f) if d and d.get('kind')=='CustomResourceDefinition']; print(yaml.dump_all(docs))" \
+            | kubectl apply --server-side -f -
+          sleep 2
+          kubectl wait --for=condition=Established --timeout=60s \
+            crd/backendtrafficpolicies.gateway.envoyproxy.io
+
+      # Cilium CRDs — required by test-netpol-cilium-values.yaml. Only the CRDs
+      # are needed; no Cilium agent runs in kind.
+      - name: install Cilium CRDs (prerequisite)
+        run: |
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/cilium/cilium/v1.17.4/pkg/k8s/apis/cilium.io/client/crds/v2/ciliumnetworkpolicies.yaml
+          sleep 2
+          kubectl wait --for=condition=Established --timeout=30s \
+            crd/ciliumnetworkpolicies.cilium.io
+
+      # Kyverno CRDs — required by fixtures that enable kagent, which renders a
+      # ClusterPolicy for declarative-agent pod security. Only the CRDs are needed;
+      # no Kyverno controller runs in kind.
+      - name: install Kyverno CRDs (prerequisite)
+        run: |
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/kyverno/kyverno/v1.12.6/config/crds/kyverno/kyverno.io_clusterpolicies.yaml
+          sleep 2
+          kubectl wait --for=condition=Established --timeout=30s \
+            crd/clusterpolicies.kyverno.io
+
+      # Prometheus Operator CRDs — required by fixtures that enable kagent with
+      # serviceMonitor enabled (default). Only the CRDs are needed; no operator runs.
+      - name: install Prometheus Operator CRDs (prerequisite)
+        run: |
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.78.2/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+          sleep 2
+          kubectl wait --for=condition=Established --timeout=30s \
+            crd/servicemonitors.monitoring.coreos.com
+
+      # Lint all charts (agentic-platform + agentic-platform-crds).
+      - name: ct lint
+        run: ct lint --config ct.yaml --all
+
+      # Install the app chart against each ci/*.yaml fixture. CRDs are already
+      # Established from the prerequisite step above.
+      - name: ct install
+        run: |
+          # Watchdog: dump pod and CRD condition state every 30s. Output stays in
+          # the step log even if ct install fails, giving a snapshot of what was
+          # blocking Helm's --wait loop.
+          (while true; do
+            sleep 30
+            echo "=== $(date -u '+%H:%M:%SZ') cluster state ==="
+            kubectl get pods -A -o wide 2>/dev/null || true
+            echo "--- agentgatewaybackends ---"
+            kubectl get agentgatewaybackends -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}: {.status.conditions}{"\n"}{end}' 2>/dev/null || true
+            echo "--- deployments ---"
+            kubectl get deployments -A 2>/dev/null || true
+          done) &
+          WATCHDOG_PID=$!
+          ct install --config ct.yaml --charts helm/agentic-platform
+          EXIT=$?
+          kill $WATCHDOG_PID 2>/dev/null || true
+          exit $EXIT

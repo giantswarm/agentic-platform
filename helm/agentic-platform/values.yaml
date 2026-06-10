@@ -432,6 +432,13 @@ kagent:
       apiKeySecretKey: ANTHROPIC_API_KEY
       apiKey: ""  # Set per-cluster in secret-values; chart creates the Secret
 
+  # ClusterPolicy that mutates Deployments created by the kagent controller to
+  # add restricted-PSS securityContext fields when absent.
+  # Requires the Kyverno CRDs (kyverno.io/v1) — disabled by default since Kyverno
+  # is not a universal platform component.
+  kyvernoPolicy:
+    enabled: false
+
   # ServiceMonitor for controller-runtime Prometheus metrics.
   # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
   serviceMonitor:
@@ -786,15 +793,10 @@ agentgateway:
   fullnameOverride: agentgateway-controller
   image:
     registry: gsoci.azurecr.io
-    tag: v1.2.1
+    tag: v2.2.1
   controller:
     image:
       repository: giantswarm/agentgateway-controller
-  proxy:
-    image:
-      registry: gsoci.azurecr.io
-      repository: giantswarm/agentgateway
-      tag: v1.2.1
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   podSecurityContext:

@@ -1,4 +1,4 @@
-{{- if .Values.kagent.enabled }}
+{{- if and .Values.kagent.enabled .Values.kagent.kyvernoPolicy.enabled }}
 {{- $ns := .Values.kagent.namespaceOverride | default "kagent" }}
 # kagent's declarative agent sub-charts (e.g. cilium-policy-agent, promql-agent)
 # render Agent CRs without podSecurityContext/securityContext in their deployment
