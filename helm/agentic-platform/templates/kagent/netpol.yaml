@@ -1,7 +1,7 @@
 {{- if and .Values.kagent.enabled .Values.networkPolicy.enabled }}
 {{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $controllerPort := "8083" }}
-{{- $clusterName := .Values.postgres.clusterName | default "agentic-platform-pg" }}
+{{- $clusterName := .Values.postgres.clusterName | default "kagent-pg" }}
 
 {{- if eq .Values.networkPolicy.flavor "cilium" }}
 ---
@@ -111,7 +111,7 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: {{ include "name" . }}-pg-cluster
+  name: {{ $clusterName }}-cluster
   namespace: {{ $kagentNs }}
   labels:
     {{- include "labels.common" . | nindent 4 }}
