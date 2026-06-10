@@ -23,7 +23,7 @@ dependencies:
     version: 0.3.11
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
-    version: v2.2.1
+    version: v1.2.1
     repository: oci://cr.agentgateway.dev/charts
     condition: agentgateway.enabled
   # CRDs (agentgateway: AgentgatewayParameters / Policy / Backend; muster:

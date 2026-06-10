@@ -13,9 +13,13 @@
       // (agentic-platform-crds) are released together upstream and pinned to the
       // SAME version. Bump them in one lockstep PR so controller and CRDs never
       // drift apart.
+      // v2.2.x are excluded: the upstream project released v2.2.0/v2.2.1 and then
+      // reset semver to v1.0.0 (see agentgateway/agentgateway#1249). v2.2.x is
+      // older than v1.0.0 and must not be treated as an upgrade.
       "matchManagers": ["helmv3"],
       "matchDepNames": ["agentgateway", "agentgateway-crds"],
       "groupName": "agentgateway",
+      "allowedVersions": "!/^v2\\.2\\./",
     },
     {
       // muster app chart and muster-crds are the same upstream project but
