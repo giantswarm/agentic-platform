@@ -71,6 +71,6 @@ dependencies:
   # The alias maps the hyphenated chart name to a YAML-safe values key.
   - name: klaus-gateway
     alias: klausGateway
-    version: 0.0.41-dev.feat-channel-a2a.2026-06-09.14-45-31
+    version: 0.0.44
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: klausGateway.enabled
