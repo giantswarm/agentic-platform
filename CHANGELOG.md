@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.21] - 2026-06-10
+
 ### Fixed
 
 - Downgrade bundled agentgateway and agentgateway-crds charts from `v2.2.1` back to `v1.2.1`. The upstream project released `v2.2.x` before resetting semver to `v1.0.0`; `v2.2.1` is older than `v1.0.0` and was incorrectly treated as an upgrade (agentgateway/agentgateway#1249). Block the bogus `v2.2.x` range in `renovate.json5`.
@@ -140,7 +142,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.21...HEAD
+[1.1.21]: https://github.com/giantswarm/agentic-platform/compare/v0.5.0...v1.1.21
 [0.5.0]: https://github.com/giantswarm/agentic-platform/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/giantswarm/agentic-platform/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/giantswarm/agentic-platform/compare/v0.3.0...v0.4.0
