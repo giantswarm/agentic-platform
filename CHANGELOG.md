@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.22] - 2026-06-11
+
 ### Changed
 
 - Update muster and muster-crds to v0.3.13. Muster's OAuth server (mcp-oauth v0.2.199) now defaults the JWT access token `aud` claim to its resource identifier when a client omits the RFC 8707 `resource` parameter, so tokens from generic OAuth clients (e.g. Backstage auth providers) pass the agentgateway's strict JWT audience validation on `/mcp` instead of failing with `401 InvalidAudience`.
@@ -146,7 +148,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.21...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.22...HEAD
+[1.1.22]: https://github.com/giantswarm/agentic-platform/compare/v1.1.21...v1.1.22
 [1.1.21]: https://github.com/giantswarm/agentic-platform/compare/v0.5.0...v1.1.21
 [0.5.0]: https://github.com/giantswarm/agentic-platform/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/giantswarm/agentic-platform/compare/v0.4.0...v0.4.1
