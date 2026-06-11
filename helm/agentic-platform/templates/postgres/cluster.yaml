@@ -2,7 +2,7 @@
 {{- $db := .Values.postgres.applicationDatabase }}
 {{- $schema := $db.schema | default "kagent" }}
 {{- $owner := $db.owner | default "kagent" }}
-{{- $clusterName := .Values.postgres.clusterName | default "agentic-platform-pg" }}
+{{- $clusterName := .Values.postgres.clusterName }}
 {{- $ns := .Values.postgres.namespace | default .Release.Namespace }}
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
