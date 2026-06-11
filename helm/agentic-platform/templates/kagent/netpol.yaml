@@ -115,6 +115,14 @@ spec:
             - port: {{ include "agentic-platform.musterServicePort" . | quote }}
               protocol: TCP
     {{- end }}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/managed-by: kagent
+            io.kubernetes.pod.namespace: {{ $kagentNs }}
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
 ---
 # CNPG cluster policies: inter-instance egress for streaming replication,
 # and ingress from the kagent controller.

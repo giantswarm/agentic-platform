@@ -15,9 +15,9 @@
 # to run unconfined (seccompDefault is false on these nodes, so no profile is applied
 # by the kubelet by default when the field is absent).
 #
-# Scope: limited to resources carrying app: kagent, the label the kagent translator
-# sets on every agent Deployment and Pod (manifest_builder.go selectorLabels).
-# The kagent controller pod itself uses app.kubernetes.io/* labels and is unaffected.
+# Scope: limited to resources carrying app.kubernetes.io/managed-by: kagent, the label
+# the kagent controller sets on every agent Deployment and Pod it creates.
+# The kagent controller pod itself uses app.kubernetes.io/name: kagent and is unaffected.
 #
 # Namespace: scoped to the single namespace configured via kagent.namespaceOverride.
 # If agents are ever deployed to additional namespaces, add those namespaces here.
@@ -27,7 +27,7 @@
 apiVersion: kyverno.io/v2
 kind: PolicyException
 metadata:
-  name: {{ include "name" . }}-kagent-declarative-seccomp
+  name: kagent-declarative-seccomp
   namespace: policy-exceptions
   labels:
     {{- include "labels.common" . | nindent 4 }}
@@ -47,5 +47,5 @@ spec:
         - {{ $ns }}
         selector:
           matchLabels:
-            app: kagent
+            app.kubernetes.io/managed-by: kagent
 {{- end }}
