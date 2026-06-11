@@ -1,4 +1,4 @@
-{{- if and .Values.kagent.enabled .Values.agents.enabled .Values.muster.enabled }}
+{{- if and .Values.kagent.enabled .Values.muster.enabled }}
 {{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $tokenSecretName := printf "%s-kagent-muster-token" (include "name" .) }}
 {{/*

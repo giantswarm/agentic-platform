@@ -667,14 +667,10 @@ kagent:
 # All CRs land in kagent.namespaceOverride (default: kagent).
 # Prerequisite: kagent.enabled: true and kagent-crds installed.
 #
-# When any mcpServer entry is present and agents.enabled is true, the chart also
-# opens egress from the kagent controller and all kagent-managed agent pods to
-# muster on port 8090 (requires networkPolicy.enabled: true + flavor: cilium).
+# muster RemoteMCPServer, SA, and egress CNP are gated on kagent.enabled + muster.enabled.
 agents:
-  enabled: false
-
   # Config for the built-in muster MCP gateway connection. Active when
-  # muster.enabled: true — the umbrella creates a RemoteMCPServer CR, a
+  # kagent.enabled + muster.enabled — the umbrella creates a RemoteMCPServer CR, a
   # ServiceAccount + long-lived SA token Secret, and a Helm hook Job that
   # writes "Bearer <token>" into the headersFrom Secret.
   #

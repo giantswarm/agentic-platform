@@ -1,4 +1,4 @@
-{{- if and .Values.kagent.enabled .Values.agents.enabled .Values.agents.models }}
+{{- if and .Values.kagent.enabled .Values.agents.models }}
 {{- $ns := .Values.kagent.namespaceOverride | default "kagent" }}
 {{- range .Values.agents.models }}
 ---
