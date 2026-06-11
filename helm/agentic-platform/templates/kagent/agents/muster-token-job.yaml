@@ -1,0 +1,59 @@
+{{- if and .Values.kagent.enabled .Values.agents.enabled .Values.mcps.enabled .Values.agents.muster.enabled }}
+{{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $tokenSecretName := printf "%s-kagent-muster-token" (include "name" .) }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "name" . }}-kagent-muster-token-init
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kagent-muster-token-init
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+    spec:
+      serviceAccountName: kagent-muster-token-init
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: init
+          image: {{ .Values.agents.muster.kubectlImage | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              # Wait for the token controller to populate the SA token Secret.
+              until kubectl get secret kagent-muster-client-satoken \
+                -n {{ $kagentNs }} \
+                -o jsonpath='{.data.token}' | grep -q .; do
+                echo "waiting for SA token..."
+                sleep 2
+              done
+
+              TOKEN=$(kubectl get secret kagent-muster-client-satoken \
+                -n {{ $kagentNs }} \
+                -o jsonpath='{.data.token}' | base64 -d)
+
+              kubectl create secret generic {{ $tokenSecretName }} \
+                -n {{ $kagentNs }} \
+                --from-literal=token="Bearer ${TOKEN}" \
+                --dry-run=client -o yaml | kubectl apply -f -
+{{- end }}

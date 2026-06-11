@@ -1,0 +1,66 @@
+{{- if and .Values.kagent.enabled .Values.agents.enabled .Values.mcps.enabled .Values.agents.muster.enabled }}
+{{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $tokenSecretName := printf "%s-kagent-muster-token" (include "name" .) }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kagent-muster-client
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+---
+# Long-lived SA token populated by the token controller. Used by the hook Job
+# to write a Bearer-prefixed Secret for RemoteMCPServer.headersFrom.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kagent-muster-client-satoken
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  annotations:
+    kubernetes.io/service-account.name: kagent-muster-client
+type: kubernetes.io/service-account-token
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kagent-muster-token-init
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "name" . }}-kagent-muster-token-init
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["kagent-muster-client-satoken"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: [{{ $tokenSecretName | quote }}]
+    verbs: ["get", "create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "name" . }}-kagent-muster-token-init
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "name" . }}-kagent-muster-token-init
+subjects:
+  - kind: ServiceAccount
+    name: kagent-muster-token-init
+    namespace: {{ $kagentNs }}
+{{- end }}

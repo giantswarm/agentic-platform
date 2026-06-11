@@ -1,6 +1,6 @@
 {{- if and .Values.kagent.enabled .Values.agents.enabled }}
 {{- $ns := .Values.kagent.namespaceOverride | default "kagent" }}
-{{- if and .Values.mcps.enabled .Values.agents.muster.enabled .Values.agents.muster.tokenSecret }}
+{{- if and .Values.mcps.enabled .Values.agents.muster.enabled }}
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -15,7 +15,7 @@ spec:
   - name: Authorization
     valueFrom:
       secretKeyRef:
-        name: {{ .Values.agents.muster.tokenSecret | quote }}
+        name: {{ printf "%s-kagent-muster-token" (include "name" .) | quote }}
         key: token
 {{- end }}
 {{- range .Values.agents.remoteMcpServers }}

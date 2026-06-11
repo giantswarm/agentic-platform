@@ -672,15 +672,31 @@ kagent:
 agents:
   enabled: false
 
-  # Convenience block for the built-in muster MCP gateway. When muster is
-  # deployed (mcps.enabled: true) and agents are enabled, set tokenSecret to
-  # a pre-created Secret (key: "token", value: "Bearer <id_token>") to have
-  # the umbrella create a RemoteMCPServer CR pointing to muster automatically.
-  # The URL is derived from the in-cluster muster Service; no URL override needed.
+  # Convenience block for the built-in muster MCP gateway. When enabled, the
+  # umbrella creates a RemoteMCPServer CR, a ServiceAccount + long-lived SA token
+  # Secret, and a Helm hook Job that writes "Bearer <token>" into the headersFrom
+  # Secret. No manual token management required.
+  #
+  # Prerequisites:
+  # 1. mcps.enabled: true (muster must be deployed)
+  # 2. muster.muster.oauth.server.trustedIssuers must include an entry for the
+  #    cluster SA OIDC issuer (find with:
+  #    kubectl get --raw /.well-known/openid-configuration | jq .issuer).
+  #    Set in per-cluster values (shared-configs) — see configmap-values.yaml.template.
+  #    Example entry:
+  #      trustedIssuers:
+  #        - issuer: "https://<cluster-oidc-issuer>/"
+  #          allowedAudiences: ["muster"]
+  #          allowedClaims:
+  #            sub: "system:serviceaccount:kagent:*"
   muster:
     enabled: false
-    # Name of the pre-created Secret carrying the Bearer token (key: "token").
-    tokenSecret: ""
+    # Audience embedded in the SA token and validated by muster's trustedIssuers entry.
+    # Must match allowedAudiences in muster.muster.oauth.server.trustedIssuers.
+    tokenAudience: "muster"
+    # kubectl image used by the Helm hook Job to create the token Secret.
+    # Override if your cluster uses a private registry mirror.
+    kubectlImage: "bitnami/kubectl:1.31"
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
