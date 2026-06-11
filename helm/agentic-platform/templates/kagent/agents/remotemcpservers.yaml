@@ -1,6 +1,6 @@
 {{- if and .Values.kagent.enabled .Values.agents.enabled }}
 {{- $ns := .Values.kagent.namespaceOverride | default "kagent" }}
-{{- if and .Values.mcps.enabled .Values.agents.muster.enabled }}
+{{- if and .Values.muster.enabled .Values.agents.enabled }}
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer

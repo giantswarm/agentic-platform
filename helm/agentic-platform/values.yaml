@@ -142,6 +142,7 @@ networkPolicy:
 extraObjects: []
 
 muster:
+  enabled: true
   image:
     registry: gsoci.azurecr.io
   # Pin muster's Service name as the single source of truth for it. The umbrella
@@ -672,28 +673,22 @@ kagent:
 agents:
   enabled: false
 
-  # Convenience block for the built-in muster MCP gateway. When enabled, the
-  # umbrella creates a RemoteMCPServer CR, a ServiceAccount + long-lived SA token
-  # Secret, and a Helm hook Job that writes "Bearer <token>" into the headersFrom
-  # Secret. No manual token management required.
+  # Config for the built-in muster MCP gateway connection. Active when
+  # muster.enabled: true — the umbrella creates a RemoteMCPServer CR, a
+  # ServiceAccount + long-lived SA token Secret, and a Helm hook Job that
+  # writes "Bearer <token>" into the headersFrom Secret.
   #
-  # Prerequisites:
-  # 1. mcps.enabled: true (muster must be deployed)
-  # 2. muster.muster.oauth.server.trustedIssuers must include an entry for the
-  #    cluster SA OIDC issuer (find with:
-  #    kubectl get --raw /.well-known/openid-configuration | jq .issuer).
-  #    Set in per-cluster values (shared-configs) — see configmap-values.yaml.template.
-  #    Example entry:
-  #      trustedIssuers:
-  #        - issuer: "https://<cluster-oidc-issuer>/"
-  #          allowedAudiences: ["muster"]
-  #          allowedClaims:
-  #            sub: "system:serviceaccount:kagent:*"
+  # Prerequisite: muster.muster.oauth.server.trustedIssuers must include an
+  # entry for the cluster SA OIDC issuer (find with:
+  #   kubectl get --raw /.well-known/openid-configuration | jq .issuer).
+  # Set in per-cluster values — see configmap-values.yaml.template.
+  # Example entry:
+  #   trustedIssuers:
+  #     - issuer: "https://<cluster-oidc-issuer>/"
+  #       allowedAudiences: ["muster"]
+  #       allowedClaims:
+  #         sub: "system:serviceaccount:kagent:*"
   muster:
-    enabled: false
-    # Audience embedded in the SA token and validated by muster's trustedIssuers entry.
-    # Must match allowedAudiences in muster.muster.oauth.server.trustedIssuers.
-    tokenAudience: "muster"
     # kubectl image used by the Helm hook Job to create the token Secret.
     kubectlImage:
       registry: gsoci.azurecr.io

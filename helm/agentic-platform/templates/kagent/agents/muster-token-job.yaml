@@ -1,6 +1,26 @@
-{{- if and .Values.kagent.enabled .Values.agents.enabled .Values.mcps.enabled .Values.agents.muster.enabled }}
+{{- if and .Values.kagent.enabled .Values.agents.enabled .Values.muster.enabled }}
 {{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $tokenSecretName := printf "%s-kagent-muster-token" (include "name" .) }}
+{{/*
+Why this Job exists:
+  kagent's RemoteMCPServer uses headersFrom to inject an Authorization header on
+  every MCP request. headersFrom reads from a plain Secret — it does not support
+  projected tokens or TokenRequest API calls. The Secret must contain the literal
+  string "Bearer <token>".
+
+  The token source is a kubernetes.io/service-account-token Secret (muster-sa.yaml),
+  which the token controller populates asynchronously after the Secret is created.
+  The base64-encoded token is stored under the "token" key and never expires, so it
+  survives indefinitely without rotation.
+
+  This Job bridges the two: it waits for the SA token Secret to be populated, then
+  writes "Bearer <token>" into the headersFrom Secret. It runs as a post-install and
+  post-upgrade hook so the Secret is (re)created on every Helm lifecycle event.
+
+  All Agent, ModelConfig, and RemoteMCPServer CRs must be in the same namespace
+  (kagent.namespaceOverride, defaulting to the release namespace) because the kagent
+  controller watches a single namespace scope for these resources.
+*/}}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -40,7 +60,6 @@ spec:
             - /bin/sh
             - -ec
             - |
-              # Wait for the token controller to populate the SA token Secret.
               until kubectl get secret kagent-muster-client-satoken \
                 -n {{ $kagentNs }} \
                 -o jsonpath='{.data.token}' | grep -q .; do
