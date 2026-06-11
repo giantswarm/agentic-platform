@@ -41,6 +41,22 @@ spec:
         - ports:
             - port: "8090"
               protocol: TCP
+    {{- with .Values.gateway.jwksEgress }}
+    {{- if .enabled }}
+    # The controller fetches remote JWKS centrally (and distributes the keys to
+    # the data plane via xDS), so it needs the same JWKS egress as the data plane.
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: {{ .namespace | quote }}
+            {{- with .podSelector }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      toPorts:
+        - ports:
+            - port: {{ .port | toString | quote }}
+              protocol: TCP
+    {{- end }}
+    {{- end }}
     - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: kube-system

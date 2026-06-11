@@ -35,6 +35,24 @@ spec:
     - to:
         - ipBlock:
             cidr: {{ .Values.networkPolicy.kubernetes.apiServerCIDR | quote }}
+    {{- with .Values.gateway.jwksEgress }}
+    {{- if .enabled }}
+    # The controller fetches remote JWKS centrally (and distributes the keys to
+    # the data plane via xDS), so it needs the same JWKS egress as the data plane.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .namespace | quote }}
+          {{- with .podSelector }}
+          podSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+          {{- end }}
+      ports:
+        - port: {{ .port }}
+          protocol: TCP
+    {{- end }}
+    {{- end }}
     - to:
         - namespaceSelector:
             matchLabels:
