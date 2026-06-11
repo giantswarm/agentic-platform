@@ -662,6 +662,38 @@ kagent:
       annotations: {}
       labels: {}
 
+# Platform agents — kagent RemoteMCPServer CRs and supporting network policies.
+# All CRs land in kagent.namespaceOverride (default: kagent).
+# Prerequisite: kagent.enabled: true and kagent-crds installed.
+#
+# When any mcpServer entry is present and agents.enabled is true, the chart also
+# opens egress from the kagent controller and all kagent-managed agent pods to
+# muster on port 8090 (requires networkPolicy.enabled: true + flavor: cilium).
+agents:
+  enabled: false
+
+  # List of RemoteMCPServer CRs to create in the kagent namespace.
+  # Each entry creates one CR; agents reference it by name.
+  # The Bearer token Secret must be pre-created (key: "token",
+  # value: "Bearer <id_token>").
+  remoteMcpServers: []
+  # - name: muster
+  #   url: "http://muster.agentic-platform.svc.cluster.local:8090/mcp"
+  #   tokenSecret: ""   # pre-existing Secret with key "token"
+  #   description: "muster MCP gateway"
+
+  # List of ModelConfig CRs to create in the kagent namespace.
+  # Agents reference a ModelConfig by name via spec.declarative.modelConfig.
+  # Note: kagent's own sub-chart creates a default-model-config when
+  # kagent.providers.anthropic is set; entries here are additional or replacement
+  # configs. The apiKeySecret must be pre-created in the kagent namespace.
+  models: []
+  # - name: anthropic-sonnet
+  #   provider: Anthropic
+  #   model: claude-sonnet-4-6
+  #   apiKeySecret: kagent-anthropic
+  #   apiKeySecretKey: ANTHROPIC_API_KEY
+
 # Platform Postgres — CloudNativePG Cluster for kagent (and future Klaus sessions).
 # The CNPG operator and its CRDs are a cluster-level prerequisite (like Gateway
 # API CRDs): they must be installed before enabling this. Flip `enabled: false`

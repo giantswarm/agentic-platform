@@ -105,6 +105,17 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+    {{- if and .Values.agents.enabled .Values.agents.remoteMcpServers }}
+    # Controller must reach muster to reconcile RemoteMCPServer (fetch tool list).
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: muster
+            io.kubernetes.pod.namespace: {{ .Release.Namespace }}
+      toPorts:
+        - ports:
+            - port: {{ include "agentic-platform.musterServicePort" . | quote }}
+              protocol: TCP
+    {{- end }}
 ---
 # CNPG cluster policies: inter-instance egress for streaming replication,
 # and ingress from the kagent controller.
@@ -150,6 +161,54 @@ spec:
             - port: "5432"
               protocol: TCP
 
+{{- if and .Values.agents.enabled .Values.agents.remoteMcpServers }}
+---
+# Egress from all kagent-managed agent pods to muster (MCP tool calls)
+# and to the Anthropic API (model inference). DNS included.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-kagent-agent-muster-egress
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: kagent
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: muster
+            io.kubernetes.pod.namespace: {{ .Release.Namespace }}
+      toPorts:
+        - ports:
+            - port: {{ include "agentic-platform.musterServicePort" . | quote }}
+              protocol: TCP
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: coredns
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: k8s-dns-node-cache
+      toPorts:
+        - ports:
+            - port: "1053"
+              protocol: UDP
+            - port: "1053"
+              protocol: TCP
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+{{- end }}
 {{- if index .Values.kagent "oauth2-proxy" "enabled" }}
 ---
 # Ingress to oauth2-proxy: envoy (proxy port) + Prometheus (metrics port).
