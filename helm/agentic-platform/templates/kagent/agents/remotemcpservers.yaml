@@ -33,7 +33,7 @@ spec:
   - name: Authorization
     valueFrom:
       type: Secret
-      name: {{ required "agents.remoteMcpServers[].tokenSecret is required" .tokenSecret | quote }}
+      name: {{ .tokenSecret | default (printf "%s-kagent-muster-token" (include "name" $)) | quote }}
       key: token
 {{- end }}
 {{- end }}

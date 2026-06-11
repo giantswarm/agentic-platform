@@ -692,12 +692,13 @@ agents:
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
-  # CR; agents reference it by name. The Bearer token Secret must be pre-created
-  # (key: "token", value: "Bearer <id_token>").
+  # CR; agents reference it by name. tokenSecret defaults to the chart-managed
+  # SA-token Secret (written by the muster token hook Job, key "token", value
+  # "Bearer <token>"); set it only for servers needing a different credential.
   remoteMcpServers: []
   # - name: external-mcp
   #   url: "https://external-mcp.example.com/mcp"
-  #   tokenSecret: ""   # pre-existing Secret with key "token"
+  #   tokenSecret: ""   # optional: pre-existing Secret with key "token"
   #   description: "external MCP server"
 
   # List of ModelConfig CRs to create in the kagent namespace.
