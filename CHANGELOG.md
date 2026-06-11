@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update muster and muster-crds to v0.3.13. Muster's OAuth server (mcp-oauth v0.2.199) now defaults the JWT access token `aud` claim to its resource identifier when a client omits the RFC 8707 `resource` parameter, so tokens from generic OAuth clients (e.g. Backstage auth providers) pass the agentgateway's strict JWT audience validation on `/mcp` instead of failing with `401 InvalidAudience`.
+
 ## [1.1.21] - 2026-06-10
 
 ### Fixed
