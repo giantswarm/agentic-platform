@@ -1,6 +1,7 @@
 {{- if and .Values.kagent.enabled .Values.muster.enabled }}
 {{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $tokenSecretName := printf "%s-kagent-muster-token" (include "name" .) }}
+{{- $musterAudience := .Values.muster.muster.oauth.server.resourceIdentifier | default (printf "https://%s/mcp" (first .Values.ingress.hostnames)) }}
 {{/*
 Why this Job exists:
   kagent's RemoteMCPServer uses headersFrom to inject an Authorization header on
@@ -62,7 +63,8 @@ spec:
             - |
               TOKEN=$(kubectl create token kagent-muster-client \
                 -n {{ $kagentNs }} \
-                --duration={{ .Values.agents.muster.tokenDuration }})
+                --duration={{ .Values.agents.muster.tokenDuration }} \
+                --audience={{ $musterAudience }})
 
               kubectl create secret generic {{ $tokenSecretName }} \
                 -n {{ $kagentNs }} \
