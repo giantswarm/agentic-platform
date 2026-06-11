@@ -672,15 +672,25 @@ kagent:
 agents:
   enabled: false
 
-  # List of RemoteMCPServer CRs to create in the kagent namespace.
-  # Each entry creates one CR; agents reference it by name.
-  # The Bearer token Secret must be pre-created (key: "token",
-  # value: "Bearer <id_token>").
+  # Convenience block for the built-in muster MCP gateway. When muster is
+  # deployed (mcps.enabled: true) and agents are enabled, set tokenSecret to
+  # a pre-created Secret (key: "token", value: "Bearer <id_token>") to have
+  # the umbrella create a RemoteMCPServer CR pointing to muster automatically.
+  # The URL is derived from the in-cluster muster Service; no URL override needed.
+  muster:
+    enabled: false
+    # Name of the pre-created Secret carrying the Bearer token (key: "token").
+    tokenSecret: ""
+
+  # List of additional RemoteMCPServer CRs to create in the kagent namespace.
+  # Use for MCP servers other than the built-in muster. Each entry creates one
+  # CR; agents reference it by name. The Bearer token Secret must be pre-created
+  # (key: "token", value: "Bearer <id_token>").
   remoteMcpServers: []
-  # - name: muster
-  #   url: "http://muster.agentic-platform.svc.cluster.local:8090/mcp"
+  # - name: external-mcp
+  #   url: "https://external-mcp.example.com/mcp"
   #   tokenSecret: ""   # pre-existing Secret with key "token"
-  #   description: "muster MCP gateway"
+  #   description: "external MCP server"
 
   # List of ModelConfig CRs to create in the kagent namespace.
   # Agents reference a ModelConfig by name via spec.declarative.modelConfig.
