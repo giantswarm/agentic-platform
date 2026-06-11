@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.24] - 2026-06-11
+
 ### Changed
 
 - Update agentic-platform-mcps to v0.3.0: new `agentgateway.jwt.extraProviders` value lets the
@@ -165,7 +167,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.24...HEAD
+[1.1.24]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...v1.1.24
 [1.1.23]: https://github.com/giantswarm/agentic-platform/compare/v1.1.22...v1.1.23
 [1.1.22]: https://github.com/giantswarm/agentic-platform/compare/v1.1.21...v1.1.22
 [1.1.21]: https://github.com/giantswarm/agentic-platform/compare/v0.5.0...v1.1.21

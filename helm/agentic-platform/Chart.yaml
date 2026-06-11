@@ -13,7 +13,7 @@ icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
   - https://github.com/giantswarm/agentic-platform
 appVersion: "0.1.0"
-version: 1.1.23
+version: 1.1.24
 annotations:
   io.giantswarm.application.audience: all
   io.giantswarm.application.managed: "true"
