@@ -60,4 +60,27 @@ spec:
                 allowPrivilegeEscalation: false
                 capabilities:
                   drop: [ALL]
+  # SandboxAgent shares the same AgentSpec fields (spec.declarative.deployment.*) but
+  # is a distinct kind — the rule above does not match it. The agentsxk8s backend builds
+  # the pod template directly from these fields, so mutating the CR input is the same
+  # injection point as for regular Agent CRs.
+  - name: add-sandbox-agent-security-context
+    match:
+      any:
+      - resources:
+          kinds: ["kagent.dev/v1alpha2/SandboxAgent"]
+          namespaces: [{{ $ns }}]
+    mutate:
+      patchStrategicMerge:
+        spec:
+          (type): "Declarative"
+          declarative:
+            deployment:
+              +(podSecurityContext):
+                runAsNonRoot: true
+                runAsUser: 1001
+              +(securityContext):
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
 {{- end }}
