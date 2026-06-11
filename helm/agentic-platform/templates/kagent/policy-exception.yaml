@@ -15,9 +15,11 @@
 # to run unconfined (seccompDefault is false on these nodes, so no profile is applied
 # by the kubelet by default when the field is absent).
 #
-# Scope: limited to resources carrying app.kubernetes.io/managed-by: kagent, the label
-# the kagent controller sets on every agent Deployment and Pod it creates.
-# The kagent controller pod itself uses app.kubernetes.io/name: kagent and is unaffected.
+# Scope: limited to resources carrying app: kagent, the label the kagent controller
+# sets on every agent Deployment and Pod it creates. This is the label Cilium includes
+# in endpoint identity (app.kubernetes.io/managed-by is filtered by Cilium's label
+# filter). The kagent controller pod itself uses app.kubernetes.io/name: kagent
+# and is unaffected.
 #
 # Namespace: scoped to the single namespace configured via kagent.namespaceOverride.
 # If agents are ever deployed to additional namespaces, add those namespaces here.
@@ -47,5 +49,5 @@ spec:
         - {{ $ns }}
         selector:
           matchLabels:
-            app.kubernetes.io/managed-by: kagent
+            app: kagent
 {{- end }}
