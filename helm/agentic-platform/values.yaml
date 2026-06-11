@@ -681,7 +681,6 @@ agents:
   # Example entry:
   #   trustedIssuers:
   #     - issuer: "https://<cluster-oidc-issuer>/"
-  #       allowedAudiences: ["muster"]
   #       allowedClaims:
   #         sub: "system:serviceaccount:kagent:*"
   muster:
