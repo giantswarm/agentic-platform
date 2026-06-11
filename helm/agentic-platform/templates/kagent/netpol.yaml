@@ -1,7 +1,7 @@
 {{- if and .Values.kagent.enabled .Values.networkPolicy.enabled }}
 {{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $controllerPort := "8083" }}
-{{- $clusterName := .Values.postgres.clusterName | default "kagent-pg" }}
+{{- $clusterName := .Values.postgres.clusterName }}
 
 {{- if eq .Values.networkPolicy.flavor "cilium" }}
 ---
