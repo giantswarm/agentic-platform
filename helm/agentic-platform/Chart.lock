@@ -10,12 +10,12 @@ dependencies:
   version: 0.1.2
 - name: agentic-platform-mcps
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.2.5
+  version: 0.3.0
 - name: kagent
   repository: oci://ghcr.io/kagent-dev/kagent/helm
   version: 0.9.6
 - name: klaus-gateway
   repository: oci://gsoci.azurecr.io/charts/giantswarm
   version: 0.0.41-dev.feat-channel-a2a.2026-06-09.14-45-31
-digest: sha256:c196b5489202287d777357576bcdf34d2f1767ea052494a092823f92c41d5960
-generated: "2026-06-11T14:52:07.259004958+02:00"
+digest: sha256:26e2da458fd8e005927d12717e2f20dffd9fa3e5d3f23c01462cd7fd4c4abb9f
+generated: "2026-06-11T15:54:41.505755694+02:00"

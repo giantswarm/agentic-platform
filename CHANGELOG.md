@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update agentic-platform-mcps to v0.3.0: new `agentgateway.jwt.extraProviders` value lets the
+  inbound agentgateway JWT policy accept tokens from additional issuers (e.g. Dex-issued ID tokens
+  forwarded by Backstage AI chat alongside muster-issued JWTs, giantswarm#36840). Also fixes the
+  `identityProviders` values schema that rejected every populated provider map.
+
 ## [1.1.23] - 2026-06-11
 
 ### Changed
