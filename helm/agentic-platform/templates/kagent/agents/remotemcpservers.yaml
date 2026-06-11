@@ -14,9 +14,9 @@ spec:
   headersFrom:
   - name: Authorization
     valueFrom:
-      secretKeyRef:
-        name: {{ printf "%s-kagent-muster-token" (include "name" .) | quote }}
-        key: token
+      type: Secret
+      name: {{ printf "%s-kagent-muster-token" (include "name" .) | quote }}
+      key: token
 {{- end }}
 {{- range .Values.agents.remoteMcpServers }}
 ---
@@ -32,8 +32,8 @@ spec:
   headersFrom:
   - name: Authorization
     valueFrom:
-      secretKeyRef:
-        name: {{ required "agents.remoteMcpServers[].tokenSecret is required" .tokenSecret | quote }}
-        key: token
+      type: Secret
+      name: {{ required "agents.remoteMcpServers[].tokenSecret is required" .tokenSecret | quote }}
+      key: token
 {{- end }}
 {{- end }}
