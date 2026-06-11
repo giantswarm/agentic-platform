@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `templates/kagent/declarative-agent-pod-security.yaml`: retarget the Kyverno mutate from `Deployment` (controller output) to `Agent` CR (controller input). The previous policy patched the Deployment after the kagent controller had already stamped `privileged: true` on the git-skills path, causing the API server to reject the Deployment as self-contradictory (`privileged: true` + `allowPrivilegeEscalation: false`). Mutating the Agent CR instead sets `allowPrivilegeEscalation: false` on the controller input, which trips the controller's own guard and prevents `privileged: true` from being set in the first place. A `(type): "Declarative"` condition anchor scopes the mutation to Declarative agents only.
+
+## [1.1.23] - 2026-06-11
+
+### Changed
+
+- Update muster and muster-crds to v0.4.0 (via v0.3.14): muster now supports brokered RFC 8693 token exchange (giantswarm/muster#831) — external confidential clients can exchange a trusted-issuer subject token plus an `audience` parameter at `/oauth/token` for a token minted by the audience's downstream Dex. New `muster.oauth.server.tokenExchangeBroker` values block (per-client audience allowlist, audience → downstream Dex target mapping); mcp-oauth bumped to v0.3.0. Inert by default.
+
 ## [1.1.22] - 2026-06-11
 
 ### Changed
@@ -148,7 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.22...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...HEAD
+[1.1.23]: https://github.com/giantswarm/agentic-platform/compare/v1.1.22...v1.1.23
 [1.1.22]: https://github.com/giantswarm/agentic-platform/compare/v1.1.21...v1.1.22
 [1.1.21]: https://github.com/giantswarm/agentic-platform/compare/v0.5.0...v1.1.21
 [0.5.0]: https://github.com/giantswarm/agentic-platform/compare/v0.4.1...v0.5.0
