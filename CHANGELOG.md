@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.25] - 2026-06-11
+
 ### Fixed
 
 - `gateway.jwksEgress` now also opens egress on the agentgateway **controller** network policy
@@ -174,7 +176,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.24...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.25...HEAD
+[1.1.25]: https://github.com/giantswarm/agentic-platform/compare/v1.1.24...v1.1.25
 [1.1.24]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...v1.1.24
 [1.1.23]: https://github.com/giantswarm/agentic-platform/compare/v1.1.22...v1.1.23
 [1.1.22]: https://github.com/giantswarm/agentic-platform/compare/v1.1.21...v1.1.22
