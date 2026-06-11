@@ -30,7 +30,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: init
-          image: {{ .Values.agents.muster.kubectlImage | quote }}
+          image: {{ printf "%s/%s:%s" .Values.agents.muster.kubectlImage.registry .Values.agents.muster.kubectlImage.repository .Values.agents.muster.kubectlImage.tag | quote }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

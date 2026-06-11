@@ -7,6 +7,19 @@
   // the OCI `dependencies:` in helm/*/Chart.yaml and regenerates Chart.lock. The
   // charts/ .tgz archives are gitignored, so only Chart.yaml + Chart.lock are
   // committed. All dependency registries are public-anonymous OCI — no hostRules.
+  "customManagers": [
+    {
+      // Tracks registry/repository/tag image blocks in Helm values files.
+      // The base preset only handles registry: <depName>\n<key>: <value> (two lines).
+      // This handles the three-line split: registry + repository + tag.
+      "customType": "regex",
+      "managerFilePatterns": ["/helm/.+/values\\.yaml$/"],
+      "matchStrings": [
+        "registry: (?<registryUrl>[^\\n]+)\\n\\s+repository: (?<depName>[^\\n]+)\\n\\s+tag: \"?v?(?<currentValue>[^\"\\n]+)\"?"
+      ],
+      "datasourceTemplate": "docker",
+    },
+  ],
   "packageRules": [
     {
       // agentgateway controller chart (agentic-platform) and its CRDs chart

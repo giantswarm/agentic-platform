@@ -695,8 +695,10 @@ agents:
     # Must match allowedAudiences in muster.muster.oauth.server.trustedIssuers.
     tokenAudience: "muster"
     # kubectl image used by the Helm hook Job to create the token Secret.
-    # Override if your cluster uses a private registry mirror.
-    kubectlImage: "gsoci.azurecr.io/giantswarm/kubectl:1.31.0"
+    kubectlImage:
+      registry: gsoci.azurecr.io
+      repository: giantswarm/kubectl
+      tag: 1.31.0
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
