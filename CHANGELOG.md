@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gateway.jwksEgress` now also opens egress on the agentgateway **controller** network policy
+  (Cilium and kubernetes flavors). The controller fetches remote JWKS centrally and distributes
+  keys to the data plane via xDS, so the data-plane-only rule left JWKS fetches timing out
+  (e.g. Dex on giantswarm/dex:5556 for extra JWT providers).
+
 ## [1.1.24] - 2026-06-11
 
 ### Changed

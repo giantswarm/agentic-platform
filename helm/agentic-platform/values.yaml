@@ -52,7 +52,7 @@ gateway:
   # Allow the data-plane to reach the JWKS endpoint for JWT validation
   # (oauthMode: validate). Required when the JWKS service runs on a port not
   # covered by the default cluster egress rules (80/443) — typically Dex on 5556.
-  jwksEgress:                  # agentgateway-direct only
+  jwksEgress:                  # any agentgateway-* mode with a non-muster JWKS source
     enabled: false
     namespace: giantswarm
     port: 5556
