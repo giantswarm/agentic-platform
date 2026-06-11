@@ -10,19 +10,6 @@ metadata:
   labels:
     {{- include "labels.common" . | nindent 4 }}
 ---
-# Long-lived SA token populated by the token controller. Used by the hook Job
-# to write a Bearer-prefixed Secret for RemoteMCPServer.headersFrom.
-apiVersion: v1
-kind: Secret
-metadata:
-  name: kagent-muster-client-satoken
-  namespace: {{ $kagentNs }}
-  labels:
-    {{- include "labels.common" . | nindent 4 }}
-  annotations:
-    kubernetes.io/service-account.name: kagent-muster-client
-type: kubernetes.io/service-account-token
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -39,10 +26,12 @@ metadata:
   labels:
     {{- include "labels.common" . | nindent 4 }}
 rules:
+  # TokenRequest names the target ServiceAccount in the URL, so resourceNames
+  # works here (unlike plain create).
   - apiGroups: [""]
-    resources: ["secrets"]
-    resourceNames: ["kagent-muster-client-satoken"]
-    verbs: ["get"]
+    resources: ["serviceaccounts/token"]
+    resourceNames: ["kagent-muster-client"]
+    verbs: ["create"]
   - apiGroups: [""]
     resources: ["secrets"]
     resourceNames: [{{ $tokenSecretName | quote }}]

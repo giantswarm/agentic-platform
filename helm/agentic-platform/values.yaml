@@ -689,6 +689,9 @@ agents:
       registry: gsoci.azurecr.io
       repository: giantswarm/kubectl
       tag: 1.31.0
+    # Duration requested for the TokenRequest-minted muster token. Rotated on
+    # every helm install/upgrade by the hook Job; the API server may cap it.
+    tokenDuration: 8760h
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one

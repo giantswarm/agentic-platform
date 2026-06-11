@@ -8,14 +8,14 @@ Why this Job exists:
   projected tokens or TokenRequest API calls. The Secret must contain the literal
   string "Bearer <token>".
 
-  The token source is a kubernetes.io/service-account-token Secret (muster-sa.yaml),
-  which the token controller populates asynchronously after the Secret is created.
-  The base64-encoded token is stored under the "token" key and never expires, so it
-  survives indefinitely without rotation.
-
-  This Job bridges the two: it waits for the SA token Secret to be populated, then
-  writes "Bearer <token>" into the headersFrom Secret. It runs as a post-install and
-  post-upgrade hook so the Secret is (re)created on every Helm lifecycle event.
+  The token must pass muster's trustedIssuers JWT validation, which requires the
+  cluster OIDC issuer in iss and an exp claim. Legacy
+  kubernetes.io/service-account-token Secrets carry iss "kubernetes/serviceaccount"
+  and no exp, so they can never pass; only TokenRequest-minted tokens do. The Job
+  therefore mints a long-duration token via the TokenRequest API and writes
+  "Bearer <token>" into the headersFrom Secret. It runs as a post-install and
+  post-upgrade hook, so the token is rotated on every Helm lifecycle event; the
+  requested duration is the upper bound between upgrades (the API server may cap it).
 
   All Agent, ModelConfig, and RemoteMCPServer CRs must be in the same namespace
   (kagent.namespaceOverride, defaulting to the release namespace) because the kagent
@@ -60,16 +60,9 @@ spec:
             - /bin/sh
             - -ec
             - |
-              until kubectl get secret kagent-muster-client-satoken \
+              TOKEN=$(kubectl create token kagent-muster-client \
                 -n {{ $kagentNs }} \
-                -o jsonpath='{.data.token}' | grep -q .; do
-                echo "waiting for SA token..."
-                sleep 2
-              done
-
-              TOKEN=$(kubectl get secret kagent-muster-client-satoken \
-                -n {{ $kagentNs }} \
-                -o jsonpath='{.data.token}' | base64 -d)
+                --duration={{ .Values.agents.muster.tokenDuration }})
 
               kubectl create secret generic {{ $tokenSecretName }} \
                 -n {{ $kagentNs }} \
