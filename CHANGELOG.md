@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.26] - 2026-06-12
+
 ### Fixed
 
 - Update muster to 0.4.1 (mcp-oauth v0.3.1): forwarded ID tokens (`trustedAudiences`) are no longer hard-rejected when the same issuer is also configured in `trustedIssuers` for the token-exchange broker — fixes Backstage AI-chat SSO forwarding returning 401 behind the agentgateway.
@@ -180,7 +182,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.25...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.26...HEAD
+[1.1.26]: https://github.com/giantswarm/agentic-platform/compare/v1.1.25...v1.1.26
 [1.1.25]: https://github.com/giantswarm/agentic-platform/compare/v1.1.24...v1.1.25
 [1.1.24]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...v1.1.24
 [1.1.23]: https://github.com/giantswarm/agentic-platform/compare/v1.1.22...v1.1.23
