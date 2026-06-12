@@ -14,6 +14,16 @@
 # before the Deployment is ever constructed. The resulting Deployment is
 # restricted-PSS-clean without any further mutation.
 #
+# seccompProfile is intentionally absent here. Declarative agents execute bash
+# commands through srt (Anthropic Sandbox Runtime), which uses bwrap internally.
+# bwrap calls clone(CLONE_NEWUSER) to set up a user namespace; the RuntimeDefault
+# seccomp profile blocks that syscall and bwrap fails immediately with:
+#   bwrap: No permissions to create a new namespace
+# Injecting RuntimeDefault would break every shell/bash tool invocation.
+# policy-exception.yaml exempts kagent agent pods from restrict-seccomp-strict.
+# declarative-agent-srt-settings.yaml handles the second bwrap failure
+# (--proc /proc bind-mount inside unprivileged containers).
+#
 # The (type): "Declarative" condition anchor scopes the patch to Declarative agents
 # only — BYO agents must not have spec.declarative injected.
 apiVersion: kyverno.io/v1
@@ -46,12 +56,31 @@ spec:
               +(podSecurityContext):
                 runAsNonRoot: true
                 runAsUser: 1001
-                seccompProfile:
-                  type: RuntimeDefault
               +(securityContext):
                 allowPrivilegeEscalation: false
                 capabilities:
                   drop: [ALL]
-                seccompProfile:
-                  type: RuntimeDefault
+  # SandboxAgent shares the same AgentSpec fields (spec.declarative.deployment.*) but
+  # is a distinct kind — the rule above does not match it. The agentsxk8s backend builds
+  # the pod template directly from these fields, so mutating the CR input is the same
+  # injection point as for regular Agent CRs.
+  - name: add-sandbox-agent-security-context
+    match:
+      any:
+      - resources:
+          kinds: ["kagent.dev/v1alpha2/SandboxAgent"]
+          namespaces: [{{ $ns }}]
+    mutate:
+      patchStrategicMerge:
+        spec:
+          (type): "Declarative"
+          declarative:
+            deployment:
+              +(podSecurityContext):
+                runAsNonRoot: true
+                runAsUser: 1001
+              +(securityContext):
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
 {{- end }}

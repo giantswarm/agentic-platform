@@ -1,0 +1,73 @@
+{{- if and .Values.kagent.enabled .Values.muster.enabled }}
+{{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $tokenSecretName := printf "%s-kagent-muster-token" (include "name" .) }}
+{{- $musterAudience := .Values.muster.muster.oauth.server.resourceIdentifier | default (printf "https://%s/mcp" (first .Values.ingress.hostnames)) }}
+{{/*
+Why this Job exists:
+  kagent's RemoteMCPServer uses headersFrom to inject an Authorization header on
+  every MCP request. headersFrom reads from a plain Secret — it does not support
+  projected tokens or TokenRequest API calls. The Secret must contain the literal
+  string "Bearer <token>".
+
+  The token must pass muster's trustedIssuers JWT validation, which requires the
+  cluster OIDC issuer in iss and an exp claim. Legacy
+  kubernetes.io/service-account-token Secrets carry iss "kubernetes/serviceaccount"
+  and no exp, so they can never pass; only TokenRequest-minted tokens do. The Job
+  therefore mints a long-duration token via the TokenRequest API and writes
+  "Bearer <token>" into the headersFrom Secret. It runs as a post-install and
+  post-upgrade hook, so the token is rotated on every Helm lifecycle event; the
+  requested duration is the upper bound between upgrades (the API server may cap it).
+
+  All Agent, ModelConfig, and RemoteMCPServer CRs must be in the same namespace
+  (kagent.namespaceOverride, defaulting to the release namespace) because the kagent
+  controller watches a single namespace scope for these resources.
+*/}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "name" . }}-kagent-muster-token-init
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kagent-muster-token-init
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+    spec:
+      serviceAccountName: kagent-muster-token-init
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: init
+          image: {{ printf "%s/%s:%s" .Values.agents.muster.kubectlImage.registry .Values.agents.muster.kubectlImage.repository .Values.agents.muster.kubectlImage.tag | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              TOKEN=$(kubectl create token kagent-muster-client \
+                -n {{ $kagentNs }} \
+                --duration={{ .Values.agents.muster.tokenDuration }} \
+                --audience={{ $musterAudience }})
+
+              kubectl create secret generic {{ $tokenSecretName }} \
+                -n {{ $kagentNs }} \
+                --from-literal=token="Bearer ${TOKEN}" \
+                --dry-run=client -o yaml | kubectl apply -f -
+{{- end }}

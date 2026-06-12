@@ -1,0 +1,58 @@
+{{- if .Values.kagent.enabled }}
+{{- $ns := .Values.kagent.namespaceOverride | default "kagent" }}
+# Even after the seccomp restriction is lifted (see policy-exception.yaml), bwrap
+# hits a second failure inside unprivileged containers:
+#   bwrap: Can't mount proc on /newroot/proc: Operation not permitted
+#
+# bwrap unconditionally calls --unshare-pid and then tries to bind-mount a fresh
+# /proc into the new PID namespace. That bind-mount is not permitted inside an
+# unprivileged container because the container's mount namespace is locked.
+#
+# srt (Anthropic Sandbox Runtime, the Node binary at /usr/local/bin/srt) has an
+# explicit workaround: the enableWeakerNestedSandbox flag in srt-settings.json omits
+# the --proc argument from the bwrap invocation. This is the documented path for
+# "unprivileged Docker containers" in srt's source (sandbox/linux-sandbox-utils.ts).
+#
+# srt reads its settings from the path in KAGENT_SRT_SETTINGS_PATH (default:
+# /config/srt-settings.json). The kagent controller sets that env var and mounts
+# the agent config Secret at /config. The Python kagent-skills shell.py passes
+# --settings $KAGENT_SRT_SETTINGS_PATH when exec-ing srt.
+#
+# The kagent controller hard-codes buildSRTSettingsJSON() (manifest_builder.go) and
+# does not expose enableWeakerNestedSandbox through any Agent CR field or SandboxConfig.
+# The only way to inject it without forking kagent is to patch the generated config
+# Secret on Kubernetes admission.
+#
+# No preconditions: the patchStrategicMerge is idempotent and harmless for Secrets
+# that don't already have srt-settings.json (the key is added, the pod won't mount
+# it unless the controller also wired the volume, and srt is only called when the
+# agent has bash/shell skills). Kyverno v1.17 rejected preconditions using keys()
+# JMESPath at admission validation time.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: {{ include "name" . }}-kagent-srt-settings
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  annotations:
+    policies.kyverno.io/title: Kagent agent srt weaker-nested-sandbox
+    policies.kyverno.io/description: >-
+      Sets enableWeakerNestedSandbox=true in the srt-settings.json key of
+      agent config Secrets in the {{ $ns }} namespace so bwrap can run inside
+      unprivileged containers.
+spec:
+  rules:
+  - name: patch-srt-settings
+    match:
+      any:
+      - resources:
+          kinds: ["Secret"]
+          namespaces: [{{ $ns }}]
+          selector:
+            matchLabels:
+              app: kagent
+    mutate:
+      patchStrategicMerge:
+        stringData:
+          srt-settings.json: '{"network":{"allowedDomains":[],"deniedDomains":[]},"filesystem":{"denyRead":[],"allowWrite":[".","\/tmp"],"denyWrite":[]},"enableWeakerNestedSandbox":true}'
+{{- end }}

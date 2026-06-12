@@ -142,6 +142,7 @@ networkPolicy:
 extraObjects: []
 
 muster:
+  enabled: true
   image:
     registry: gsoci.azurecr.io
   # Pin muster's Service name as the single source of truth for it. The umbrella
@@ -661,6 +662,59 @@ kagent:
       timeout: "60s"
       annotations: {}
       labels: {}
+
+# Platform agents — kagent RemoteMCPServer CRs and supporting network policies.
+# All CRs land in kagent.namespaceOverride (default: kagent).
+# Prerequisite: kagent.enabled: true and kagent-crds installed.
+#
+# muster RemoteMCPServer, SA, and egress CNP are gated on kagent.enabled + muster.enabled.
+agents:
+  # Config for the built-in muster MCP gateway connection. Active when
+  # kagent.enabled + muster.enabled — the umbrella creates a RemoteMCPServer CR, a
+  # ServiceAccount + long-lived SA token Secret, and a Helm hook Job that
+  # writes "Bearer <token>" into the headersFrom Secret.
+  #
+  # Prerequisite: muster.muster.oauth.server.trustedIssuers must include an
+  # entry for the cluster SA OIDC issuer (find with:
+  #   kubectl get --raw /.well-known/openid-configuration | jq .issuer).
+  # Set in per-cluster values — see configmap-values.yaml.template.
+  # Example entry:
+  #   trustedIssuers:
+  #     - issuer: "https://<cluster-oidc-issuer>/"
+  #       allowedClaims:
+  #         sub: "system:serviceaccount:kagent:*"
+  muster:
+    # kubectl image used by the Helm hook Job to create the token Secret.
+    kubectlImage:
+      registry: gsoci.azurecr.io
+      repository: giantswarm/kubectl
+      tag: 1.31.0
+    # Duration requested for the TokenRequest-minted muster token. Rotated on
+    # every helm install/upgrade by the hook Job; the API server may cap it.
+    tokenDuration: 8760h
+
+  # List of additional RemoteMCPServer CRs to create in the kagent namespace.
+  # Use for MCP servers other than the built-in muster. Each entry creates one
+  # CR; agents reference it by name. tokenSecret defaults to the chart-managed
+  # SA-token Secret (written by the muster token hook Job, key "token", value
+  # "Bearer <token>"); set it only for servers needing a different credential.
+  remoteMcpServers: []
+  # - name: external-mcp
+  #   url: "https://external-mcp.example.com/mcp"
+  #   tokenSecret: ""   # optional: pre-existing Secret with key "token"
+  #   description: "external MCP server"
+
+  # List of ModelConfig CRs to create in the kagent namespace.
+  # Agents reference a ModelConfig by name via spec.declarative.modelConfig.
+  # Note: kagent's own sub-chart creates a default-model-config when
+  # kagent.providers.anthropic is set; entries here are additional or replacement
+  # configs. The apiKeySecret must be pre-created in the kagent namespace.
+  models: []
+  # - name: anthropic-sonnet
+  #   provider: Anthropic
+  #   model: claude-sonnet-4-6
+  #   apiKeySecret: kagent-anthropic
+  #   apiKeySecretKey: ANTHROPIC_API_KEY
 
 # Platform Postgres — CloudNativePG Cluster for kagent (and future Klaus sessions).
 # The CNPG operator and its CRDs are a cluster-level prerequisite (like Gateway
