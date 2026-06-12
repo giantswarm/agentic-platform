@@ -13,6 +13,11 @@ metadata:
   labels:
     {{- include "labels.common" . | nindent 4 }}
 spec:
+  policies:
+    auth:
+      # Gateway strips the JWT after validation; passthrough re-injects it so
+      # trusted-proxy mode can extract the sub claim.
+      passthrough: {}
   static:
     host: {{ printf "%s-controller.%s.svc.cluster.local" $kagentFullname $ns }}
     port: 8083
@@ -52,4 +57,31 @@ spec:
         - name: kagent
           kind: AgentgatewayBackend
           group: agentgateway.dev
+{{- if and .Values.ingress.parentRefs $route.hostname }}
+---
+# Layer-1 HTTPRoute — routes <hostname>/kagent from the public Envoy Gateway to
+# the agentgateway data-plane service. The agentgateway then applies JWT auth
+# (AgentgatewayPolicy) and the layer-2 HTTPRoute strips the prefix before
+# forwarding to the kagent controller.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: agentgateway-kagent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml .Values.ingress.parentRefs | nindent 4 }}
+  hostnames:
+    - {{ $route.hostname | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ $route.pathPrefix }}
+      backendRefs:
+        - name: {{ .Values.gateway.name }}
+          port: 8080
+{{- end }}
 {{- end }}

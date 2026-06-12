@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `templates/kagent/controller-route.yaml`: Layer-1 `HTTPRoute/agentgateway-kagent` routing `controllerRoute.hostname`/`controllerRoute.pathPrefix` from the public Envoy Gateway to the agentgateway data-plane service. Rendered when `kagent.controllerRoute.enabled`, `controllerRoute.hostname`, and `ingress.parentRefs` are all set.
+- `templates/kagent/controller-route.yaml`: `AgentgatewayBackend/kagent` now sets `spec.policies.auth.passthrough: {}`, forwarding the validated muster JWT to the kagent controller so `AUTH_MODE=trusted-proxy` can extract the `sub` claim.
+
 ### Fixed
 
 - `helm.sh/chart` label: truncating long dev-build versions at 63 characters could leave a trailing `.`, producing an invalid label value and failing the Helm install/upgrade. The `chart` helper now trims trailing `.` as well as `-`.
