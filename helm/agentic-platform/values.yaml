@@ -548,7 +548,6 @@ kagent:
   # Disabled: muster-registered MCP servers cover these surfaces.
   kagent-tools:
     enabled: false
-    namespaceOverride: kagent
 
   # Semantic document search MCP server (doc2vec embeddings, vector similarity).
   # Ships empty — no documents loaded by default. Enable and populate with GS
@@ -752,12 +751,12 @@ klausGateway:
     driver: operator
     staticInstances: ""
 
-  # When set, outgoing requests are proxied through this agentgateway URL and
-  # the instance name is passed via X-Klaus-Instance. Empty = gateway talks
-  # directly to instance BaseURLs.
+  # Point at the bundled agentgateway data-plane service once deployed.
+  # Empty disables proxying; the gateway talks directly to instance BaseURLs.
   upstream:
     agentgatewayURL: ""
 
+  # OTLP trace export. Set to the cluster OTLP gateway endpoint to enable.
   observability:
     otlpEndpoint: ""
 
@@ -772,15 +771,25 @@ klausGateway:
   cli:
     enabled: false
 
-  # A2A client settings. Forward-looking: fields are accepted by the 0.0.44
-  # chart (additionalProperties: true) and will be wired once A2A ships in a
-  # stable release.
+  # A2A client adapter. Routes channel turns to a kagent A2A endpoint.
+  # defaultAgent is the fallback agentRef when the channel does not supply one.
+  # Omit defaultAgent to require callers to pass agentRef explicitly.
   a2a:
     enabled: false
     defaultAgent: ""
-    url: ""
+    # Required when a2a.enabled is true. Full base URL without trailing agent name.
+    url: "http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent"
     saToken:
       enabled: false
+      audience: kagent
+
+  # Agentgateway route — exposes /v1, /web, /cli/v1 on the agentgateway
+  # data-plane Gateway (agentgateway-* ingress modes only).
+  agentgatewayRoute:
+    enabled: false
+    # Hostname on which the agentgateway Gateway will match these paths.
+    # Example: agentgateway.<cluster>.<base-domain>
+    hostname: ""
 
 agentgateway:
   # Controller dependency install switch. Must be true for agentgateway-* ingress modes (validated against ingress.mode).
@@ -788,6 +797,7 @@ agentgateway:
   fullnameOverride: agentgateway-controller
   image:
     registry: gsoci.azurecr.io
+    tag: v1.2.1
   controller:
     image:
       repository: giantswarm/agentgateway-controller
@@ -795,6 +805,7 @@ agentgateway:
     image:
       registry: gsoci.azurecr.io
       repository: giantswarm/agentgateway
+      tag: v1.2.1
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   podSecurityContext:
