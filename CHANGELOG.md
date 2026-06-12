@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `kagent.controllerRoute`: add outer public HTTPRoute (`kagent-controller-public`) on the Envoy
+  Gateway so the kagent A2A endpoint is reachable at `https://<hostname>/kagent/...`. The inner
+  `kagent-controller` route (agentgateway data plane) was already present, but the missing outer
+  route caused Envoy to return 404 for all requests to the hostname before they reached the
+  agentgateway pod. Configurable via `kagent.controllerRoute.parentRef` (defaults to
+  `giantswarm-default` / `envoy-gateway-system`).
+
 ## [1.1.25] - 2026-06-11
 
 ### Fixed
