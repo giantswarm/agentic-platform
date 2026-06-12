@@ -13,6 +13,11 @@ metadata:
   labels:
     {{- include "labels.common" . | nindent 4 }}
 spec:
+  policies:
+    auth:
+      # Gateway strips the JWT after validation; passthrough re-injects it so
+      # trusted-proxy mode can extract the sub claim.
+      passthrough: {}
   static:
     host: {{ printf "%s-controller.%s.svc.cluster.local" $kagentFullname $ns }}
     port: 8083

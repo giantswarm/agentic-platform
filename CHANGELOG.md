@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route caused Envoy to return 404 for all requests to the hostname before they reached the
   agentgateway pod. Configurable via `kagent.controllerRoute.parentRef` (defaults to
   `giantswarm-default` / `envoy-gateway-system`).
+- `AgentgatewayBackend/kagent`: add `spec.policies.auth.passthrough: {}` so the validated muster JWT
+  is forwarded to kagent-controller. The agentgateway JWT filter strips the Authorization header
+  after validation; without passthrough the controller's `AUTH_MODE=trusted-proxy` receives no
+  header and returns 401 for every authenticated request.
 
 ## [1.1.25] - 2026-06-11
 
