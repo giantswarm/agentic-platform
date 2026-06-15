@@ -777,14 +777,25 @@ klausGateway:
   cli:
     enabled: false
 
-  # A2A client adapter. Forwards Slack turns directly to the kagent A2A
-  # endpoint; kagent becomes the single orchestrator.
+  # A2A client adapter. Routes channel turns to a kagent A2A endpoint.
   # defaultAgent is the fallback agentRef when the channel does not supply one.
+  # Omit defaultAgent to require callers to pass agentRef explicitly.
   a2a:
     enabled: false
-    defaultAgent: "klaud-coding"
+    defaultAgent: ""
     # Required when a2a.enabled is true. Full base URL without trailing agent name.
-    kagentA2ABaseURL: "http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent"
+    url: "http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent"
+    saToken:
+      enabled: false
+      audience: kagent
+
+  # Agentgateway route — exposes /v1, /web, /cli/v1 on the agentgateway
+  # data-plane Gateway (agentgateway-* ingress modes only).
+  agentgatewayRoute:
+    enabled: false
+    # Hostname on which the agentgateway Gateway will match these paths.
+    # Example: agentgateway.<cluster>.<base-domain>
+    hostname: ""
 
 agentgateway:
   # Controller dependency install switch. Must be true for agentgateway-* ingress modes (validated against ingress.mode).
@@ -792,6 +803,7 @@ agentgateway:
   fullnameOverride: agentgateway-controller
   image:
     registry: gsoci.azurecr.io
+    tag: v1.2.1
   controller:
     image:
       repository: giantswarm/agentgateway-controller
@@ -799,6 +811,7 @@ agentgateway:
     image:
       registry: gsoci.azurecr.io
       repository: giantswarm/agentgateway
+      tag: v1.2.1
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   podSecurityContext:
