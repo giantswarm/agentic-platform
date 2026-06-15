@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.27] - 2026-06-15
+
 ### Fixed
 
 - `klausGateway.a2a`: set `additionalProperties: true` in the values schema so the klaus-gateway
@@ -198,7 +200,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.26...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.27...HEAD
+[1.1.27]: https://github.com/giantswarm/agentic-platform/compare/v1.1.26...v1.1.27
 [1.1.26]: https://github.com/giantswarm/agentic-platform/compare/v1.1.25...v1.1.26
 [1.1.25]: https://github.com/giantswarm/agentic-platform/compare/v1.1.24...v1.1.25
 [1.1.24]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...v1.1.24
