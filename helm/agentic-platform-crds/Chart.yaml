@@ -43,5 +43,5 @@ dependencies:
   # `helm uninstall agentic-platform-crds` will remove them and cascade to all
   # kagent CRs. Tracked upstream.
   - name: kagent-crds
-    version: 0.9.6
+    version: 0.9.7
     repository: oci://ghcr.io/kagent-dev/kagent/helm
