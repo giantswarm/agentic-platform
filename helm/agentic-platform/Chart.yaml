@@ -13,14 +13,14 @@ icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
   - https://github.com/giantswarm/agentic-platform
 appVersion: "0.1.0"
-version: 1.1.25
+version: 1.1.26
 annotations:
   io.giantswarm.application.audience: all
   io.giantswarm.application.managed: "true"
   io.giantswarm.application.team: bumblebee
 dependencies:
   - name: muster
-    version: 0.4.0
+    version: 0.4.1
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v1.2.1
