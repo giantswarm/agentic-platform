@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- `templates/kagent/controller-route.yaml`: Layer-1 `HTTPRoute/agentgateway-kagent` routing `controllerRoute.hostname`/`controllerRoute.pathPrefix` from the public Envoy Gateway to the agentgateway data-plane service. Rendered when `kagent.controllerRoute.enabled`, `controllerRoute.hostname`, and `ingress.parentRefs` are all set.
-- `templates/kagent/controller-route.yaml`: `AgentgatewayBackend/kagent` now sets `spec.policies.auth.passthrough: {}`, forwarding the validated muster JWT to the kagent controller so `AUTH_MODE=trusted-proxy` can extract the `sub` claim.
-
 ### Fixed
 
+- `kagent.controllerRoute`: add outer public HTTPRoute (`kagent-controller-public`) on the Envoy
+  Gateway so the kagent A2A endpoint is reachable at `https://<hostname>/kagent/...`. The inner
+  `kagent-controller` route (agentgateway data plane) was already present, but the missing outer
+  route caused Envoy to return 404 for all requests to the hostname before they reached the
+  agentgateway pod. Configurable via `kagent.controllerRoute.parentRef` (defaults to
+  `giantswarm-default` / `envoy-gateway-system`).
+- `AgentgatewayBackend/kagent`: add `spec.policies.auth.passthrough: {}` so the validated muster JWT
+  is forwarded to kagent-controller. The agentgateway JWT filter strips the Authorization header
+  after validation; without passthrough the controller's `AUTH_MODE=trusted-proxy` receives no
+  header and returns 401 for every authenticated request.
 - `helm.sh/chart` label: truncating long dev-build versions at 63 characters could leave a trailing `.`, producing an invalid label value and failing the Helm install/upgrade. The `chart` helper now trims trailing `.` as well as `-`.
 - `templates/kagent/agents/remotemcpservers.yaml`: `headersFrom[].valueFrom` used a `secretKeyRef` block, but the kagent v1alpha2 `ValueSource` schema is flat (`type`/`name`/`key` with `type: Secret`). The CRs failed admission with `valueFrom.key: Required value`.
 - `templates/kagent/agents/muster-token-job.yaml`: mint the muster token via the TokenRequest API (`kubectl create token`, duration `agents.muster.tokenDuration`, default 8760h) instead of a legacy `kubernetes.io/service-account-token` Secret. Legacy Secret tokens carry `iss: kubernetes/serviceaccount` and no `exp`, so muster's `trustedIssuers` JWT validation (cluster OIDC issuer + required expiry) can never accept them; every RemoteMCPServer call failed with `Unauthorized`. The legacy token Secret is removed; the token now rotates on every install/upgrade.
@@ -22,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `templates/kagent/policy-exception.yaml` (new): `PolicyException` in the `policy-exceptions` namespace exempting pods and deployments labelled `app: kagent` in the kagent namespace from the cluster-wide `restrict-seccomp-strict` Kyverno policy. Required because the cluster enforces seccomp profiles and we cannot simply omit `seccompProfile` without an exception.
 - `templates/kagent/declarative-agent-srt-settings.yaml` (new): Kyverno policy that patches the `srt-settings.json` key in agent config Secrets (labelled `app: kagent`) on admission to include `"enableWeakerNestedSandbox": true`. Without this flag, bwrap attempts to bind-mount `/proc` into its new PID namespace, which fails inside unprivileged containers with `bwrap: Can't mount proc on /newroot/proc: Operation not permitted`. The flag is the documented srt workaround for container environments (`sandbox/linux-sandbox-utils.ts`); the kagent controller does not expose it through any CR field.
 - `templates/kagent/declarative-agent-pod-security.yaml`: extend the security context mutation to `SandboxAgent` CRs. `SandboxAgent` is a distinct kind from `Agent` and was not covered by the existing rule; pods created via the `agents.x-k8s.io` Sandbox backend were blocked by `disallow-capabilities-strict`, `disallow-privilege-escalation`, and `require-run-as-nonroot` Kyverno policies.
+
+## [1.1.26] - 2026-06-12
+
+### Fixed
+
+- Update muster to 0.4.1 (mcp-oauth v0.3.1): forwarded ID tokens (`trustedAudiences`) are no longer hard-rejected when the same issuer is also configured in `trustedIssuers` for the token-exchange broker — fixes Backstage AI-chat SSO forwarding returning 401 behind the agentgateway.
 
 ## [1.1.25] - 2026-06-11
 
@@ -192,7 +203,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.25...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.26...HEAD
+[1.1.26]: https://github.com/giantswarm/agentic-platform/compare/v1.1.25...v1.1.26
 [1.1.25]: https://github.com/giantswarm/agentic-platform/compare/v1.1.24...v1.1.25
 [1.1.24]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...v1.1.24
 [1.1.23]: https://github.com/giantswarm/agentic-platform/compare/v1.1.22...v1.1.23

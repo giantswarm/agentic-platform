@@ -641,6 +641,12 @@ kagent:
     # Hostname that must be declared on the agentgateway Gateway.
     # Example: agentgateway.<cluster>.<base-domain>
     hostname: ""
+    # Outer (public) Gateway that terminates TLS. The controller API is reached
+    # at https://<hostname><pathPrefix> through this Gateway, which forwards to
+    # the agentgateway Service (inner hop handles JWT validation + path rewrite).
+    parentRef:
+      name: giantswarm-default
+      namespace: envoy-gateway-system
   # Expose kagent UI. Creates an HTTPRoute on the public Gateway pointing at
   # oauth2-proxy (when enabled) or the UI service directly (dev only).
   # Supply oauth2-proxy credentials and set uiRoute.enabled: true together.

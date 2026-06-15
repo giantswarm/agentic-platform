@@ -57,24 +57,29 @@ spec:
         - name: kagent
           kind: AgentgatewayBackend
           group: agentgateway.dev
-{{- if and .Values.ingress.parentRefs $route.hostname }}
 ---
-# Layer-1 HTTPRoute — routes <hostname>/kagent from the public Envoy Gateway to
-# the agentgateway data-plane service. The agentgateway then applies JWT auth
-# (AgentgatewayPolicy) and the layer-2 HTTPRoute strips the prefix before
-# forwarding to the kagent controller.
+# HTTPRoute — exposes the kagent API on the outer public Gateway (TLS-terminating).
+# Forwards <pathPrefix>/* on the public hostname to the agentgateway Service,
+# which then applies JWT validation and the inner URLRewrite before forwarding
+# to the kagent controller. No URLRewrite here: the prefix strip happens at the
+# inner hop only.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: agentgateway-kagent
+  name: kagent-controller-public
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "labels.common" . | nindent 4 }}
 spec:
   parentRefs:
-    {{- toYaml .Values.ingress.parentRefs | nindent 4 }}
+    - name: {{ $route.parentRef.name }}
+      namespace: {{ $route.parentRef.namespace }}
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  {{- if $route.hostname }}
   hostnames:
     - {{ $route.hostname | quote }}
+  {{- end }}
   rules:
     - matches:
         - path:
@@ -83,5 +88,4 @@ spec:
       backendRefs:
         - name: {{ .Values.gateway.name }}
           port: 8080
-{{- end }}
 {{- end }}
