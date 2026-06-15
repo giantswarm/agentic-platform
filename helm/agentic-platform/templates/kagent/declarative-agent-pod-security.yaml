@@ -1,5 +1,5 @@
 {{- if .Values.kagent.enabled }}
-{{- $ns := .Values.kagent.namespaceOverride | default "kagent" }}
+{{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 # Declarative agents created by bundled kagent subcharts (cilium-policy-agent,
 # promql-agent, etc.) do not set securityContext in their Agent CR spec, so the
 # kagent controller emits Deployments without the restricted-PSS fields GS clusters
@@ -45,30 +45,7 @@ spec:
     match:
       any:
       - resources:
-          kinds: ["kagent.dev/v1alpha2/Agent"]
-          namespaces: [{{ $ns }}]
-    mutate:
-      patchStrategicMerge:
-        spec:
-          (type): "Declarative"
-          declarative:
-            deployment:
-              +(podSecurityContext):
-                runAsNonRoot: true
-                runAsUser: 1001
-              +(securityContext):
-                allowPrivilegeEscalation: false
-                capabilities:
-                  drop: [ALL]
-  # SandboxAgent shares the same AgentSpec fields (spec.declarative.deployment.*) but
-  # is a distinct kind — the rule above does not match it. The agentsxk8s backend builds
-  # the pod template directly from these fields, so mutating the CR input is the same
-  # injection point as for regular Agent CRs.
-  - name: add-sandbox-agent-security-context
-    match:
-      any:
-      - resources:
-          kinds: ["kagent.dev/v1alpha2/SandboxAgent"]
+          kinds: ["kagent.dev/v1alpha2/Agent", "kagent.dev/v1alpha2/SandboxAgent"]
           namespaces: [{{ $ns }}]
     mutate:
       patchStrategicMerge:

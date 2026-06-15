@@ -1,7 +1,12 @@
 {{- if and .Values.kagent.enabled .Values.muster.enabled }}
 {{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $tokenSecretName := printf "%s-kagent-muster-token" (include "name" .) }}
-{{- $musterAudience := .Values.muster.muster.oauth.server.resourceIdentifier | default (printf "https://%s/mcp" (first .Values.ingress.hostnames)) }}
+{{- $resourceId := .Values.muster.muster.oauth.server.resourceIdentifier }}
+{{- $hostname := first .Values.ingress.hostnames }}
+{{- if and (not $resourceId) (not $hostname) }}
+  {{- fail "set muster.muster.oauth.server.resourceIdentifier or ingress.hostnames[0] — required to compute the muster token audience" }}
+{{- end }}
+{{- $musterAudience := $resourceId | default (printf "https://%s/mcp" $hostname) }}
 {{/*
 Why this Job exists:
   kagent's RemoteMCPServer uses headersFrom to inject an Authorization header on
