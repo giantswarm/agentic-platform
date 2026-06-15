@@ -1,5 +1,5 @@
 {{- if .Values.kagent.enabled }}
-{{- $ns := .Values.kagent.namespaceOverride | default "kagent" }}
+{{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 # Declarative agents created by bundled kagent subcharts (cilium-policy-agent,
 # promql-agent, etc.) do not set securityContext in their Agent CR spec, so the
 # kagent controller emits Deployments without the restricted-PSS fields GS clusters
@@ -13,6 +13,16 @@
 # guard (allowPrivilegeEscalationExplicitlyFalse), which suppresses privileged: true
 # before the Deployment is ever constructed. The resulting Deployment is
 # restricted-PSS-clean without any further mutation.
+#
+# seccompProfile is intentionally absent here. Declarative agents execute bash
+# commands through srt (Anthropic Sandbox Runtime), which uses bwrap internally.
+# bwrap calls clone(CLONE_NEWUSER) to set up a user namespace; the RuntimeDefault
+# seccomp profile blocks that syscall and bwrap fails immediately with:
+#   bwrap: No permissions to create a new namespace
+# Injecting RuntimeDefault would break every shell/bash tool invocation.
+# policy-exception.yaml exempts kagent agent pods from restrict-seccomp-strict.
+# declarative-agent-srt-settings.yaml handles the second bwrap failure
+# (--proc /proc bind-mount inside unprivileged containers).
 #
 # The (type): "Declarative" condition anchor scopes the patch to Declarative agents
 # only — BYO agents must not have spec.declarative injected.
@@ -35,7 +45,7 @@ spec:
     match:
       any:
       - resources:
-          kinds: ["kagent.dev/v1alpha2/Agent"]
+          kinds: ["kagent.dev/v1alpha2/Agent", "kagent.dev/v1alpha2/SandboxAgent"]
           namespaces: [{{ $ns }}]
     mutate:
       patchStrategicMerge:
@@ -46,12 +56,8 @@ spec:
               +(podSecurityContext):
                 runAsNonRoot: true
                 runAsUser: 1001
-                seccompProfile:
-                  type: RuntimeDefault
               +(securityContext):
                 allowPrivilegeEscalation: false
                 capabilities:
                   drop: [ALL]
-                seccompProfile:
-                  type: RuntimeDefault
 {{- end }}

@@ -10,7 +10,7 @@ Expand the name of the chart.
 Create chart name and version as used by the chart label.
 */}}
 {{- define "chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimAll "-." -}}
 {{- end -}}
 
 {{/*
@@ -133,4 +133,28 @@ servers there is nothing to route, so the consistency check is scoped to mcps.en
 {{- if and (eq $mode "muster-direct") $agentgatewayEnabled -}}
 {{- fail "agentgateway.enabled must be false in muster-direct mode; the controller dependency condition must match ingress.mode" -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Cilium DNS egress rule for kube-dns and node-local-dns.
+Rendered as a YAML list item; the caller must provide the surrounding `egress:` key.
+*/}}
+{{- define "agentic-platform.dnsEgress" -}}
+- toEndpoints:
+    - matchLabels:
+        io.kubernetes.pod.namespace: kube-system
+        k8s-app: coredns
+    - matchLabels:
+        io.kubernetes.pod.namespace: kube-system
+        k8s-app: k8s-dns-node-cache
+  toPorts:
+    - ports:
+        - port: "1053"
+          protocol: UDP
+        - port: "1053"
+          protocol: TCP
+        - port: "53"
+          protocol: UDP
+        - port: "53"
+          protocol: TCP
 {{- end -}}
