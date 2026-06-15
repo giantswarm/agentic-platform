@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `klausGateway.a2a.saToken` and `klausGateway.upstream`: set `additionalProperties: true` in the
+  values schema so the klaus-gateway subchart's own pass-through keys
+  (`a2a.saToken.{expirationSeconds,mountPath}`, `upstream.url`) validate. These nested objects were
+  still `additionalProperties: false` after the `1.1.27` `a2a` fix, leaving the `agentic-platform`
+  HelmRelease stuck `UpgradeFailed` on management clusters whose rendered config supplies them.
+
 ## [1.1.28] - 2026-06-15
 
 ### Changed
