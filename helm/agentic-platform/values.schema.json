@@ -468,7 +468,7 @@
         },
         "a2a": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "type": "boolean"
