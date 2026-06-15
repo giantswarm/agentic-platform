@@ -1,0 +1,112 @@
+# =============================================================================
+# Giant Swarm INTERNAL / dogfooding preset (the default).
+#
+# Wide version ranges => Flux re-resolves each component's range on every
+# reconcile and rolls the HelmRelease forward when a new matching chart tag
+# appears. A component release reaches the dogfooding management clusters with
+# NO PR to this chart. Snapshot these ranges to exact pins for a customer
+# bill-of-materials — see ci/customer-bom-values.yaml.
+# =============================================================================
+
+global:
+  registry: gsoci.azurecr.io
+
+gitops:
+  # Render layer is swappable (Quentin's "flux AND argo" ask). flux ships now —
+  # it is the GS management-cluster standard; argo renders the same component set
+  # as argoproj Applications behind this one switch, no rewrite.
+  engine: flux                 # flux | argo
+  # Cadence Flux re-evaluates the version range at (also the HelmRelease/Argo
+  # reconcile interval).
+  interval: 10m
+  # Namespace the component HelmReleases / Applications deploy into.
+  targetNamespace: agentic-platform
+  argo:
+    project: default
+    server: https://kubernetes.default.svc
+
+# === Component layer ===========================================================
+# Each entry renders, per component:
+#   flux -> OCIRepository (semver range) + HelmRelease (chartRef + values)
+#   argo -> Application (repoURL + chart + targetRevision + valuesObject)
+# NEVER re-released by us. The component's own repo releases; Flux/Argo picks it
+# up. `values:` passes straight through to the component release exactly like the
+# umbrella passes subchart values today — no regression in customisation surface.
+#
+# `dependsOn` keeps CRD-before-CR ordering: agentic-platform-crds installs first;
+# every consumer dependsOn it (flux dependsOn / argo sync-wave).
+components:
+  agentic-platform-crds:
+    enabled: true
+    chart: agentic-platform-crds
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    versionRange: "0.x"
+    values: {}
+
+  muster:
+    enabled: true
+    chart: muster
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    versionRange: "0.4.x"        # narrow, not >=0.4 — rely on dogfooding to catch breaks
+    dependsOn: [agentic-platform-crds]
+    values:
+      fullnameOverride: muster
+      crds:
+        install: false           # CRDs ship via agentic-platform-crds
+
+  agentgateway:
+    enabled: true
+    chart: agentgateway
+    repository: oci://cr.agentgateway.dev/charts
+    versionRange: ">=1.0.0 <2.0.0"   # exclude a future v2 semver reset
+    dependsOn: [agentic-platform-crds]
+    values: {}
+
+  kagent:
+    enabled: false
+    chart: kagent
+    repository: oci://ghcr.io/kagent-dev/kagent/helm
+    versionRange: "0.9.x"
+    dependsOn: [agentic-platform-crds]
+    values: {}
+
+  valkey:
+    enabled: true
+    chart: valkey
+    repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
+    versionRange: "0.1.x"
+    values:
+      valkey:
+        fullnameOverride: muster-valkey
+
+  agentic-platform-mcps:
+    enabled: false
+    chart: agentic-platform-mcps
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    versionRange: "0.3.x"
+    dependsOn: [agentic-platform-crds]
+    values: {}
+
+  klaus-gateway:
+    enabled: false
+    chart: klaus-gateway
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    # Dev-tag stream (e.g. 0.0.41-dev.feat-channel-a2a.2026-06-09.14-45-31).
+    # Flux semver ranges handle prereleases awkwardly, so restrict candidate
+    # tags to the -dev channel via filterTags (regex) and let the prerelease-
+    # inclusive semver pick the newest. (Argo uses targetRevision verbatim.)
+    versionRange: ">=0.0.0-0"
+    filterTags:
+      pattern: '.*-dev\..*'
+      extract: ""
+    dependsOn: [agentic-platform-crds]
+    values: {}
+
+# === Integration / glue layer =================================================
+# The wiring THIS chart owns — plain templates, re-released only when the wiring
+# SHAPE changes (rare). In this POC that is just the namespace; the umbrella's
+# Gateway / AgentgatewayParameters / HTTPRoutes / NetworkPolicies / mcpServers
+# list move here unchanged, alongside the rendered component releases.
+glue:
+  namespace:
+    create: true

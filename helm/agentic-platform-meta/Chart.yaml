@@ -1,0 +1,24 @@
+apiVersion: v2
+name: agentic-platform-meta
+type: application
+description: |
+  POC — Agentic platform as an app-of-apps META-PACKAGE. Unlike the sibling
+  `agentic-platform` umbrella, this chart bundles NO subcharts. Its templates
+  render one OCIRepository (semver range) + HelmRelease per component (Flux), or
+  one Argo Application per component, so a new component release rolls forward at
+  reconcile time with NO PR to this chart. Version constraints are values, not
+  Chart.yaml pins. CRD ordering is preserved via dependsOn / sync-waves. See
+  README.md and architecture/agentic-platform-meta-package.md in klaus-lab.
+home: https://github.com/giantswarm/agentic-platform
+icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
+sources:
+  - https://github.com/giantswarm/agentic-platform
+appVersion: "0.1.0"
+version: 0.1.0
+annotations:
+  io.giantswarm.application.audience: all
+  io.giantswarm.application.managed: "true"
+  io.giantswarm.application.team: bumblebee
+# Intentionally NO dependencies block. That is the whole point: a meta-package
+# has no content of its own, only references resolved at upgrade time by the
+# GitOps controller (Flux OCIRepository semver range / Argo targetRevision).

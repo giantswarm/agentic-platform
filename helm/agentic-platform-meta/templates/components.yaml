@@ -1,0 +1,98 @@
+{{- /*
+App-of-apps render loop. For each enabled component emit either a Flux
+OCIRepository + HelmRelease (gitops.engine=flux) or an Argo Application
+(gitops.engine=argo). The component layer carries NO pinned versions in
+Chart.yaml — the range/targetRevision is a value resolved at reconcile time.
+*/ -}}
+{{- $root := . -}}
+{{- $g := .Values.gitops -}}
+{{- if not (or (eq $g.engine "flux") (eq $g.engine "argo")) -}}
+{{- fail (printf "gitops.engine=%s is invalid; must be one of: flux, argo" $g.engine) -}}
+{{- end -}}
+{{- range $key, $c := .Values.components }}
+{{- if $c.enabled }}
+{{- $name := $c.chart }}
+{{- if eq $g.engine "flux" }}
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: {{ $name }}
+  namespace: {{ $g.targetNamespace }}
+  labels:
+    {{- include "agentic-platform-meta.labels" $root | nindent 4 }}
+spec:
+  interval: {{ $g.interval }}
+  url: {{ include "agentic-platform-meta.chartURL" $c }}
+  ref:
+    semver: {{ required (printf "components.%s.versionRange is required" $key) $c.versionRange | quote }}
+    {{- with $c.filterTags }}
+    filterTags:
+      pattern: {{ .pattern | quote }}
+      {{- with .extract }}
+      extract: {{ . | quote }}
+      {{- end }}
+    {{- end }}
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $name }}
+  namespace: {{ $g.targetNamespace }}
+  labels:
+    {{- include "agentic-platform-meta.labels" $root | nindent 4 }}
+spec:
+  interval: {{ $g.interval }}
+  releaseName: {{ $name }}
+  chartRef:
+    kind: OCIRepository
+    name: {{ $name }}
+    namespace: {{ $g.targetNamespace }}
+  install:
+    createNamespace: true
+  {{- with $c.dependsOn }}
+  dependsOn:
+    {{- range . }}
+    - name: {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- with $c.values }}
+  values:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- else }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: {{ $g.targetNamespace }}
+  labels:
+    {{- include "agentic-platform-meta.labels" $root | nindent 4 }}
+  annotations:
+    # dependsOn has no Argo equivalent; CRDs (no deps) land in wave 0, their
+    # consumers in wave 1 so the CRDs are Established before the CRs apply.
+    argocd.argoproj.io/sync-wave: {{ if $c.dependsOn }}"1"{{ else }}"0"{{ end }}
+spec:
+  project: {{ $g.argo.project }}
+  destination:
+    server: {{ $g.argo.server }}
+    namespace: {{ $g.targetNamespace }}
+  source:
+    repoURL: {{ trimPrefix "oci://" $c.repository | quote }}
+    chart: {{ $c.chart }}
+    targetRevision: {{ required (printf "components.%s.versionRange is required" $key) $c.versionRange | quote }}
+    {{- with $c.values }}
+    helm:
+      valuesObject:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}
+{{- end }}
+{{- end }}

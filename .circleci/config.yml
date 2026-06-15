@@ -27,11 +27,34 @@ jobs:
           # verify-modes is the single source of truth, also run locally.
           command: make verify-modes
 
+  test-meta-package:
+    # POC: the app-of-apps meta-package (helm/agentic-platform-meta). Renders
+    # cleanly with NO `helm dependency build` — a meta-package has no subcharts —
+    # so a plain helm install suffices here.
+    docker:
+      - image: cimg/base:current
+    steps:
+      - checkout
+      - run:
+          name: install helm + make
+          command: |
+            command -v make >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq make)
+            curl -fsSL https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz | tar xz -C /tmp
+            sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
+            helm version
+      - run:
+          name: verify meta-package POC renders
+          command: make verify-meta
+
 workflows:
   test:
     jobs:
       - test-ingress-modes:
           # Run on every branch push (PR-time); tag-only release flow is separate.
+          filters:
+            tags:
+              ignore: /.*/
+      - test-meta-package:
           filters:
             tags:
               ignore: /.*/

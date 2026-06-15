@@ -1,0 +1,11 @@
+{{- /* Integration/glue layer example: the target namespace the component
+releases deploy into. Owned by the meta-chart, re-released only when the wiring
+shape changes — not when a component releases. */ -}}
+{{- if .Values.glue.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.gitops.targetNamespace }}
+  labels:
+    {{- include "agentic-platform-meta.labels" . | nindent 4 }}
+{{- end }}
