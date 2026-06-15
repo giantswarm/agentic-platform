@@ -134,3 +134,27 @@ servers there is nothing to route, so the consistency check is scoped to mcps.en
 {{- fail "agentgateway.enabled must be false in muster-direct mode; the controller dependency condition must match ingress.mode" -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Cilium DNS egress rule for kube-dns and node-local-dns.
+Rendered as a YAML list item; the caller must provide the surrounding `egress:` key.
+*/}}
+{{- define "agentic-platform.dnsEgress" -}}
+- toEndpoints:
+    - matchLabels:
+        io.kubernetes.pod.namespace: kube-system
+        k8s-app: coredns
+    - matchLabels:
+        io.kubernetes.pod.namespace: kube-system
+        k8s-app: k8s-dns-node-cache
+  toPorts:
+    - ports:
+        - port: "1053"
+          protocol: UDP
+        - port: "1053"
+          protocol: TCP
+        - port: "53"
+          protocol: UDP
+        - port: "53"
+          protocol: TCP
+{{- end -}}

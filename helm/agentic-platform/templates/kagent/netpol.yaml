@@ -68,23 +68,7 @@ spec:
       app.kubernetes.io/component: controller
       app.kubernetes.io/name: kagent
   egress:
-    - toEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: coredns
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: k8s-dns-node-cache
-      toPorts:
-        - ports:
-            - port: "1053"
-              protocol: UDP
-            - port: "1053"
-              protocol: TCP
-            - port: "53"
-              protocol: UDP
-            - port: "53"
-              protocol: TCP
+    {{- include "agentic-platform.dnsEgress" . | nindent 4 }}
     - toEntities:
         - cluster
       toPorts:
@@ -198,23 +182,7 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
-    - toEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: coredns
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: k8s-dns-node-cache
-      toPorts:
-        - ports:
-            - port: "1053"
-              protocol: UDP
-            - port: "1053"
-              protocol: TCP
-            - port: "53"
-              protocol: UDP
-            - port: "53"
-              protocol: TCP
+    {{- include "agentic-platform.dnsEgress" . | nindent 4 }}
 {{- end }}
 {{- if index .Values.kagent "oauth2-proxy" "enabled" }}
 ---
@@ -259,23 +227,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: oauth2-proxy
   egress:
-    - toEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: coredns
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: k8s-dns-node-cache
-      toPorts:
-        - ports:
-            - port: "1053"
-              protocol: UDP
-            - port: "1053"
-              protocol: TCP
-            - port: "53"
-              protocol: UDP
-            - port: "53"
-              protocol: TCP
+    {{- include "agentic-platform.dnsEgress" . | nindent 4 }}
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: kagent
