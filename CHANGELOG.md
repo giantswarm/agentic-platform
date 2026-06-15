@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `klausGateway.a2a`: set `additionalProperties: true` in the values schema so the klaus-gateway
+  subchart's own a2a keys (`url`, `saToken`, …) pass through validation. This was missed when
+  `klausGateway.routing`/`lifecycle` were widened, leaving the `agentic-platform` HelmRelease stuck
+  `UpgradeFailed` on management clusters whose rendered config supplies `klausGateway.a2a.{url,saToken}`.
 - `kagent.controllerRoute`: add outer public HTTPRoute (`kagent-controller-public`) on the Envoy
   Gateway so the kagent A2A endpoint is reachable at `https://<hostname>/kagent/...`. The inner
   `kagent-controller` route (agentgateway data plane) was already present, but the missing outer
@@ -84,8 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `klausGateway.enabled` (default `false`) adds `giantswarm/klaus-gateway` as an opt-in conditional dependency (`condition: klausGateway.enabled`, alias `klausGateway`). With the flag unset or false the rendered output is byte-identical to the previous chart version. When enabled, the sub-chart installs the Klaus Gateway Deployment, Service, RBAC, ChannelRoute CRD (via `crd.install: true`), and an agentgateway HTTPRoute. The sub-chart's own agentgateway dependency is disabled (`klausGateway.agentgateway.enabled: false`) so the umbrella's bundled agentgateway is reused. `a2a.kagentEndpoint` is pre-wired to the bundled kagent controller service (`http://kagent-controller.kagent.svc.cluster.local:8083`).
-
+- `klausGateway.enabled` (default `false`) adds `giantswarm/klaus-gateway` as an opt-in conditional dependency (`condition: klausGateway.enabled`, alias `klausGateway`). With the flag unset or false the rendered output is byte-identical to the previous chart version. When enabled, the sub-chart installs the Klaus Gateway Deployment, Service, RBAC, and ChannelRoute CRD (via `crd.install: true`). The sub-chart's own agentgateway dependency is disabled (`klausGateway.agentgateway.enabled: false`) so the umbrella's bundled agentgateway is reused.
 - Single `ingress.mode` topology selector (`muster-direct` | `agentgateway-muster` | `agentgateway-direct`) that declares the whole request topology in one place. The umbrella now owns **both** public routes — muster's `/` catch-all (new `templates/ingress/muster-httproute.yaml`, rendered in all modes) and the agentgateway `/mcp` interception route — fed from a single shared `ingress.parentRefs` / `ingress.hostnames`, so the two routes can no longer drift. A template-time guard (`templates/validate.yaml`) fails fast on an invalid mode, on `ingress.parentRefs` empty in **any** mode (the umbrella-owned muster `/` route attaches to it — an empty `parentRefs` would otherwise render a route bound to no Gateway), and on `agentgateway.enabled` / `agentic-platform-mcps.agentgateway.viaMuster` disagreeing with the mode.
 - `agentgateway.enabled` (default `false`) gates the agentgateway controller dependency via `condition: agentgateway.enabled` in `Chart.yaml`. In the default `muster-direct` mode the controller, its `GatewayClass`, the data-plane `Gateway`/`AgentgatewayParameters`, and the data-plane NetworkPolicies are **not installed**.
 - `agentgateway-direct` mode is modelled but **fail-guarded** — install is blocked with a clear message until a DCR-capable IdP (RFC 7591/8707) lands.

@@ -1,0 +1,77 @@
+{{- if and .Values.klausGateway.enabled .Values.klausGateway.agentgatewayRoute.enabled }}
+{{- $route := .Values.klausGateway.agentgatewayRoute }}
+{{- $ns := .Values.klausGateway.namespaceOverride | default .Release.Namespace }}
+{{- $fullname := .Values.klausGateway.fullnameOverride | default "klausgateway" }}
+# AgentgatewayBackend — registers klausgateway as an agentgateway backend.
+# klausgateway itself has no auth middleware; the agentgateway JWT policy
+# (AgentgatewayPolicy) enforces authentication before forwarding.
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: klausgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  static:
+    host: {{ printf "%s.%s.svc.cluster.local" $fullname $ns }}
+    port: 8080
+---
+# HTTPRoute — exposes /v1, /web, /cli/v1 on the agentgateway data-plane Gateway.
+# No URLRewrite: klausgateway serves these paths natively.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: klausgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Release.Namespace }}
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  {{- if $route.hostname }}
+  hostnames:
+    - {{ $route.hostname | quote }}
+  {{- end }}
+  rules:
+    {{- range list "/v1" "/web" "/cli/v1" }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ . }}
+      backendRefs:
+        - name: klausgateway
+          kind: AgentgatewayBackend
+          group: agentgateway.dev
+    {{- end }}
+{{- if and .Values.ingress.parentRefs $route.hostname }}
+---
+# Layer-1 HTTPRoute — routes the public hostname to the agentgateway data-plane.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: agentgateway-klausgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml .Values.ingress.parentRefs | nindent 4 }}
+  hostnames:
+    - {{ $route.hostname | quote }}
+  rules:
+    {{- range list "/v1" "/web" "/cli/v1" }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ . }}
+      backendRefs:
+        - name: {{ $.Values.gateway.name }}
+          port: 8080
+    {{- end }}
+{{- end }}
+{{- end }}

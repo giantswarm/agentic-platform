@@ -16,6 +16,6 @@ dependencies:
   version: 0.9.7
 - name: klaus-gateway
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.0.41-dev.feat-channel-a2a.2026-06-09.14-45-31
-digest: sha256:16e15cfa72ccd2082d54c3694139b8dfa43822f2057222dd467a18ffa587504c
+  version: 0.0.44
+digest: sha256:3ad9cac982f858bfafb1f070febefb375c9ff3568169d4e491da83b9c8a9293a
 generated: "2026-06-15T16:08:13.757034728Z"
