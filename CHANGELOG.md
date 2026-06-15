@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Vendor `ate.dev/v1alpha1` WorkerPool and ActorTemplate CRDs from
+  agent-substrate/substrate so kagent's `/api/substrate/status` endpoint returns 200
+  on clusters without substrate deployed. Stopgap pending kagent-dev/kagent#2023.
+
 ## [1.1.29] - 2026-06-15
 
 ### Fixed

@@ -7,6 +7,8 @@ This chart ships the CustomResourceDefinitions for the agentic platform:
                       agentgatewaybackends.agentgateway.dev
   muster-crds       → mcpservers.muster.giantswarm.io
                       workflows.muster.giantswarm.io
+  (stopgap)         → workerpools.ate.dev
+                      actortemplates.ate.dev
 
 INSTALL ORDER: install (or upgrade) this CRDs release BEFORE the companion
 agentic-platform release. The platform chart renders CRs (AgentgatewayParameters,
