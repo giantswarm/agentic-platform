@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `klaus-gateway` subchart from `0.1.1` to `0.1.2`.
+
 ## [1.1.27] - 2026-06-15
 
 ### Fixed
