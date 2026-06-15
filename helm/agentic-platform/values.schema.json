@@ -398,7 +398,10 @@
           "properties": {
             "store": {
               "type": "string",
-              "enum": ["memory", "crd"],
+              "enum": [
+                "memory",
+                "crd"
+              ],
               "description": "Route persistence. memory is stateless; crd requires the controller."
             },
             "defaultTTL": {
@@ -412,7 +415,10 @@
           "properties": {
             "driver": {
               "type": "string",
-              "enum": ["operator", "static"],
+              "enum": [
+                "operator",
+                "static"
+              ],
               "description": "operator provisions Klaus instances via the Klaus operator; static uses staticInstances."
             },
             "staticInstances": {
@@ -477,9 +483,33 @@
               "type": "string",
               "description": "Fallback agentRef when the channel does not supply one."
             },
-            "kagentA2ABaseURL": {
+            "url": {
               "type": "string",
               "description": "kagent A2A base URL (without trailing agent name). Required when a2a.enabled is true."
+            },
+            "saToken": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "audience": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "agentgatewayRoute": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "hostname": {
+              "type": "string"
             }
           }
         }
