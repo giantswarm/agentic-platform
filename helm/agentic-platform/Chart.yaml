@@ -61,7 +61,7 @@ dependencies:
   # When `postgres.enabled` is also true, configure the CNPG DSN wiring under
   # `kagent.database.postgres` — see values.yaml for the commented-out example.
   - name: kagent
-    version: 0.9.6
+    version: 0.9.7
     repository: oci://ghcr.io/kagent-dev/kagent/helm
     condition: kagent.enabled
   # Klaus Gateway — channel front door (Slack, CLI, web) for Klaus instances.
