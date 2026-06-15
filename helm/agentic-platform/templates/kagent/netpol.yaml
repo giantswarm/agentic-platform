@@ -182,7 +182,7 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/managed-by: kagent
+      app: kagent
   egress:
     - toEndpoints:
         - matchLabels:
