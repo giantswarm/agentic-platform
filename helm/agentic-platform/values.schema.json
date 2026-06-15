@@ -283,7 +283,7 @@
         "controllerRoute": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Expose kagent controller API through agentgateway (JWT-validated). Creates AgentgatewayBackend + HTTPRoute in the release namespace.",
+          "description": "Expose kagent controller API through agentgateway (JWT-validated). Creates AgentgatewayBackend + two HTTPRoutes: inner (agentgateway data plane) and outer (public TLS-terminating Gateway).",
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -293,6 +293,18 @@
             },
             "hostname": {
               "type": "string"
+            },
+            "parentRef": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "namespace": {
+                  "type": "string"
+                }
+              }
             }
           }
         },

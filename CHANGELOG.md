@@ -9,6 +9,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `kagent.controllerRoute`: add outer public HTTPRoute (`kagent-controller-public`) on the Envoy
+  Gateway so the kagent A2A endpoint is reachable at `https://<hostname>/kagent/...`. The inner
+  `kagent-controller` route (agentgateway data plane) was already present, but the missing outer
+  route caused Envoy to return 404 for all requests to the hostname before they reached the
+  agentgateway pod. Configurable via `kagent.controllerRoute.parentRef` (defaults to
+  `giantswarm-default` / `envoy-gateway-system`).
+- `AgentgatewayBackend/kagent`: add `spec.policies.auth.passthrough: {}` so the validated muster JWT
+  is forwarded to kagent-controller. The agentgateway JWT filter strips the Authorization header
+  after validation; without passthrough the controller's `AUTH_MODE=trusted-proxy` receives no
+  header and returns 401 for every authenticated request.
+ 
+## [1.1.26] - 2026-06-12
+
+### Fixed
+
+- Update muster to 0.4.1 (mcp-oauth v0.3.1): forwarded ID tokens (`trustedAudiences`) are no longer hard-rejected when the same issuer is also configured in `trustedIssuers` for the token-exchange broker — fixes Backstage AI-chat SSO forwarding returning 401 behind the agentgateway.
+
+## [1.1.25] - 2026-06-11
+
+### Fixed
+
+- `gateway.jwksEgress` now also opens egress on the agentgateway **controller** network policy
+  (Cilium and kubernetes flavors). The controller fetches remote JWKS centrally and distributes
+  keys to the data plane via xDS, so the data-plane-only rule left JWKS fetches timing out
+  (e.g. Dex on giantswarm/dex:5556 for extra JWT providers).
+
+## [1.1.24] - 2026-06-11
+
+### Changed
+
+- Update agentic-platform-mcps to v0.3.0: new `agentgateway.jwt.extraProviders` value lets the
+  inbound agentgateway JWT policy accept tokens from additional issuers (e.g. Dex-issued ID tokens
+  forwarded by Backstage AI chat alongside muster-issued JWTs, giantswarm#36840). Also fixes the
+  `identityProviders` values schema that rejected every populated provider map.
+
+### Fixed
+
+- `templates/kagent/declarative-agent-pod-security.yaml`: retarget the Kyverno mutate from `Deployment` (controller output) to `Agent` CR (controller input). The previous policy patched the Deployment after the kagent controller had already stamped `privileged: true` on the git-skills path, causing the API server to reject the Deployment as self-contradictory (`privileged: true` + `allowPrivilegeEscalation: false`). Mutating the Agent CR instead sets `allowPrivilegeEscalation: false` on the controller input, which trips the controller's own guard and prevents `privileged: true` from being set in the first place. A `(type): "Declarative"` condition anchor scopes the mutation to Declarative agents only.
+
+## [1.1.23] - 2026-06-11
+
+### Changed
+
+- Update muster and muster-crds to v0.4.0 (via v0.3.14): muster now supports brokered RFC 8693 token exchange (giantswarm/muster#831) — external confidential clients can exchange a trusted-issuer subject token plus an `audience` parameter at `/oauth/token` for a token minted by the audience's downstream Dex. New `muster.oauth.server.tokenExchangeBroker` values block (per-client audience allowlist, audience → downstream Dex target mapping); mcp-oauth bumped to v0.3.0. Inert by default.
+
+## [1.1.22] - 2026-06-11
+
+### Changed
+
+- Update muster and muster-crds to v0.3.13. Muster's OAuth server (mcp-oauth v0.2.199) now defaults the JWT access token `aud` claim to its resource identifier when a client omits the RFC 8707 `resource` parameter, so tokens from generic OAuth clients (e.g. Backstage auth providers) pass the agentgateway's strict JWT audience validation on `/mcp` instead of failing with `401 InvalidAudience`.
+
+## [1.1.21] - 2026-06-10
+
+### Fixed
+
 - Downgrade bundled agentgateway and agentgateway-crds charts from `v2.2.1` back to `v1.2.1`. The upstream project released `v2.2.x` before resetting semver to `v1.0.0`; `v2.2.1` is older than `v1.0.0` and was incorrectly treated as an upgrade (agentgateway/agentgateway#1249). Block the bogus `v2.2.x` range in `renovate.json5`.
 
 - `templates/agentgateway/agentgatewayparameters.yaml`: data-plane image override moved from the deployment container spec to `spec.image.registry/repository/tag`. Drops `AGW_XDS_SERVICE_NAME` from `controller.extraEnv` and removes the explicit controller image tag pin: the v1.2.1 chart already sets `AGW_XDS_SERVICE_NAME: agentgateway-controller` correctly via `fullnameOverride`, and the controller image tag defaults to the chart's `appVersion` (`v1.2.1`) when unset.
@@ -139,7 +194,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.26...HEAD
+[1.1.26]: https://github.com/giantswarm/agentic-platform/compare/v1.1.25...v1.1.26
+[1.1.25]: https://github.com/giantswarm/agentic-platform/compare/v1.1.24...v1.1.25
+[1.1.24]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...v1.1.24
+[1.1.23]: https://github.com/giantswarm/agentic-platform/compare/v1.1.22...v1.1.23
+[1.1.22]: https://github.com/giantswarm/agentic-platform/compare/v1.1.21...v1.1.22
+[1.1.21]: https://github.com/giantswarm/agentic-platform/compare/v0.5.0...v1.1.21
 [0.5.0]: https://github.com/giantswarm/agentic-platform/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/giantswarm/agentic-platform/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/giantswarm/agentic-platform/compare/v0.3.0...v0.4.0
