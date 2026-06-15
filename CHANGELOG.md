@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `klausGateway.a2a`: set `additionalProperties: true` in the values schema so the klaus-gateway
+  subchart's own a2a keys (`url`, `saToken`, …) pass through validation. This was missed when
+  `klausGateway.routing`/`lifecycle` were widened, leaving the `agentic-platform` HelmRelease stuck
+  `UpgradeFailed` on management clusters whose rendered config supplies `klausGateway.a2a.{url,saToken}`.
 - `kagent.controllerRoute`: add outer public HTTPRoute (`kagent-controller-public`) on the Envoy
   Gateway so the kagent A2A endpoint is reachable at `https://<hostname>/kagent/...`. The inner
   `kagent-controller` route (agentgateway data plane) was already present, but the missing outer
