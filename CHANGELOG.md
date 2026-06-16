@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `networkPolicy.musterInClusterMcpPorts`: add `8443` to the default so muster's supplementary
+  egress CNP permits reaching tunnelport RemoteApp tunnels (ghostunnel terminates TLS on `8443`).
+  Without it, muster's connection to in-cluster tunnel backends
+  (e.g. `mcp-kubernetes-garm.agentic-platform.svc:8443`) was silently dropped by Cilium and timed
+  out (`context deadline exceeded`).
+
 ## [1.1.30] - 2026-06-16
 
 ### Changed
