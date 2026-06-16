@@ -804,11 +804,11 @@ klausGateway:
     store: memory
     defaultTTL: "24h"
 
-  # Lifecycle driver. Set to "static" + staticInstances for clusters without
-  # the operator. "operator" (default) provisions Klaus instances on demand via
-  # the Klaus operator MCP endpoint.
+  # Lifecycle driver. agentic-platform bundles kagent, not klaus-operator, so
+  # "static" is the correct default. Populate staticInstances with
+  # name=baseURL pairs pointing at kagent agent services per-cluster.
   lifecycle:
-    driver: operator
+    driver: static
     staticInstances: ""
 
   # Point at the bundled agentgateway data-plane service once deployed.
