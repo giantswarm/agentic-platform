@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bundle the [agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox) controller
+  (opt-in via `agentSandbox.enabled`, default off) and its CRDs (Sandbox / SandboxTemplate /
+  SandboxClaim / SandboxWarmPool, shipped via `agentic-platform-crds`, keep-protected). This
+  is the Sandbox runtime kagent's `SandboxAgent` delegates pod isolation to — `agentic-platform-crds`
+  already shipped the `SandboxAgent` CRD, but nothing installed the controller it requires.
+  Restricted-PSS securityContext is injected into the controller Deployment via an umbrella
+  Kyverno mutate policy, since the vendored upstream chart exposes no securityContext knob.
+
 ## [1.1.26] - 2026-06-12
 
 ### Fixed

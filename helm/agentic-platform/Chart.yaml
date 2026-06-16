@@ -74,3 +74,13 @@ dependencies:
     version: 0.0.41-dev.feat-channel-a2a.2026-06-09.14-45-31
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: klausGateway.enabled
+  # agent-sandbox — kubernetes-sigs/agent-sandbox controller (Sandbox runtime),
+  # the substrate kagent's SandboxAgent delegates isolation to. CRDs ship in the
+  # companion agentic-platform-crds chart (install first). Opt-in via the top-level
+  # `agentSandbox.enabled` toggle, which lives OUTSIDE the agent-sandbox value
+  # namespace because that chart's strict values.schema.json (additionalProperties:
+  # false) rejects an `enabled` key — same reason `mcps.enabled` is separate.
+  - name: agent-sandbox
+    version: 0.1.0
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    condition: agentSandbox.enabled

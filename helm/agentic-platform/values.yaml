@@ -814,3 +814,38 @@ agentgateway:
     limits:
       cpu: 500m
       memory: 512Mi
+
+# agent-sandbox controller (kubernetes-sigs/agent-sandbox) — the Sandbox runtime
+# that kagent's SandboxAgent delegates pod isolation to. Opt-in. The `enabled`
+# key is the `condition: agentSandbox.enabled` dependency gate and lives OUTSIDE
+# the agent-sandbox chart's value namespace because that chart's strict
+# values.schema.json (additionalProperties: false) rejects an `enabled` key —
+# same pattern as `mcps.enabled` above.
+agentSandbox:
+  enabled: false
+  # The agent-sandbox chart is kept vendor-agnostic (no securityContext knob on
+  # the upstream v0.4.6 controller), so restricted-PSS is injected here at
+  # admission via the Kyverno mutate policy in
+  # templates/agent-sandbox/pod-security.yaml. These values feed that policy.
+  podSecurity:
+    enabled: true
+    # Must match the agent-sandbox chart's namespace.name (upstream default).
+    namespace: agent-sandbox-system
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+
+# Values forwarded to the agent-sandbox dependency chart itself (its value
+# namespace is its chart name). Usually empty — the chart already defaults the
+# gsoci-mirrored image. Note the agent-sandbox chart nests the upstream subchart
+# under its own `agent-sandbox:` key, so a controller override is
+# `agent-sandbox.agent-sandbox.<key>`.
+# agent-sandbox: {}
