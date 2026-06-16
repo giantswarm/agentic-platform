@@ -4,7 +4,7 @@ dependencies:
   version: 0.5.5
 - name: agentgateway
   repository: oci://cr.agentgateway.dev/charts
-  version: v1.2.1
+  version: v2.2.1
 - name: valkey
   repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.2
@@ -17,5 +17,5 @@ dependencies:
 - name: klaus-gateway
   repository: oci://gsoci.azurecr.io/charts/giantswarm
   version: 0.1.5
-digest: sha256:8f0903f9c150e5c2e645d9a1be23843b973a9ac82cdf2ea32c70dadd66767851
-generated: "2026-06-16T10:26:44.704259591+01:00"
+digest: sha256:9181f0592deec65e3b324bc003e10971a4f22c854a97b47bd6986088dd13828e
+generated: "2026-06-16T11:15:45.39160387Z"
