@@ -81,6 +81,6 @@ dependencies:
   # namespace because that chart's strict values.schema.json (additionalProperties:
   # false) rejects an `enabled` key — same reason `mcps.enabled` is separate.
   - name: agent-sandbox
-    version: 0.1.0
+    version: 0.1.1
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: agentSandbox.enabled

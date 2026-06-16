@@ -8,5 +8,8 @@ dependencies:
 - name: kagent-crds
   repository: oci://ghcr.io/kagent-dev/kagent/helm
   version: 0.9.6
-digest: sha256:c3e4cc3a060d7175419db2926ac9154992e0467d9c8220a5c0e5269e5f932c22
-generated: "2026-06-11T14:52:24.301674338+02:00"
+- name: agent-sandbox-crds
+  repository: oci://gsoci.azurecr.io/charts/giantswarm
+  version: 0.1.1
+digest: sha256:adf9b5a0dae0e53bb7583860cb4f635f9a76385fb563ef0200760e3dac615f7d
+generated: "2026-06-16T17:33:41.009448+02:00"

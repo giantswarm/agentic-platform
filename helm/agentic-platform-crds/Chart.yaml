@@ -50,5 +50,5 @@ dependencies:
   # and kagent CRDs, these ARE marked `helm.sh/resource-policy: keep` (injected at
   # render time by the agent-sandbox-crds chart), so they survive uninstall.
   - name: agent-sandbox-crds
-    version: 0.1.0
+    version: 0.1.1
     repository: oci://gsoci.azurecr.io/charts/giantswarm
