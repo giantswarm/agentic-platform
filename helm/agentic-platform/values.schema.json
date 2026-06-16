@@ -360,7 +360,8 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Install the agent-sandbox controller subchart. Requires agent-sandbox-crds (install agentic-platform-crds first). It is the runtime kagent's SandboxAgent delegates to."
+          "description": "Install the agent-sandbox controller subchart. Requires agent-sandbox-crds (install agentic-platform-crds first). It is the runtime kagent's SandboxAgent delegates to.",
+          "default": false
         },
         "podSecurity": {
           "type": "object",

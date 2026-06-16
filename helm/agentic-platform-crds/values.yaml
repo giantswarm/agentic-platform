@@ -1,10 +1,12 @@
 # Default values for agentic-platform-crds.
 #
-# This chart is a thin umbrella over two CRD sub-charts. It carries no
+# This chart is a thin umbrella over four CRD sub-charts. It carries no
 # templates of its own — installing it installs the CRDs.
 #
 #   agentgateway-crds  → AgentgatewayParameters / AgentgatewayPolicy / AgentgatewayBackend
 #   muster-crds        → MCPServer / Workflow
+#   kagent-crds        → Agent / AgentHarness / ModelConfig / MCPServer / RemoteMCPServer / Memory / ToolServer / SandboxAgent
+#   agent-sandbox-crds → Sandbox / SandboxTemplate / SandboxClaim / SandboxWarmPool
 #
 # WARNING (agentgateway keep-gap): the upstream agentgateway-crds sub-chart
 # renders its CRDs WITHOUT `helm.sh/resource-policy: keep` and exposes no knob

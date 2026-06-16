@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already shipped the `SandboxAgent` CRD, but nothing installed the controller it requires.
   Restricted-PSS securityContext is injected into the controller Deployment via an umbrella
   Kyverno mutate policy, since the vendored upstream chart exposes no securityContext knob.
+  A render-time guard (`templates/agent-sandbox/validate.yaml`) fails the install early if
+  `agentSandbox.podSecurity.namespace` drifts from the controller's actual namespace, which
+  would otherwise leave the Kyverno policy silently targeting the wrong namespace.
 
 ## [1.1.33] - 2026-06-16
 
