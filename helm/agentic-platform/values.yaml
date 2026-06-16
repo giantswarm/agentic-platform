@@ -692,14 +692,22 @@ agents:
   #       allowedClaims:
   #         sub: "system:serviceaccount:kagent:*"
   muster:
-    # kubectl image used by the Helm hook Job to create the token Secret.
+    # kubectl image used by the token hook Job to apply the Secret. Distroless
+    # (registry.k8s.io/kubectl), no shell — invoked with args only.
     kubectlImage:
       registry: gsoci.azurecr.io
       repository: giantswarm/kubectl
       tag: v1.36.2
-    # Duration requested for the TokenRequest-minted muster token. Rotated on
-    # every helm install/upgrade by the hook Job; the API server may cap it.
-    tokenDuration: 8760h
+    # busybox image used by the token hook Job's init container to read the
+    # projected token and render the Secret manifest. Needs a POSIX shell.
+    busyboxImage:
+      registry: gsoci.azurecr.io
+      repository: giantswarm/busybox
+      tag: "1.37.0"
+    # Expiration requested for the projected muster token, in seconds. Snapshotted
+    # into the headersFrom Secret on every helm install/upgrade; the API server
+    # caps it via --service-account-max-token-expiration.
+    tokenExpirationSeconds: 31536000
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
