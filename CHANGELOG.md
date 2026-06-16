@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.31] - 2026-06-16
+
 ### Fixed
 
 - `networkPolicy.musterInClusterMcpPorts`: add `8443` to the default so muster's supplementary
@@ -238,7 +240,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.31...HEAD
+[1.1.31]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...v1.1.31
 [1.1.30]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...v1.1.30
 [1.1.30]: https://github.com/giantswarm/agentic-platform/compare/v1.1.29...v1.1.30
 [1.1.29]: https://github.com/giantswarm/agentic-platform/compare/v1.1.28...v1.1.29
