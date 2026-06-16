@@ -176,6 +176,15 @@ spec:
         - ports:
             - port: {{ include "agentic-platform.musterServicePort" . | quote }}
               protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: controller
+            app.kubernetes.io/name: kagent
+            io.kubernetes.pod.namespace: {{ $kagentNs }}
+      toPorts:
+        - ports:
+            - port: {{ $controllerPort | quote }}
+              protocol: TCP
     - toEntities:
         - world
       toPorts:
