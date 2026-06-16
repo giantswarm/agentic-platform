@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bump `muster` sub-chart `0.5.6` -> `0.5.7`, which bumps `mcp-oauth` to `v0.4.2`, making the token-exchange broker's trusted-issuer JWKS cache rotation-safe: it now refetches the issuer JWKS when it encounters an unknown `kid` (giantswarm/muster#847). Without this, a routine Dex signing-key rotation left the broker serving a pre-rotation JWKS and rejecting **every** current user token with `subject_token_validation_failed` until muster was restarted — a fleet-wide devportal logout.
+
 - Bump `muster` sub-chart `0.5.5` -> `0.5.6`, which bumps `mcp-oauth` to `v0.4.1`. The token-exchange broker and MCP OAuth client now RFC 6749-encode client credentials before HTTP Basic auth, so token-exchange client secrets containing `+` (and other reserved characters) no longer fail Dex client authentication with `invalid_client`. Unblocks the tunnelport private-cluster devportal rollout (giantswarm#36880) for clusters whose `muster-token-exchange-<mc>` secret contains `+` without per-cluster secret rotation.
 
 ### Fixed
