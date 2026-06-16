@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.30] - 2026-06-16
 
-## [1.1.30] - 2026-06-15
+### Changed
+
+- Bump `klaus-gateway` subchart to `0.1.5`.
 
 ## [1.1.29] - 2026-06-15
 
