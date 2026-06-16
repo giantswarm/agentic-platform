@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `muster` sub-chart `0.5.5` -> `0.5.6`, which bumps `mcp-oauth` to `v0.4.1`. The token-exchange broker and MCP OAuth client now RFC 6749-encode client credentials before HTTP Basic auth, so token-exchange client secrets containing `+` (and other reserved characters) no longer fail Dex client authentication with `invalid_client`. Unblocks the tunnelport private-cluster devportal rollout (giantswarm#36880) for clusters whose `muster-token-exchange-<mc>` secret contains `+` without per-cluster secret rotation.
+
 ### Fixed
 
 - `agentic-platform-kagent-agent-muster-egress` CNP was missing an egress rule for kagent agent pods to reach the kagent-controller on port 8083. Agent pods had no path to dial into the controller, blocking agent-to-controller communication.
