@@ -14,7 +14,7 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/name: "Klaus-gateway"
+      app.kubernetes.io/name: {{ .Values.klausGateway.fullnameOverride | default "Klaus-gateway" | quote }}
   egress:
     {{- include "agentic-platform.dnsEgress" . | nindent 4 }}
     - toEndpoints:
@@ -36,7 +36,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: "Klaus-gateway"
+      app.kubernetes.io/name: {{ .Values.klausGateway.fullnameOverride | default "Klaus-gateway" | quote }}
   policyTypes: [Egress]
   egress:
     - to:
