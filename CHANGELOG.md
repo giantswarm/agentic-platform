@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `klausGateway.a2a.url` now routes through the agentgateway data-plane Service (`http://agentgateway.agentic-platform.svc.cluster.local:8080/kagent/api/a2a/kagent`) instead of hitting `kagent-controller:8083` directly, so A2A egress is authenticated and observed by agentgateway. Requires a klaus-gateway release that forwards the caller's bearer token.
+
+### Added
+
+- `templates/klausgateway/netpol.yaml`: NetworkPolicy (cilium + kubernetes flavors) allowing klaus-gateway egress to the agentgateway data-plane Gateway on port 8080, rendered when `klausGateway.enabled` and `klausGateway.a2a.enabled`.
+
 ## [1.1.33] - 2026-06-16
 
 ### Changed
