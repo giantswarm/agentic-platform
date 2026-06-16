@@ -13,9 +13,9 @@ dependencies:
   version: 0.4.1
 - name: kagent
   repository: oci://ghcr.io/kagent-dev/kagent/helm
-  version: 0.9.7
+  version: 0.9.8
 - name: klaus-gateway
   repository: oci://gsoci.azurecr.io/charts/giantswarm
   version: 0.2.2
-digest: sha256:c4b839f318719bdd0e45ee48662f2afaa80f9c7be05654f7da3aba714b410a11
-generated: "2026-06-16T11:28:08.534920699Z"
+digest: sha256:7962f52b953550209a6a4c2ee45692e37c592fd47d377fa1df6dcfcf7c0a61c9
+generated: "2026-06-16T14:27:30.707230264Z"
