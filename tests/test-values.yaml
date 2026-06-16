@@ -1,0 +1,31 @@
+# Values for an app-test-suite smoke (currently skipped via .ats/main.yaml --
+# see the note there). They trim the umbrella meta-package down to core
+# resources plus a single Gateway API HTTPRoute, which is the minimal
+# installable shape on a kind cluster: muster's OAuth server and the bundled
+# valkey are off, and the Cilium NetworkPolicies (parent and muster) are
+# disabled (Cilium is environment infra, not in a kind cluster). The only
+# remaining external CRD is Gateway API (HTTPRoute) -- a real smoke would
+# pre-install it (see .ats/main.yaml).
+ingress:
+  mode: muster-direct
+  parentRefs:
+    - name: giantswarm-default
+      namespace: envoy-gateway-system
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  hostnames:
+    - muster.ci.example.com
+
+networkPolicy:
+  enabled: false
+
+valkey:
+  enabled: false
+
+muster:
+  networkPolicy:
+    enabled: false
+  muster:
+    oauth:
+      server:
+        enabled: false

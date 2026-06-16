@@ -1,0 +1,26 @@
+# app-test-suite config. Consumed by the generated `run-tests-with-ats`
+# CircleCI jobs (execute-chart-tests for the agentic-platform umbrella chart,
+# execute-crds-chart-tests for the agentic-platform-crds chart).
+#
+# The cluster test steps are skipped on purpose. agentic-platform is an
+# app-of-apps platform meta-package: it always installs the muster subchart and
+# renders CRs for ~9 external CRD families (Cilium, Kyverno, CAPI, CNPG,
+# Gateway API, kagent, agentgateway, muster, Prometheus-operator). A standalone
+# app-test-suite smoke on a bare kind cluster fails at install (no matching
+# CRDs), so it is not the right validation model for this chart -- the same call
+# the muster repo makes for its own platform chart.
+#
+# What still runs and gates the PR: the build-chart job (app-build-suite lint +
+# package + values.schema.json validation) for both charts. Full deployment is
+# validated against a real management cluster, not an ATS kind smoke.
+#
+# To turn on a real smoke later: drop `smoke` from skip-steps and add
+# `app-tests-skip-app-deploy: true` + a tests/ats conftest that installs the
+# Gateway API CRD and deploys the chart with tests/test-values.yaml (which
+# already trims the render to core resources + a single HTTPRoute).
+app-tests-app-config-file: tests/test-values.yaml
+app-tests-deploy-namespace: agentic-platform
+
+smoke-tests-cluster-type: kind
+
+skip-steps: [smoke,functional,upgrade]
