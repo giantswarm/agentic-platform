@@ -703,7 +703,7 @@ agents:
     busyboxImage:
       registry: gsoci.azurecr.io
       repository: giantswarm/busybox
-      tag: "1.37.0"
+      tag: "1.38.0"
     # Expiration requested for the projected muster token, in seconds. Snapshotted
     # into the headersFrom Secret on every helm install/upgrade; the API server
     # caps it via --service-account-max-token-expiration.
