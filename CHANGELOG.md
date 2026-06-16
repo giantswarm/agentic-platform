@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- muster token hook Job (`kagent-muster-token-init`): no longer depends on a shell in the `kubectl` image, which is distroless (`registry.k8s.io/kubectl`) and crash-looped `BackoffLimitExceeded` on `/bin/sh: no such file or directory`, failing post-upgrade. The token is now minted via a projected `serviceAccountToken` volume, the `Bearer <token>` Secret manifest is rendered by a busybox init container, and `kubectl` is invoked with args only to apply it. The Job runs as `kagent-muster-client` (the identity muster trusts); the `serviceaccounts/token` create RBAC is dropped.
+
+### Changed
+
+- `agents.muster`: replaced `tokenDuration` (Go duration) with `tokenExpirationSeconds` (integer, fed to the projected token volume); added `busyboxImage`.
+
 ## [1.1.31] - 2026-06-16
 
 ### Fixed
