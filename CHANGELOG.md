@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.32] - 2026-06-16
+
 ### Fixed
 
 - muster token hook Job (`kagent-muster-token-init`): no longer depends on a shell in the `kubectl` image, which is distroless (`registry.k8s.io/kubectl`) and crash-looped `BackoffLimitExceeded` on `/bin/sh: no such file or directory`, failing post-upgrade. The token is now minted via a projected `serviceAccountToken` volume, the `Bearer <token>` Secret manifest is rendered by a busybox init container, and `kubectl` is invoked with args only to apply it. The Job runs as `kagent-muster-client` (the identity muster trusts); the `serviceaccounts/token` create RBAC is dropped.
@@ -248,7 +250,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.31...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.32...HEAD
+[1.1.32]: https://github.com/giantswarm/agentic-platform/compare/v1.1.31...v1.1.32
 [1.1.31]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...v1.1.31
 [1.1.30]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...v1.1.30
 [1.1.30]: https://github.com/giantswarm/agentic-platform/compare/v1.1.29...v1.1.30
