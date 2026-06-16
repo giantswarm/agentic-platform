@@ -485,7 +485,7 @@
             },
             "url": {
               "type": "string",
-              "description": "kagent A2A base URL (without trailing agent name). Required when a2a.enabled is true."
+              "description": "A2A base URL (without trailing agent name). Traffic is routed through the agentgateway data-plane to kagent. Required when a2a.enabled is true."
             },
             "saToken": {
               "type": "object",
