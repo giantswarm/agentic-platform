@@ -109,13 +109,15 @@ networkPolicy:
   additionalEgressFQDNs: []
   # Extra in-cluster egress ports for muster -> MCP backends reached via a
   # ClusterIP whose pod listens on a non-80/443 port (e.g. the in-cluster
-  # pro / runbooks MCP servers on 8080). Muster's own CNP permits cluster-entity
-  # egress only on 80/443, so those connections time out; this renders a
-  # supplementary CiliumNetworkPolicy that widens muster's egress to these ports
-  # (Cilium policies are additive — no sub-chart fork). cilium flavor only;
-  # [] disables the supplementary policy.
+  # pro / runbooks MCP servers on 8080, or tunnelport RemoteApp tunnels whose
+  # ghostunnel sidecar terminates TLS on 8443). Muster's own CNP permits
+  # cluster-entity egress only on 80/443, so those connections time out; this
+  # renders a supplementary CiliumNetworkPolicy that widens muster's egress to
+  # these ports (Cilium policies are additive — no sub-chart fork). cilium
+  # flavor only; [] disables the supplementary policy.
   musterInClusterMcpPorts:
     - 8080
+    - 8443
   # CIDR replacements for the kubernetes flavor. Vanilla NetworkPolicy has no
   # entity selectors.
   kubernetes:
