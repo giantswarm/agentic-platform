@@ -838,7 +838,11 @@ klausGateway:
     enabled: false
     defaultAgent: ""
     # Required when a2a.enabled is true. Full base URL without trailing agent name.
-    url: "http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent"
+    # Traffic routes through the agentgateway data-plane (auth, observability, policy)
+    # to the kagent controller; the path prefix /kagent is stripped by the URLRewrite
+    # on the kagent-controller HTTPRoute before reaching kagent-controller:8083.
+    # Adjust the namespace if the release is deployed outside agentic-platform.
+    url: "http://agentgateway.agentic-platform.svc.cluster.local:8080/kagent/api/a2a/kagent"
     saToken:
       enabled: false
       audience: kagent

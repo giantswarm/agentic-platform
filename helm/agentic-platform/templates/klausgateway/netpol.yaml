@@ -1,0 +1,50 @@
+{{- if and .Values.klausGateway.enabled .Values.klausGateway.a2a.enabled .Values.networkPolicy.enabled }}
+{{- $agentgatewayPort := "8080" }}
+{{- if eq .Values.networkPolicy.flavor "cilium" }}
+---
+# Allow klausgateway to reach the agentgateway data-plane for A2A egress.
+# Traffic flows: klausgateway → agentgateway:8080 → kagent-controller:8083.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-klausgateway-a2a-egress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: "Klaus-gateway"
+  egress:
+    {{- include "agentic-platform.dnsEgress" . | nindent 4 }}
+    - toEndpoints:
+        - matchLabels:
+            gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
+      toPorts:
+        - ports:
+            - port: {{ $agentgatewayPort | quote }}
+              protocol: TCP
+{{- else if eq .Values.networkPolicy.flavor "kubernetes" }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "name" . }}-klausgateway-a2a-egress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: "Klaus-gateway"
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
+      ports:
+        - port: {{ $agentgatewayPort | int }}
+          protocol: TCP
+{{- end }}
+{{- end }}
