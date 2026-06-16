@@ -1,0 +1,47 @@
+{
+  // Repo-specific Renovate rules for agentic-platform. This file is owned by the
+  // repo and never touched by `devctl gen renovate`; it is pulled in as the last
+  // `extends` entry of the generated renovate.json5. Class-wide rules belong in
+  // giantswarm/renovate-presets instead.
+  //
+  // The helmv3 manager (enabled via config:recommended in the base preset) parses
+  // the OCI `dependencies:` in helm/*/Chart.yaml and regenerates Chart.lock. The
+  // charts/ .tgz archives are gitignored, so only Chart.yaml + Chart.lock are
+  // committed. All dependency registries are public-anonymous OCI — no hostRules.
+  "customManagers": [
+    {
+      // Tracks registry/repository/tag image blocks in Helm values files.
+      // The base preset only handles registry: <depName>\n<key>: <value> (two lines).
+      // This handles the three-line split: registry + repository + tag.
+      "customType": "regex",
+      "managerFilePatterns": ["/helm/.+/values\\.yaml$/"],
+      "matchStrings": [
+        "registry: (?<registryUrl>[^\\n]+)\\n\\s+repository: (?<depName>[^\\n]+)\\n\\s+tag: \"?v?(?<currentValue>[^\"\\n]+)\"?"
+      ],
+      "datasourceTemplate": "docker",
+    },
+  ],
+  "packageRules": [
+    {
+      // agentgateway controller chart (agentic-platform) and its CRDs chart
+      // (agentic-platform-crds) are released together upstream and pinned to the
+      // SAME version. Bump them in one lockstep PR so controller and CRDs never
+      // drift apart.
+      // v2.x are excluded: upstream reset semver to v1.0.0 after releasing v2.2.x
+      // (agentgateway/agentgateway#1249). v2.x is older than v1.0.0 and must
+      // not be treated as an upgrade.
+      "matchManagers": ["helmv3"],
+      "matchDepNames": ["agentgateway", "agentgateway-crds"],
+      "groupName": "agentgateway",
+      "allowedVersions": "!/^v2\\./",
+    },
+    {
+      // muster app chart and muster-crds are the same upstream project but
+      // versioned independently (0.2.x vs 0.1.x). Group into one PR for review
+      // coherence; versions still bump independently within it.
+      "matchManagers": ["helmv3"],
+      "matchDepNames": ["muster", "muster-crds"],
+      "groupName": "muster",
+    },
+  ],
+}
