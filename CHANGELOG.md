@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `agentic-platform-mcps` sub-chart `0.3.0` -> `0.4.0`, which adds
+  `identityProviders.<name>.expectedIssuer` (rendered into the muster MCPServer
+  `tokenExchange.expectedIssuer`). Required to repoint tunneled MCP servers at
+  tunnelport `:8443` in-cluster Services, where the exchanged token's `iss` stays
+  the public Dex issuer and must be pinned (giantswarm#36883).
+
 ## [1.1.32] - 2026-06-16
 
 ### Fixed
