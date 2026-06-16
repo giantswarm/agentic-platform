@@ -13,7 +13,7 @@ icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
   - https://github.com/giantswarm/agentic-platform
 appVersion: "0.1.0"
-version: 1.1.31
+version: 1.1.33
 annotations:
   io.giantswarm.application.audience: all
   io.giantswarm.application.managed: "true"
@@ -48,7 +48,7 @@ dependencies:
   # `agentic-platform-mcps` value namespace because the sub-chart's strict
   # values.schema.json (additionalProperties: false) rejects an `enabled` key.
   - name: agentic-platform-mcps
-    version: 0.3.0
+    version: 0.4.1
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: mcps.enabled
   # kagent — Kubernetes-native AI agent runtime (controller + UI). Opt-in via
@@ -71,6 +71,6 @@ dependencies:
   # The alias maps the hyphenated chart name to a YAML-safe values key.
   - name: klaus-gateway
     alias: klausGateway
-    version: 0.1.5
+    version: 0.2.2
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: klausGateway.enabled

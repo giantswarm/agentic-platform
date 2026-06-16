@@ -23,6 +23,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `templates/klausgateway/netpol.yaml`: NetworkPolicy (cilium + kubernetes flavors) allowing klaus-gateway egress to the agentgateway data-plane Gateway on port 8080, rendered when `klausGateway.enabled` and `klausGateway.a2a.enabled`.
 
+## [1.1.33] - 2026-06-16
+
+### Changed
+
+- Bump `agentic-platform-mcps` sub-chart `0.3.0` -> `0.4.0`, which adds
+  `identityProviders.<name>.expectedIssuer` (rendered into the muster MCPServer
+  `tokenExchange.expectedIssuer`). Required to repoint tunneled MCP servers at
+  tunnelport `:8443` in-cluster Services, where the exchanged token's `iss` stays
+  the public Dex issuer and must be pinned (giantswarm#36883).
+
+## [1.1.32] - 2026-06-16
+
+### Fixed
+
+- muster token hook Job (`kagent-muster-token-init`): no longer depends on a shell in the `kubectl` image, which is distroless (`registry.k8s.io/kubectl`) and crash-looped `BackoffLimitExceeded` on `/bin/sh: no such file or directory`, failing post-upgrade. The token is now minted via a projected `serviceAccountToken` volume, the `Bearer <token>` Secret manifest is rendered by a busybox init container, and `kubectl` is invoked with args only to apply it. The Job runs as `kagent-muster-client` (the identity muster trusts); the `serviceaccounts/token` create RBAC is dropped.
+
+### Changed
+
+- `agents.muster`: replaced `tokenDuration` (Go duration) with `tokenExpirationSeconds` (integer, fed to the projected token volume); added `busyboxImage`.
+
 ## [1.1.31] - 2026-06-16
 
 ### Fixed
@@ -256,7 +276,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.31...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.33...HEAD
+[1.1.33]: https://github.com/giantswarm/agentic-platform/compare/v1.1.32...v1.1.33
+[1.1.32]: https://github.com/giantswarm/agentic-platform/compare/v1.1.31...v1.1.32
 [1.1.31]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...v1.1.31
 [1.1.30]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...v1.1.30
 [1.1.30]: https://github.com/giantswarm/agentic-platform/compare/v1.1.29...v1.1.30

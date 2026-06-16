@@ -1,0 +1,104 @@
+# Repo-specific CircleCI jobs. The dynamic-config setup workflow in
+# .circleci/config.yml deep-merges this file into the generated
+# .circleci/workflows.yml at pipeline runtime (yq `*+`: maps merge, job lists
+# append). devctl never touches this file.
+#
+# Generated job names available to reference in `requires`: build-chart,
+# execute-chart-tests, execute-chart-tests-release, push-chart-release (all for
+# the primary `agentic-platform` chart).
+#
+# What this file carries beyond the golden (single-chart) pipeline:
+#   - test-ingress-modes: the `make verify-modes` ingress-guard check on branches
+#   - the standalone agentic-platform-crds chart (build, ATS tests, tag push),
+#     versioned in lockstep with agentic-platform off the same git tag. This
+#     repo has no Dockerfile, so neither chart depends on an image build.
+version: 2.1
+
+jobs:
+  test-ingress-modes:
+    # cimg/base: CircleCI's convenience image (no custom entrypoint, passwordless
+    # sudo). We install a recent Helm here rather than reuse the lint-chart ct
+    # image — ct v3.0.0-rc.1 bundles Helm ~3.3, which predates OCI dependency
+    # support (GA in Helm 3.8), so `helm dependency build` of the oci:// sub-charts
+    # fails with "no repository definition for oci://…".
+    docker:
+    - image: cimg/base:current
+    steps:
+    - checkout
+    - run:
+        name: install helm + make
+        command: |
+          command -v make >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq make)
+          # Pinned (not `main`) so a mid-queue Helm minor can't change behaviour;
+          # 3.17.x is well past OCI dependency GA (3.8). Avoids the curl|bash pattern.
+          curl -fsSL https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz | tar xz -C /tmp
+          sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version
+    - run:
+        name: verify ingress mode guards
+        # verify-modes is the single source of truth, also run locally.
+        command: make verify-modes
+
+workflows:
+  build:
+    jobs:
+    # ---- Ingress-mode guard (was the standalone `test` workflow before
+    #      generation). Branch-only; the tag-publish flow is the chart jobs.
+    - test-ingress-modes:
+        filters:
+          tags:
+            ignore: /.*/
+
+    # ---- agentic-platform-crds: the standalone CRD chart, versioned in
+    #      lockstep with agentic-platform off the same git tag. Same shape as
+    #      the generated agentic-platform chart pipeline: build + lint (persist,
+    #      no push), ATS tests, tag push. No Dockerfile in this repo, so no
+    #      image dependency.
+    - architect/push-to-app-catalog:
+        executor: app-build-suite
+        context: architect
+        name: build-crds-chart
+        app_catalog: giantswarm-catalog
+        app_catalog_test: giantswarm-test-catalog
+        chart: agentic-platform-crds
+        # chart name differs from the repo (agentic-platform) — required by the
+        # orb's chart-name check to publish a second chart from this repo.
+        explicit_allow_chart_name_mismatch: true
+        push_to_appcatalog: false
+        push_to_oci_registry: false
+        persist_chart_archive: true
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore:
+            - main
+
+    - architect/run-tests-with-ats:
+        name: execute-crds-chart-tests
+        requires:
+        - build-crds-chart
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore:
+            - main
+
+    # ---- Tag: push the CRD chart after its tests. Intentionally independent of
+    #      the primary chart's jobs so either chart can publish on its own.
+    - architect/push-to-app-catalog:
+        executor: app-build-suite
+        context: architect
+        name: push-crds-chart-release
+        app_catalog: giantswarm-catalog
+        app_catalog_test: giantswarm-test-catalog
+        chart: agentic-platform-crds
+        explicit_allow_chart_name_mismatch: true
+        requires:
+        - execute-crds-chart-tests
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/

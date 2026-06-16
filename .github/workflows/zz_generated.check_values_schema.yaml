@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/0f3e05657376254cac9696cdc1909059b7fe7c9b/pkg/gen/input/workflows/internal/file/check_values_schema.yaml.template
+#    https://github.com/giantswarm/devctl/blob/ec13639efc8514582e455f6909dc8c99daa9948f/pkg/gen/input/workflows/internal/file/check_values_schema.yaml.template
 #
 
 name: check-values-schema
