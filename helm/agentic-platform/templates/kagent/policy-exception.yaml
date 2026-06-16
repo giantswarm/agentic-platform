@@ -1,0 +1,53 @@
+{{- if .Values.kagent.enabled }}
+{{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+# GS clusters enforce restrict-seccomp-strict: every pod must declare
+# seccompProfile RuntimeDefault or Localhost.
+#
+# Declarative agents invoke srt (Anthropic Sandbox Runtime), which internally calls
+# bwrap (bubblewrap). bwrap creates a user namespace via clone(CLONE_NEWUSER) to
+# set up its filesystem/network sandbox. The Linux kernel gates CLONE_NEWUSER on
+# whether the seccomp profile allows the clone(2) syscall with the CLONE_NEWUSER
+# flag; RuntimeDefault denies it, so bwrap fails immediately with:
+#   bwrap: No permissions to create a new namespace
+#
+# We cannot simply drop seccompProfile — restrict-seccomp-strict would then reject
+# the pod. This PolicyException exempts agent pods from that policy, allowing them
+# to run unconfined (seccompDefault is false on these nodes, so no profile is applied
+# by the kubelet by default when the field is absent).
+#
+# Scope: limited to resources carrying app: kagent, the label the kagent controller
+# sets on every agent Deployment and Pod it creates. This is the label Cilium includes
+# in endpoint identity (app.kubernetes.io/managed-by is filtered by Cilium's label
+# filter). The kagent controller pod itself uses app.kubernetes.io/name: kagent
+# and is unaffected.
+#
+# Namespace: scoped to the single namespace configured via kagent.namespaceOverride.
+# If agents are ever deployed to additional namespaces, add those namespaces here.
+#
+# PolicyExceptions must live in policy-exceptions, giantswarm, flux-giantswarm, or
+# kube-system — restrict-polex-namespaces enforces this.
+apiVersion: kyverno.io/v2
+kind: PolicyException
+metadata:
+  name: kagent-declarative-seccomp
+  namespace: policy-exceptions
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  exceptions:
+  - policyName: restrict-seccomp-strict
+    ruleNames:
+    - check-seccomp-strict
+    - autogen-check-seccomp-strict
+  match:
+    any:
+    - resources:
+        kinds:
+        - Pod
+        - Deployment
+        namespaces:
+        - {{ $ns }}
+        selector:
+          matchLabels:
+            app: kagent
+{{- end }}

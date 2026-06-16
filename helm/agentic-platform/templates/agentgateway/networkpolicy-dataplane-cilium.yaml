@@ -18,26 +18,7 @@ spec:
               protocol: TCP
   egress:
     - toEntities: ["kube-apiserver"]
-    - toEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: kube-dns
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: coredns
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: k8s-dns-node-cache
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: UDP
-            - port: "53"
-              protocol: TCP
-            - port: "1053"
-              protocol: UDP
-            - port: "1053"
-              protocol: TCP
+    {{- include "agentic-platform.dnsEgress" . | nindent 4 }}
     - toEntities: ["world"]
       toPorts:
         - ports:

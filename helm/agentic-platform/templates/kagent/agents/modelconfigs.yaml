@@ -1,0 +1,16 @@
+{{- if and .Values.kagent.enabled .Values.agents.models }}
+{{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- range .Values.agents.models }}
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: {{ required "agents.models[].name is required" .name | quote }}
+  namespace: {{ $ns }}
+spec:
+  provider: {{ required "agents.models[].provider is required" .provider | quote }}
+  model: {{ required "agents.models[].model is required" .model | quote }}
+  apiKeySecret: {{ required "agents.models[].apiKeySecret is required" .apiKeySecret | quote }}
+  apiKeySecretKey: {{ .apiKeySecretKey | default "ANTHROPIC_API_KEY" | quote }}
+{{- end }}
+{{- end }}

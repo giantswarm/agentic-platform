@@ -1,0 +1,39 @@
+{{- if .Values.kagent.enabled }}
+{{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- if .Values.muster.enabled }}
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: muster
+  namespace: {{ $ns }}
+spec:
+  description: "muster MCP gateway"
+  url: {{ printf "http://%s.%s.svc.cluster.local:%v/mcp" (include "agentic-platform.musterFullname" .) .Release.Namespace (include "agentic-platform.musterServicePort" .) | quote }}
+  protocol: STREAMABLE_HTTP
+  headersFrom:
+  - name: Authorization
+    valueFrom:
+      type: Secret
+      name: {{ printf "%s-kagent-muster-token" (include "name" .) | quote }}
+      key: token
+{{- end }}
+{{- range .Values.agents.remoteMcpServers }}
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: {{ required "agents.remoteMcpServers[].name is required" .name | quote }}
+  namespace: {{ $ns }}
+spec:
+  description: {{ .description | default (printf "%s MCP server" .name) | quote }}
+  url: {{ required "agents.remoteMcpServers[].url is required" .url | quote }}
+  protocol: STREAMABLE_HTTP
+  headersFrom:
+  - name: Authorization
+    valueFrom:
+      type: Secret
+      name: {{ .tokenSecret | default (printf "%s-kagent-muster-token" (include "name" $)) | quote }}
+      key: token
+{{- end }}
+{{- end }}

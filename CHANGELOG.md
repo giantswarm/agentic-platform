@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `agentic-platform-kagent-agent-muster-egress` CNP was missing an egress rule for kagent agent pods to reach the kagent-controller on port 8083. Agent pods had no path to dial into the controller, blocking agent-to-controller communication.
+
+- muster token hook Job (`kagent-muster-token-init`): no longer depends on a shell in the `kubectl` image, which is distroless (`registry.k8s.io/kubectl`) and crash-looped `BackoffLimitExceeded` on `/bin/sh: no such file or directory`, failing post-upgrade. The token is now minted via a projected `serviceAccountToken` volume, the `Bearer <token>` Secret manifest is rendered by a busybox init container, and `kubectl` is invoked with args only to apply it. The Job runs as `kagent-muster-client` (the identity muster trusts); the `serviceaccounts/token` create RBAC is dropped.
+
+### Changed
+
+- `agents.muster`: replaced `tokenDuration` (Go duration) with `tokenExpirationSeconds` (integer, fed to the projected token volume); added `busyboxImage`.
+
+- `klausGateway.a2a.url` now routes through the agentgateway data-plane Service (`http://agentgateway.agentic-platform.svc.cluster.local:8080/kagent/api/a2a/kagent`) instead of hitting `kagent-controller:8083` directly, so A2A egress is authenticated and observed by agentgateway. Requires a klaus-gateway release that forwards the caller's bearer token.
+
 ### Added
+
+- `templates/klausgateway/netpol.yaml`: NetworkPolicy (cilium + kubernetes flavors) allowing klaus-gateway egress to the agentgateway data-plane Gateway on port 8080, rendered when `klausGateway.enabled` and `klausGateway.a2a.enabled`.
 
 - Bundle the [agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox) controller
   (opt-in via `agentSandbox.enabled`, default off) and its CRDs (Sandbox / SandboxTemplate /
@@ -16,6 +30,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already shipped the `SandboxAgent` CRD, but nothing installed the controller it requires.
   Restricted-PSS securityContext is injected into the controller Deployment via an umbrella
   Kyverno mutate policy, since the vendored upstream chart exposes no securityContext knob.
+
+## [1.1.33] - 2026-06-16
+
+### Changed
+
+- Bump `agentic-platform-mcps` sub-chart `0.3.0` -> `0.4.0`, which adds
+  `identityProviders.<name>.expectedIssuer` (rendered into the muster MCPServer
+  `tokenExchange.expectedIssuer`). Required to repoint tunneled MCP servers at
+  tunnelport `:8443` in-cluster Services, where the exchanged token's `iss` stays
+  the public Dex issuer and must be pinned (giantswarm#36883).
+
+## [1.1.32] - 2026-06-16
+
+### Fixed
+
+- muster token hook Job (`kagent-muster-token-init`): no longer depends on a shell in the `kubectl` image, which is distroless (`registry.k8s.io/kubectl`) and crash-looped `BackoffLimitExceeded` on `/bin/sh: no such file or directory`, failing post-upgrade. The token is now minted via a projected `serviceAccountToken` volume, the `Bearer <token>` Secret manifest is rendered by a busybox init container, and `kubectl` is invoked with args only to apply it. The Job runs as `kagent-muster-client` (the identity muster trusts); the `serviceaccounts/token` create RBAC is dropped.
+
+### Changed
+
+- `agents.muster`: replaced `tokenDuration` (Go duration) with `tokenExpirationSeconds` (integer, fed to the projected token volume); added `busyboxImage`.
+
+## [1.1.31] - 2026-06-16
+
+### Fixed
+
+- `networkPolicy.musterInClusterMcpPorts`: add `8443` to the default so muster's supplementary
+  egress CNP permits reaching tunnelport RemoteApp tunnels (ghostunnel terminates TLS on `8443`).
+  Without it, muster's connection to in-cluster tunnel backends
+  (e.g. `mcp-kubernetes-garm.agentic-platform.svc:8443`) was silently dropped by Cilium and timed
+  out (`context deadline exceeded`).
+
+## [1.1.30] - 2026-06-16
+
+### Changed
+
+- Bump `klaus-gateway` subchart to `0.1.5`.
+
+## [1.1.29] - 2026-06-15
+
+### Fixed
+
+- `klausGateway.a2a.saToken` and `klausGateway.upstream`: set `additionalProperties: true` in the
+  values schema so the klaus-gateway subchart's own pass-through keys
+  (`a2a.saToken.{expirationSeconds,mountPath}`, `upstream.url`) validate. These nested objects were
+  still `additionalProperties: false` after the `1.1.27` `a2a` fix, leaving the `agentic-platform`
+  HelmRelease stuck `UpgradeFailed` on management clusters whose rendered config supplies them.
+
+## [1.1.28] - 2026-06-15
+
+### Changed
+
+- Bump `klaus-gateway` subchart from `0.1.1` to `0.1.2`.
+
+## [1.1.27] - 2026-06-15
+
+### Fixed
+
+- `klausGateway.a2a`: set `additionalProperties: true` in the values schema so the klaus-gateway
+  subchart's own a2a keys (`url`, `saToken`, …) pass through validation. This was missed when
+  `klausGateway.routing`/`lifecycle` were widened, leaving the `agentic-platform` HelmRelease stuck
+  `UpgradeFailed` on management clusters whose rendered config supplies `klausGateway.a2a.{url,saToken}`.
+- `kagent.controllerRoute`: add outer public HTTPRoute (`kagent-controller-public`) on the Envoy
+  Gateway so the kagent A2A endpoint is reachable at `https://<hostname>/kagent/...`. The inner
+  `kagent-controller` route (agentgateway data plane) was already present, but the missing outer
+  route caused Envoy to return 404 for all requests to the hostname before they reached the
+  agentgateway pod. Configurable via `kagent.controllerRoute.parentRef` (defaults to
+  `giantswarm-default` / `envoy-gateway-system`).
+- `AgentgatewayBackend/kagent`: add `spec.policies.auth.passthrough: {}` so the validated muster JWT
+  is forwarded to kagent-controller. The agentgateway JWT filter strips the Authorization header
+  after validation; without passthrough the controller's `AUTH_MODE=trusted-proxy` receives no
+  header and returns 401 for every authenticated request.
+- `helm.sh/chart` label: truncating long dev-build versions at 63 characters could leave a trailing `.`, producing an invalid label value and failing the Helm install/upgrade. The `chart` helper now trims trailing `.` as well as `-`.
+- `templates/kagent/agents/remotemcpservers.yaml`: `headersFrom[].valueFrom` used a `secretKeyRef` block, but the kagent v1alpha2 `ValueSource` schema is flat (`type`/`name`/`key` with `type: Secret`). The CRs failed admission with `valueFrom.key: Required value`.
+- `templates/kagent/agents/muster-token-job.yaml`: mint the muster token via the TokenRequest API (`kubectl create token`, duration `agents.muster.tokenDuration`, default 8760h) instead of a legacy `kubernetes.io/service-account-token` Secret. Legacy Secret tokens carry `iss: kubernetes/serviceaccount` and no `exp`, so muster's `trustedIssuers` JWT validation (cluster OIDC issuer + required expiry) can never accept them; every RemoteMCPServer call failed with `Unauthorized`. The legacy token Secret is removed; the token now rotates on every install/upgrade.
+- `templates/kagent/agents/muster-sa.yaml`: the token-init Role granted `create` on Secrets restricted by `resourceNames`, which Kubernetes RBAC never matches for create requests (the object name is not part of the authorization attributes). The hook Job failed with `secrets is forbidden` on first install. `create` is now an unrestricted (namespace-scoped) rule; `get`/`patch` stay name-restricted.
+- `templates/kagent/declarative-agent-pod-security.yaml`: remove `seccompProfile: RuntimeDefault` from the injected pod and container security contexts. `RuntimeDefault` blocks `clone(CLONE_NEWUSER)` which bwrap (used by srt internally) requires for user-namespace isolation, causing every shell/bash tool invocation to fail with `bwrap: No permissions to create a new namespace`.
+- `templates/kagent/policy-exception.yaml` (new): `PolicyException` in the `policy-exceptions` namespace exempting pods and deployments labelled `app: kagent` in the kagent namespace from the cluster-wide `restrict-seccomp-strict` Kyverno policy. Required because the cluster enforces seccomp profiles and we cannot simply omit `seccompProfile` without an exception.
+- `templates/kagent/declarative-agent-srt-settings.yaml` (new): Kyverno policy that patches the `srt-settings.json` key in agent config Secrets (labelled `app: kagent`) on admission to include `"enableWeakerNestedSandbox": true`. Without this flag, bwrap attempts to bind-mount `/proc` into its new PID namespace, which fails inside unprivileged containers with `bwrap: Can't mount proc on /newroot/proc: Operation not permitted`. The flag is the documented srt workaround for container environments (`sandbox/linux-sandbox-utils.ts`); the kagent controller does not expose it through any CR field.
+- `templates/kagent/declarative-agent-pod-security.yaml`: extend the security context mutation to `SandboxAgent` CRs. `SandboxAgent` is a distinct kind from `Agent` and was not covered by the existing rule; pods created via the `agents.x-k8s.io` Sandbox backend were blocked by `disallow-capabilities-strict`, `disallow-privilege-escalation`, and `require-run-as-nonroot` Kyverno policies.
 
 ## [1.1.26] - 2026-06-12
 
@@ -73,8 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `klausGateway.enabled` (default `false`) adds `giantswarm/klaus-gateway` as an opt-in conditional dependency (`condition: klausGateway.enabled`, alias `klausGateway`). With the flag unset or false the rendered output is byte-identical to the previous chart version. When enabled, the sub-chart installs the Klaus Gateway Deployment, Service, RBAC, ChannelRoute CRD (via `crd.install: true`), and an agentgateway HTTPRoute. The sub-chart's own agentgateway dependency is disabled (`klausGateway.agentgateway.enabled: false`) so the umbrella's bundled agentgateway is reused. `a2a.kagentEndpoint` is pre-wired to the bundled kagent controller service (`http://kagent-controller.kagent.svc.cluster.local:8083`).
-
+- `klausGateway.enabled` (default `false`) adds `giantswarm/klaus-gateway` as an opt-in conditional dependency (`condition: klausGateway.enabled`, alias `klausGateway`). With the flag unset or false the rendered output is byte-identical to the previous chart version. When enabled, the sub-chart installs the Klaus Gateway Deployment, Service, RBAC, and ChannelRoute CRD (via `crd.install: true`). The sub-chart's own agentgateway dependency is disabled (`klausGateway.agentgateway.enabled: false`) so the umbrella's bundled agentgateway is reused.
 - Single `ingress.mode` topology selector (`muster-direct` | `agentgateway-muster` | `agentgateway-direct`) that declares the whole request topology in one place. The umbrella now owns **both** public routes — muster's `/` catch-all (new `templates/ingress/muster-httproute.yaml`, rendered in all modes) and the agentgateway `/mcp` interception route — fed from a single shared `ingress.parentRefs` / `ingress.hostnames`, so the two routes can no longer drift. A template-time guard (`templates/validate.yaml`) fails fast on an invalid mode, on `ingress.parentRefs` empty in **any** mode (the umbrella-owned muster `/` route attaches to it — an empty `parentRefs` would otherwise render a route bound to no Gateway), and on `agentgateway.enabled` / `agentic-platform-mcps.agentgateway.viaMuster` disagreeing with the mode.
 - `agentgateway.enabled` (default `false`) gates the agentgateway controller dependency via `condition: agentgateway.enabled` in `Chart.yaml`. In the default `muster-direct` mode the controller, its `GatewayClass`, the data-plane `Gateway`/`AgentgatewayParameters`, and the data-plane NetworkPolicies are **not installed**.
 - `agentgateway-direct` mode is modelled but **fail-guarded** — install is blocked with a clear message until a DCR-capable IdP (RFC 7591/8707) lands.
@@ -192,7 +284,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bootstrap.oauth.*` values and the `templates/oauth-bootstrap-secret.yaml` Helm `lookup`-based Secret generator. Use `extraObjects` to ship the Secret in the same release, or pre-create it out of band and reference via `muster.muster.oauth.server.existingSecret`.
 
-[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.26...HEAD
+[Unreleased]: https://github.com/giantswarm/agentic-platform/compare/v1.1.33...HEAD
+[1.1.33]: https://github.com/giantswarm/agentic-platform/compare/v1.1.32...v1.1.33
+[1.1.32]: https://github.com/giantswarm/agentic-platform/compare/v1.1.31...v1.1.32
+[1.1.31]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...v1.1.31
+[1.1.30]: https://github.com/giantswarm/agentic-platform/compare/v1.1.30...v1.1.30
+[1.1.30]: https://github.com/giantswarm/agentic-platform/compare/v1.1.29...v1.1.30
+[1.1.29]: https://github.com/giantswarm/agentic-platform/compare/v1.1.28...v1.1.29
+[1.1.28]: https://github.com/giantswarm/agentic-platform/compare/v1.1.27...v1.1.28
+[1.1.27]: https://github.com/giantswarm/agentic-platform/compare/v1.1.26...v1.1.27
 [1.1.26]: https://github.com/giantswarm/agentic-platform/compare/v1.1.25...v1.1.26
 [1.1.25]: https://github.com/giantswarm/agentic-platform/compare/v1.1.24...v1.1.25
 [1.1.24]: https://github.com/giantswarm/agentic-platform/compare/v1.1.23...v1.1.24

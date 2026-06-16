@@ -109,13 +109,15 @@ networkPolicy:
   additionalEgressFQDNs: []
   # Extra in-cluster egress ports for muster -> MCP backends reached via a
   # ClusterIP whose pod listens on a non-80/443 port (e.g. the in-cluster
-  # pro / runbooks MCP servers on 8080). Muster's own CNP permits cluster-entity
-  # egress only on 80/443, so those connections time out; this renders a
-  # supplementary CiliumNetworkPolicy that widens muster's egress to these ports
-  # (Cilium policies are additive — no sub-chart fork). cilium flavor only;
-  # [] disables the supplementary policy.
+  # pro / runbooks MCP servers on 8080, or tunnelport RemoteApp tunnels whose
+  # ghostunnel sidecar terminates TLS on 8443). Muster's own CNP permits
+  # cluster-entity egress only on 80/443, so those connections time out; this
+  # renders a supplementary CiliumNetworkPolicy that widens muster's egress to
+  # these ports (Cilium policies are additive — no sub-chart fork). cilium
+  # flavor only; [] disables the supplementary policy.
   musterInClusterMcpPorts:
     - 8080
+    - 8443
   # CIDR replacements for the kubernetes flavor. Vanilla NetworkPolicy has no
   # entity selectors.
   kubernetes:
@@ -142,6 +144,7 @@ networkPolicy:
 extraObjects: []
 
 muster:
+  enabled: true
   image:
     registry: gsoci.azurecr.io
   # Pin muster's Service name as the single source of truth for it. The umbrella
@@ -640,6 +643,12 @@ kagent:
     # Hostname that must be declared on the agentgateway Gateway.
     # Example: agentgateway.<cluster>.<base-domain>
     hostname: ""
+    # Outer (public) Gateway that terminates TLS. The controller API is reached
+    # at https://<hostname><pathPrefix> through this Gateway, which forwards to
+    # the agentgateway Service (inner hop handles JWT validation + path rewrite).
+    parentRef:
+      name: giantswarm-default
+      namespace: envoy-gateway-system
   # Expose kagent UI. Creates an HTTPRoute on the public Gateway pointing at
   # oauth2-proxy (when enabled) or the UI service directly (dev only).
   # Supply oauth2-proxy credentials and set uiRoute.enabled: true together.
@@ -661,6 +670,67 @@ kagent:
       timeout: "60s"
       annotations: {}
       labels: {}
+
+# Platform agents — kagent RemoteMCPServer CRs and supporting network policies.
+# All CRs land in kagent.namespaceOverride (default: kagent).
+# Prerequisite: kagent.enabled: true and kagent-crds installed.
+#
+# muster RemoteMCPServer, SA, and egress CNP are gated on kagent.enabled + muster.enabled.
+agents:
+  # Config for the built-in muster MCP gateway connection. Active when
+  # kagent.enabled + muster.enabled — the umbrella creates a RemoteMCPServer CR, a
+  # ServiceAccount + long-lived SA token Secret, and a Helm hook Job that
+  # writes "Bearer <token>" into the headersFrom Secret.
+  #
+  # Prerequisite: muster.muster.oauth.server.trustedIssuers must include an
+  # entry for the cluster SA OIDC issuer (find with:
+  #   kubectl get --raw /.well-known/openid-configuration | jq .issuer).
+  # Set in per-cluster values — see configmap-values.yaml.template.
+  # Example entry:
+  #   trustedIssuers:
+  #     - issuer: "https://<cluster-oidc-issuer>/"
+  #       allowedClaims:
+  #         sub: "system:serviceaccount:kagent:*"
+  muster:
+    # kubectl image used by the token hook Job to apply the Secret. Distroless
+    # (registry.k8s.io/kubectl), no shell — invoked with args only.
+    kubectlImage:
+      registry: gsoci.azurecr.io
+      repository: giantswarm/kubectl
+      tag: v1.36.2
+    # busybox image used by the token hook Job's init container to read the
+    # projected token and render the Secret manifest. Needs a POSIX shell.
+    busyboxImage:
+      registry: gsoci.azurecr.io
+      repository: giantswarm/busybox
+      tag: "1.38.0"
+    # Expiration requested for the projected muster token, in seconds. Snapshotted
+    # into the headersFrom Secret on every helm install/upgrade; the API server
+    # caps it via --service-account-max-token-expiration.
+    tokenExpirationSeconds: 31536000
+
+  # List of additional RemoteMCPServer CRs to create in the kagent namespace.
+  # Use for MCP servers other than the built-in muster. Each entry creates one
+  # CR; agents reference it by name. tokenSecret defaults to the chart-managed
+  # SA-token Secret (written by the muster token hook Job, key "token", value
+  # "Bearer <token>"); set it only for servers needing a different credential.
+  remoteMcpServers: []
+  # - name: external-mcp
+  #   url: "https://external-mcp.example.com/mcp"
+  #   tokenSecret: ""   # optional: pre-existing Secret with key "token"
+  #   description: "external MCP server"
+
+  # List of ModelConfig CRs to create in the kagent namespace.
+  # Agents reference a ModelConfig by name via spec.declarative.modelConfig.
+  # Note: kagent's own sub-chart creates a default-model-config when
+  # kagent.providers.anthropic is set; entries here are additional or replacement
+  # configs. The apiKeySecret must be pre-created in the kagent namespace.
+  models: []
+  # - name: anthropic-sonnet
+  #   provider: Anthropic
+  #   model: claude-sonnet-4-6
+  #   apiKeySecret: kagent-anthropic
+  #   apiKeySecretKey: ANTHROPIC_API_KEY
 
 # Platform Postgres — CloudNativePG Cluster for kagent (and future Klaus sessions).
 # The CNPG operator and its CRDs are a cluster-level prerequisite (like Gateway
@@ -744,11 +814,11 @@ klausGateway:
     store: memory
     defaultTTL: "24h"
 
-  # Lifecycle driver. Set to "static" + staticInstances for clusters without
-  # the operator. "operator" (default) provisions Klaus instances on demand via
-  # the Klaus operator MCP endpoint.
+  # Lifecycle driver. agentic-platform bundles kagent, not klaus-operator, so
+  # "static" is the correct default. Populate staticInstances with
+  # name=baseURL pairs pointing at kagent agent services per-cluster.
   lifecycle:
-    driver: operator
+    driver: static
     staticInstances: ""
 
   # Point at the bundled agentgateway data-plane service once deployed.
@@ -771,14 +841,29 @@ klausGateway:
   cli:
     enabled: false
 
-  # A2A client adapter. Forwards Slack turns directly to the kagent A2A
-  # endpoint; kagent becomes the single orchestrator.
+  # A2A client adapter. Routes channel turns to a kagent A2A endpoint.
   # defaultAgent is the fallback agentRef when the channel does not supply one.
+  # Omit defaultAgent to require callers to pass agentRef explicitly.
   a2a:
     enabled: false
-    defaultAgent: "klaud-coding"
+    defaultAgent: ""
     # Required when a2a.enabled is true. Full base URL without trailing agent name.
-    kagentA2ABaseURL: "http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent"
+    # Traffic routes through the agentgateway data-plane (auth, observability, policy)
+    # to the kagent controller; the path prefix /kagent is stripped by the URLRewrite
+    # on the kagent-controller HTTPRoute before reaching kagent-controller:8083.
+    # Adjust the namespace if the release is deployed outside agentic-platform.
+    url: "http://agentgateway.agentic-platform.svc.cluster.local:8080/kagent/api/a2a/kagent"
+    saToken:
+      enabled: false
+      audience: kagent
+
+  # Agentgateway route — exposes /v1, /web, /cli/v1 on the agentgateway
+  # data-plane Gateway (agentgateway-* ingress modes only).
+  agentgatewayRoute:
+    enabled: false
+    # Hostname on which the agentgateway Gateway will match these paths.
+    # Example: agentgateway.<cluster>.<base-domain>
+    hostname: ""
 
 agentgateway:
   # Controller dependency install switch. Must be true for agentgateway-* ingress modes (validated against ingress.mode).
@@ -786,6 +871,7 @@ agentgateway:
   fullnameOverride: agentgateway-controller
   image:
     registry: gsoci.azurecr.io
+    tag: v1.2.1
   controller:
     image:
       repository: giantswarm/agentgateway-controller
@@ -793,6 +879,7 @@ agentgateway:
     image:
       registry: gsoci.azurecr.io
       repository: giantswarm/agentgateway
+      tag: v1.2.1
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   podSecurityContext:

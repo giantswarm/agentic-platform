@@ -283,7 +283,7 @@
         "controllerRoute": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Expose kagent controller API through agentgateway (JWT-validated). Creates AgentgatewayBackend + HTTPRoute in the release namespace.",
+          "description": "Expose kagent controller API through agentgateway (JWT-validated). Creates AgentgatewayBackend + two HTTPRoutes: inner (agentgateway data plane) and outer (public TLS-terminating Gateway).",
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -293,6 +293,18 @@
             },
             "hostname": {
               "type": "string"
+            },
+            "parentRef": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "namespace": {
+                  "type": "string"
+                }
+              }
             }
           }
         },
@@ -420,11 +432,14 @@
         },
         "routing": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "store": {
               "type": "string",
-              "enum": ["memory", "crd"],
+              "enum": [
+                "memory",
+                "crd"
+              ],
               "description": "Route persistence. memory is stateless; crd requires the controller."
             },
             "defaultTTL": {
@@ -434,11 +449,14 @@
         },
         "lifecycle": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "driver": {
               "type": "string",
-              "enum": ["operator", "static"],
+              "enum": [
+                "operator",
+                "static"
+              ],
               "description": "operator provisions Klaus instances via the Klaus operator; static uses staticInstances."
             },
             "staticInstances": {
@@ -449,7 +467,7 @@
         },
         "upstream": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "agentgatewayURL": {
               "type": "string",
@@ -494,7 +512,7 @@
         },
         "a2a": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -503,9 +521,33 @@
               "type": "string",
               "description": "Fallback agentRef when the channel does not supply one."
             },
-            "kagentA2ABaseURL": {
+            "url": {
               "type": "string",
-              "description": "kagent A2A base URL (without trailing agent name). Required when a2a.enabled is true."
+              "description": "A2A base URL (without trailing agent name). Traffic is routed through the agentgateway data-plane to kagent. Required when a2a.enabled is true."
+            },
+            "saToken": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "audience": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "agentgatewayRoute": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "hostname": {
+              "type": "string"
             }
           }
         }

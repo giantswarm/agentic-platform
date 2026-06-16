@@ -13,14 +13,14 @@ icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
   - https://github.com/giantswarm/agentic-platform
 appVersion: "0.1.0"
-version: 1.1.26
+version: 1.1.33
 annotations:
   io.giantswarm.application.audience: all
   io.giantswarm.application.managed: "true"
   io.giantswarm.application.team: bumblebee
 dependencies:
   - name: muster
-    version: 0.4.1
+    version: 0.5.5
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   - name: agentgateway
     version: v1.2.1
@@ -48,7 +48,7 @@ dependencies:
   # `agentic-platform-mcps` value namespace because the sub-chart's strict
   # values.schema.json (additionalProperties: false) rejects an `enabled` key.
   - name: agentic-platform-mcps
-    version: 0.3.0
+    version: 0.4.1
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: mcps.enabled
   # kagent — Kubernetes-native AI agent runtime (controller + UI). Opt-in via
@@ -61,7 +61,7 @@ dependencies:
   # When `postgres.enabled` is also true, configure the CNPG DSN wiring under
   # `kagent.database.postgres` — see values.yaml for the commented-out example.
   - name: kagent
-    version: 0.9.6
+    version: 0.9.8
     repository: oci://ghcr.io/kagent-dev/kagent/helm
     condition: kagent.enabled
   # Klaus Gateway — channel front door (Slack, CLI, web) for Klaus instances.
@@ -71,7 +71,7 @@ dependencies:
   # The alias maps the hyphenated chart name to a YAML-safe values key.
   - name: klaus-gateway
     alias: klausGateway
-    version: 0.0.41-dev.feat-channel-a2a.2026-06-09.14-45-31
+    version: 0.2.2
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: klausGateway.enabled
   # agent-sandbox — kubernetes-sigs/agent-sandbox controller (Sandbox runtime),
