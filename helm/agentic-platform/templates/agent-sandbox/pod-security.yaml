@@ -5,6 +5,15 @@
 # restricted-PSS fields at admission via a Kyverno mutate policy so the
 # Deployment passes Kyverno / PSA on Giant Swarm clusters. When upstream exposes
 # securityContext via values, prefer plain subchart values and drop this.
+#
+# BOOTSTRAP ORDERING (helm.sh/resource-policy: keep, below): this policy and the
+# controller Deployment it mutates ship in the SAME Helm release. Kyverno cannot
+# load a brand-new ClusterPolicy before the Deployment in that same release is
+# admitted, so on a GS cluster (fail-closed restricted-PSS) the first install of
+# the Deployment is rejected and the release rolls back. `keep` makes this policy
+# survive that rollback; Kyverno then loads it, and Flux's next upgrade retry
+# re-applies the Deployment — now mutated, so it passes admission. Without `keep`
+# the rollback deletes the policy too and the install never converges (it loops).
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -12,6 +21,8 @@ metadata:
   labels:
     {{- include "labels.common" . | nindent 4 }}
   annotations:
+    # Survive the first-install rollback (see BOOTSTRAP ORDERING note above).
+    helm.sh/resource-policy: keep
     policies.kyverno.io/title: agent-sandbox controller pod security
     policies.kyverno.io/description: >-
       Adds restricted-PSS securityContext fields to the agent-sandbox-controller
