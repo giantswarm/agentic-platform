@@ -33,7 +33,7 @@ dependencies:
   # app chart. These CRDs ARE marked `helm.sh/resource-policy: keep` and
   # survive uninstall (see values.yaml crds.annotations). No condition.
   - name: muster-crds
-    version: 0.5.6
+    version: 0.5.8
     repository: oci://gsoci.azurecr.io/charts/giantswarm
   # kagent CRDs (Agent / AgentHarness / ModelConfig / MCPServer / RemoteMCPServer /
   # Memory / ToolServer / SandboxAgent). No condition — a CRDs chart installs all
