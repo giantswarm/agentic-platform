@@ -1,0 +1,25 @@
+{{- /*
+Render-time guard for the agent-sandbox pod-security wiring. Fails `helm template`
+(and therefore CI lint + install) early with an actionable message instead of
+producing a silently-broken release.
+
+The Kyverno mutate policy in pod-security.yaml targets the controller Deployment
+by namespace via agentSandbox.podSecurity.namespace. That value is independent of
+the namespace the agent-sandbox subchart actually deploys into
+(agent-sandbox.agent-sandbox.namespace.name). If the two drift, the policy never
+matches, the controller pod ships without the restricted-PSS securityContext, and
+PSA silently rejects it. Keep them in lockstep.
+*/ -}}
+{{- if and .Values.agentSandbox.enabled .Values.agentSandbox.podSecurity.enabled }}
+  {{- $controllerNs := "agent-sandbox-system" }}
+  {{- $sandbox := index .Values "agent-sandbox" }}
+  {{- if $sandbox }}
+    {{- $inner := index $sandbox "agent-sandbox" }}
+    {{- if and $inner $inner.namespace $inner.namespace.name }}
+      {{- $controllerNs = $inner.namespace.name }}
+    {{- end }}
+  {{- end }}
+  {{- if ne .Values.agentSandbox.podSecurity.namespace $controllerNs }}
+    {{- fail (printf "agentSandbox.podSecurity.namespace (%s) must equal the agent-sandbox controller namespace (%s, from agent-sandbox.agent-sandbox.namespace.name). The first drives the Kyverno pod-security policy's target namespace, the second the controller Deployment's namespace; if they differ the policy never matches and the controller pod is rejected by PSA." .Values.agentSandbox.podSecurity.namespace $controllerNs) }}
+  {{- end }}
+{{- end }}

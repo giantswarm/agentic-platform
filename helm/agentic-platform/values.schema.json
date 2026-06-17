@@ -353,6 +353,45 @@
         }
       }
     },
+    "agentSandbox": {
+      "type": "object",
+      "description": "agent-sandbox controller toggle and umbrella-owned pod-security config. `enabled` is the `condition: agentSandbox.enabled` dependency gate (kept outside the agent-sandbox value namespace, whose strict schema rejects extra keys). `podSecurity` feeds the Kyverno mutate policy that injects restricted-PSS into the controller Deployment.",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Install the agent-sandbox controller subchart. Requires agent-sandbox-crds (install agentic-platform-crds first). It is the runtime kagent's SandboxAgent delegates to.",
+          "default": false
+        },
+        "podSecurity": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Restricted-PSS securityContext injected into the agent-sandbox-controller Deployment via a Kyverno mutate policy, since the vendored upstream chart exposes no securityContext knob.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "namespace": {
+              "type": "string",
+              "description": "Namespace the controller Deployment runs in. Must match the agent-sandbox chart's namespace.name."
+            },
+            "podSecurityContext": {
+              "type": "object",
+              "description": "Pod-level securityContext merged onto the controller pod template."
+            },
+            "containerSecurityContext": {
+              "type": "object",
+              "description": "Container-level securityContext merged onto the agent-sandbox-controller container."
+            }
+          }
+        }
+      }
+    },
+    "agent-sandbox": {
+      "type": "object",
+      "description": "agent-sandbox subchart values (pass-through). The chart nests the upstream controller under its own `agent-sandbox:` key. Usually empty — the chart defaults the gsoci-mirrored image.",
+      "additionalProperties": true
+    },
     "klausGateway": {
       "type": "object",
       "description": "klaus-gateway subchart values (pass-through). Subchart keys are forwarded; only the umbrella-controlled keys are validated here.",

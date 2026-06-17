@@ -1,0 +1,40 @@
+{{- if and .Values.agentSandbox.enabled .Values.agentSandbox.podSecurity.enabled }}
+# The agent-sandbox controller comes from the vendored upstream chart, which at
+# v0.4.6 exposes no securityContext via values (the GS chart is kept
+# vendor-agnostic). kube-linter / PSA check the static manifest, so inject the
+# restricted-PSS fields at admission via a Kyverno mutate policy so the
+# Deployment passes Kyverno / PSA on Giant Swarm clusters. When upstream exposes
+# securityContext via values, prefer plain subchart values and drop this.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: {{ include "name" . }}-agent-sandbox-pod-security
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  annotations:
+    policies.kyverno.io/title: agent-sandbox controller pod security
+    policies.kyverno.io/description: >-
+      Adds restricted-PSS securityContext fields to the agent-sandbox-controller
+      Deployment in the {{ .Values.agentSandbox.podSecurity.namespace }} namespace,
+      since the vendored upstream chart exposes no securityContext knob.
+spec:
+  rules:
+  - name: add-controller-security-context
+    match:
+      any:
+      - resources:
+          kinds: ["apps/v1/Deployment"]
+          names: ["agent-sandbox-controller"]
+          namespaces: ["{{ .Values.agentSandbox.podSecurity.namespace }}"]
+    mutate:
+      patchStrategicMerge:
+        spec:
+          template:
+            spec:
+              +(securityContext):
+                {{- toYaml .Values.agentSandbox.podSecurity.podSecurityContext | nindent 16 }}
+              containers:
+              - (name): agent-sandbox-controller
+                +(securityContext):
+                  {{- toYaml .Values.agentSandbox.podSecurity.containerSecurityContext | nindent 18 }}
+{{- end }}

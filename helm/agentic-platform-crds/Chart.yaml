@@ -45,3 +45,10 @@ dependencies:
   - name: kagent-crds
     version: 0.9.8
     repository: oci://ghcr.io/kagent-dev/kagent/helm
+  # agent-sandbox CRDs. No condition — a CRDs chart installs all of its CRDs.
+  # Unlike the agentgateway and kagent CRDs, these ARE marked
+  # `helm.sh/resource-policy: keep` (injected at render time by the
+  # agent-sandbox-crds chart), so they survive uninstall.
+  - name: agent-sandbox-crds
+    version: 0.1.1
+    repository: oci://gsoci.azurecr.io/charts/giantswarm

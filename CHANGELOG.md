@@ -29,6 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `templates/klausgateway/netpol.yaml`: NetworkPolicy (cilium + kubernetes flavors) allowing klaus-gateway egress to the agentgateway data-plane Gateway on port 8080, rendered when `klausGateway.enabled` and `klausGateway.a2a.enabled`.
 
+- Bundle the [agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox) controller
+  (opt-in via `agentSandbox.enabled`, default off) and its CRDs (Sandbox / SandboxTemplate /
+  SandboxClaim / SandboxWarmPool, shipped via `agentic-platform-crds`, keep-protected). This
+  is the Sandbox runtime kagent's `SandboxAgent` delegates pod isolation to — `agentic-platform-crds`
+  already shipped the `SandboxAgent` CRD, but nothing installed the controller it requires.
+  Restricted-PSS securityContext is injected into the controller Deployment via an umbrella
+  Kyverno mutate policy, since the vendored upstream chart exposes no securityContext knob.
+  A render-time guard (`templates/agent-sandbox/validate.yaml`) fails the install early if
+  `agentSandbox.podSecurity.namespace` drifts from the controller's actual namespace, which
+  would otherwise leave the Kyverno policy silently targeting the wrong namespace.
+
 ## [1.1.33] - 2026-06-16
 
 ### Changed

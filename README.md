@@ -119,6 +119,7 @@ helm install agentic-platform \
 | `valkey.enabled` | `true` | Bundle [giantswarm/valkey-app](https://github.com/giantswarm/valkey-app) for muster OAuth session storage. |
 | `mcps.enabled` | `false` | Bundle [giantswarm/agentic-platform-mcps](https://github.com/giantswarm/agentic-platform-mcps) to render the platform's MCP server CRs. Toggle is separate from the value namespace — see [Bundled MCP servers](#bundled-mcp-servers). |
 | `agentic-platform-mcps.mcpServers` | `[]` | Abstract list of MCP servers rendered into `MCPServer` / `AgentgatewayBackend` CRs. Renders nothing until populated. |
+| `agentSandbox.enabled` | `false` | Bundle the [agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox) controller — the Sandbox runtime kagent's `SandboxAgent` requires. Toggle is separate from the value namespace — see [Agent sandbox](#agent-sandbox). |
 | `muster.muster.oauth.server.enabled` | `true` | OAuth resource-server protection on the muster API. Requires `baseUrl`, `dex.{issuerUrl,clientId}`, and a Secret carrying `dex-client-secret` / `registration-token` / `oauth-encryption-key` / `valkey-password`. |
 | `muster.muster.oauth.server.storage.type` | `valkey` | Muster storage backend default. Pairs with `valkey.enabled: true`; flip to `memory` for dev. |
 | `muster.muster.oauth.server.storage.valkey.url` | `muster-valkey:6379` | Bundled-valkey Service. Override to point at an out-of-band Valkey. |
@@ -219,6 +220,19 @@ agentic-platform-mcps:
 
 The `mcps.enabled` toggle deliberately lives in its **own** top-level block rather than under `agentic-platform-mcps.enabled`: the sub-chart's `values.schema.json` is strict (`additionalProperties: false`) and rejects an `enabled` key. Everything under `agentic-platform-mcps.*` is passed through to the sub-chart verbatim — see its [values reference](https://github.com/giantswarm/agentic-platform-mcps) for `defaults`, `identityProviders`, per-entry `auth`, and the `muster` / `agentgateway` rendering toggles. Even when enabled, the chart renders nothing until `mcpServers` is populated.
 
+### Agent sandbox
+
+`agentSandbox.enabled: true` bundles the [agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox) controller, which reconciles `Sandbox` resources into isolated pods. This is the runtime **kagent's `SandboxAgent` delegates pod isolation to** — `agentic-platform-crds` already ships the `SandboxAgent` CRD, but the feature is inert until this controller runs, so enabling it is the prerequisite for sandboxed agents.
+
+```yaml
+agentSandbox:
+  enabled: true
+```
+
+The `agentSandbox.enabled` toggle lives in its **own** top-level block, not under the `agent-sandbox` value namespace, for the same reason as `mcps.enabled`: the bundled `agent-sandbox` chart's `values.schema.json` is strict (`additionalProperties: false`) and rejects an `enabled` key. The agent-sandbox CRDs (`Sandbox` / `SandboxTemplate` / `SandboxClaim` / `SandboxWarmPool`) ship in the companion `agentic-platform-crds` chart (install first); this chart installs **no** CRDs of its own.
+
+The agent-sandbox chart is kept vendor-agnostic and the upstream controller exposes no `securityContext` knob, so the umbrella injects restricted-PSS fields into the controller Deployment at admission via a Kyverno mutate policy (`agentSandbox.podSecurity.*`). Override `agentSandbox.podSecurity.enabled: false` to drop the policy, or tune the `podSecurityContext` / `containerSecurityContext` blocks. The policy matches the `agent-sandbox-controller` Deployment in `agentSandbox.podSecurity.namespace` (default `agent-sandbox-system`), which must match the chart's namespace.
+
 ### Ingress topology
 
 > For the end-to-end authentication story — the request path, OAuth discovery,
@@ -317,6 +331,7 @@ All images default to `gsoci.azurecr.io/giantswarm/*`:
 | `gsoci.azurecr.io/giantswarm/muster:0.1.197` | `gsoci.azurecr.io/giantswarm/muster` (native GS image) |
 | `gsoci.azurecr.io/giantswarm/agentgateway-controller:v1.2.1` | `cr.agentgateway.dev/controller` |
 | `gsoci.azurecr.io/giantswarm/agentgateway:v1.2.1` | `cr.agentgateway.dev/agentgateway` |
+| `gsoci.azurecr.io/giantswarm/agent-sandbox-controller:v0.4.6` | `registry.k8s.io/agent-sandbox/agent-sandbox-controller` (only when `agentSandbox.enabled`) |
 
 To pull from a private mirror, override the registry on every image (neither subchart exposes a `global.registry` that propagates to all images):
 
@@ -334,6 +349,13 @@ agentgateway:
   proxy:
     image:
       registry: registry.example.com
+
+# agent-sandbox nests the upstream controller under its own `agent-sandbox:` key,
+# and the chart ignores global.registry — override the full image reference:
+agent-sandbox:
+  agent-sandbox:
+    image:
+      repository: registry.example.com/giantswarm/agent-sandbox-controller
 ```
 
 ## Security
@@ -351,6 +373,7 @@ All CRDs ship in the companion **`agentic-platform-crds`** chart (installed firs
 | `gateways.gateway.networking.k8s.io`, `httproutes…`, `gatewayclasses…` | Gateway API upstream — cluster prerequisite (not shipped by either chart) |
 | `agentgatewayparameters.agentgateway.dev`, `agentgatewaybackends…`, `agentgatewaypolicies…` | `agentic-platform-crds` chart (vendors the upstream `agentgateway-crds` sub-chart) |
 | `mcpservers.muster.giantswarm.io`, `workflows.muster.giantswarm.io` | `agentic-platform-crds` chart (vendors the `muster-crds` sub-chart) |
+| `sandboxes.agents.x-k8s.io`, `sandboxtemplates…`, `sandboxclaims…`, `sandboxwarmpools.extensions.agents.x-k8s.io` | `agentic-platform-crds` chart (vendors the `agent-sandbox-crds` sub-chart) |
 
 `helm uninstall agentic-platform` (the workload release) leaves all CRDs and CRs intact — it owns none of them.
 
@@ -360,6 +383,7 @@ All CRDs ship in the companion **`agentic-platform-crds`** chart (installed firs
 |---|---|---|
 | `mcpservers`, `workflows` (`muster.giantswarm.io`) | **Yes** | CRDs and their CRs **survive**. |
 | `agentgatewayparameters`, `agentgatewaypolicies`, `agentgatewaybackends` (`agentgateway.dev`) | **No** | CRDs are **deleted** and the delete **cascades to every agentgateway CR cluster-wide**. |
+| `sandboxes`, `sandboxtemplates`, `sandboxclaims`, `sandboxwarmpools` (`agents.x-k8s.io` / `extensions.agents.x-k8s.io`) | **Yes** | CRDs and their CRs **survive** (keep annotation injected by the `agent-sandbox-crds` chart). |
 
 The upstream `agentgateway-crds` chart renders its CRDs without the keep annotation and exposes no knob to inject it, so `agentic-platform-crds` cannot protect them. An upstream change to parameterize the agentgateway CRD annotations is pending (see `CHANGELOG.md`); the keep policy will be set once it lands. Until then, treat uninstalling the CRDs release as destructive for agentgateway CRs.
 
