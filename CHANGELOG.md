@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- agent-sandbox: the controller Deployment install no longer loops on Giant Swarm
+  clusters that enforce restricted-PSS via Kyverno (fail-closed). The Kyverno mutate
+  policy that injects the controller's `securityContext` ships in the same Helm
+  release as the Deployment, so Kyverno could not load it before the Deployment was
+  admitted — admission was denied, the release rolled back (deleting the policy too),
+  and Flux retried indefinitely. The policy now carries `helm.sh/resource-policy: keep`
+  so it survives the first-install rollback; Kyverno then loads it and the next upgrade
+  retry re-applies the (now-mutated) Deployment, which passes admission.
+
 ### Changed
 
 - Bump `muster` sub-chart `0.5.6` -> `0.5.7`, which bumps `mcp-oauth` to `v0.4.2`, making the token-exchange broker's trusted-issuer JWKS cache rotation-safe: it now refetches the issuer JWKS when it encounters an unknown `kid` (giantswarm/muster#847). Without this, a routine Dex signing-key rotation left the broker serving a pre-rotation JWKS and rejecting **every** current user token with `subject_token_validation_failed` until muster was restarted — a fleet-wide devportal logout.
