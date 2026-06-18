@@ -1,7 +1,7 @@
 dependencies:
 - name: muster
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.5.8
+  version: 0.7.2
 - name: agentgateway
   repository: oci://cr.agentgateway.dev/charts
   version: v1.2.1
@@ -20,5 +20,5 @@ dependencies:
 - name: agent-sandbox
   repository: oci://gsoci.azurecr.io/charts/giantswarm
   version: 0.1.1
-digest: sha256:1d4e485144ca4762f395e9b97107704da9865a20d9e43440d813134e8371b868
-generated: "2026-06-18T00:53:39.371602918Z"
+digest: sha256:1bd3245a0046b2c1cb28f286568f214422c3ff2d5f99aac70ae030d862d7e305
+generated: "2026-06-18T01:07:21.762106474Z"
