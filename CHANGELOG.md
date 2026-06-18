@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- klausgateway: the agentgateway HTTPRoute now includes `/channels/slack` when `klausGateway.slack.enabled` is true, exposing the Slack Events API webhook endpoint through the data-plane.
+
 ### Fixed
 
 - agent-sandbox: the controller Deployment install no longer loops on Giant Swarm
