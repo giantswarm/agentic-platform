@@ -17,6 +17,21 @@ spec:
       type: Secret
       name: {{ printf "%s-kagent-muster-token" (include "name" .) | quote }}
       key: token
+{{- if .Values.agents.muster.userServer.enabled }}
+---
+# Header-less muster server for human-triggered agents: no static Authorization,
+# so the token forwarded by the agent runtime (KAGENT_PROPAGATE_TOKEN / STS OBO)
+# reaches muster instead of being overridden by a pinned SA token.
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: {{ .Values.agents.muster.userServer.name | quote }}
+  namespace: {{ $ns }}
+spec:
+  description: "muster MCP gateway (end-user token)"
+  url: {{ printf "http://%s.%s.svc.cluster.local:%v/mcp" (include "agentic-platform.musterFullname" .) .Release.Namespace (include "agentic-platform.musterServicePort" .) | quote }}
+  protocol: STREAMABLE_HTTP
+{{- end }}
 {{- end }}
 {{- range .Values.agents.remoteMcpServers }}
 ---

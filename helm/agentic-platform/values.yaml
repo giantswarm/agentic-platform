@@ -709,6 +709,26 @@ agents:
     # caps it via --service-account-max-token-expiration.
     tokenExpirationSeconds: 31536000
 
+    # Header-less companion RemoteMCPServer for human-triggered agents that must
+    # impersonate the end user against muster. The default `muster` server pins a
+    # static SA Bearer token (headersFrom Secret) which, in kagent's MCP transport,
+    # is applied as a static header and overrides any token forwarded by the agent
+    # runtime. RemoteMCPServer has no per-server header-forwarding field, so the
+    # user-token path needs its own server with NO static Authorization: the agent
+    # runtime then supplies the token via KAGENT_PROPAGATE_TOKEN (forward the Dex
+    # token verbatim) and/or STS_WELL_KNOWN_URI (RFC 8693 OBO), set on the agent's
+    # spec.deployment.env. The static-token `muster` server stays for autonomous /
+    # M2M agents. Each agent selects a path by which RemoteMCPServer it references.
+    #
+    # When enabled, also ensure muster trusts the user identity:
+    #   - propagate mode: downstream MCP servers' trusted_audiences accept the Dex token
+    #   - OBO mode: muster's STS accepts Dex as subject_token and the kagent SA as actor
+    userServer:
+      enabled: false
+      # Name of the header-less RemoteMCPServer. Human agents reference this name
+      # in their tool config instead of `muster`.
+      name: muster-user
+
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
   # CR; agents reference it by name. tokenSecret defaults to the chart-managed

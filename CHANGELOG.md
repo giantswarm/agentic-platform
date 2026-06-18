@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `agents.muster.userServer`: opt-in companion `muster-user` RemoteMCPServer with no static `Authorization` header, for human-triggered agents that impersonate the end user against muster. The default `muster` server pins a static SA Bearer token that kagent's MCP transport applies as a static header, overriding any token the agent runtime forwards; a header-less server lets `KAGENT_PROPAGATE_TOKEN` / STS OBO (set on the agent's `spec.deployment.env`) reach muster. Disabled by default; the static-token `muster` server is unchanged for autonomous/M2M agents.
+
 ### Changed
 
 - klausgateway: the agentgateway HTTPRoute now includes `/channels/slack` when `klausGateway.slack.enabled` is true, exposing the Slack Events API webhook endpoint through the data-plane.
