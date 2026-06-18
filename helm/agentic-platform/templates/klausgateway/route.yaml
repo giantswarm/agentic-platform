@@ -38,7 +38,11 @@ spec:
     - {{ $route.hostname | quote }}
   {{- end }}
   rules:
-    {{- range list "/v1" "/web" "/cli/v1" }}
+    {{- $paths := list "/v1" "/web" "/cli/v1" }}
+    {{- if .Values.klausGateway.slack.enabled }}
+    {{- $paths = append $paths "/channels/slack" }}
+    {{- end }}
+    {{- range $paths }}
     - matches:
         - path:
             type: PathPrefix
@@ -64,7 +68,11 @@ spec:
   hostnames:
     - {{ $route.hostname | quote }}
   rules:
-    {{- range list "/v1" "/web" "/cli/v1" }}
+    {{- $paths := list "/v1" "/web" "/cli/v1" }}
+    {{- if .Values.klausGateway.slack.enabled }}
+    {{- $paths = append $paths "/channels/slack" }}
+    {{- end }}
+    {{- range $paths }}
     - matches:
         - path:
             type: PathPrefix
