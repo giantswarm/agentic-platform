@@ -710,15 +710,31 @@ agents:
     tokenExpirationSeconds: 31536000
 
     # Header-less companion RemoteMCPServer for human-triggered agents that must
-    # impersonate the end user against muster. The default `muster` server pins a
-    # static SA Bearer token (headersFrom Secret) which, in kagent's MCP transport,
-    # is applied as a static header and overrides any token forwarded by the agent
-    # runtime. RemoteMCPServer has no per-server header-forwarding field, so the
-    # user-token path needs its own server with NO static Authorization: the agent
-    # runtime then supplies the token via KAGENT_PROPAGATE_TOKEN (forward the Dex
-    # token verbatim) and/or STS_WELL_KNOWN_URI (RFC 8693 OBO), set on the agent's
-    # spec.deployment.env. The static-token `muster` server stays for autonomous /
-    # M2M agents. Each agent selects a path by which RemoteMCPServer it references.
+    # impersonate the end user against muster.
+    #
+    # WHY THIS EXISTS (workaround, remove once upstream lands): the default
+    # `muster` server pins a static SA Bearer token (headersFrom Secret). In
+    # kagent's MCP transport static headers have the HIGHEST precedence, so they
+    # override any token the agent runtime forwards (KAGENT_PROPAGATE_TOKEN / STS).
+    # A single `muster` server therefore cannot both (a) let the controller list
+    # muster's tools with the M2M SA token and (b) carry the end-user token on the
+    # agent's tool calls. RemoteMCPServer has no per-server header-forwarding field,
+    # so the user-token path needs its OWN server with no static Authorization.
+    # The controller's discovery of this header-less server fails auth (cosmetic
+    # not-ready status); the AGENT still works because it discovers and calls at
+    # runtime — its tool wiring comes from the agent's tool refs + the server spec,
+    # not from controller-side discovery.
+    #
+    # Once kagent kagent-dev/kagent#2044 (KAGENT_PROPAGATE_TOKEN_OVERRIDES_STATIC)
+    # ships, this can collapse back to the single `muster` server (SA for
+    # controller discovery, user token wins on agent calls) and userServer removed.
+    #
+    # Human agents reference this server and forward the user token via either:
+    #   - the agent's tool reference: allowedHeaders: ["authorization"] (forwards
+    #     the Dex token verbatim; no global env needed), or
+    #   - spec.deployment.env: KAGENT_PROPAGATE_TOKEN=true and/or
+    #     STS_WELL_KNOWN_URI=<muster well-known> for RFC 8693 OBO.
+    # The static-token `muster` server stays for autonomous / M2M agents.
     #
     # When enabled, also ensure muster trusts the user identity:
     #   - propagate mode: downstream MCP servers' trusted_audiences accept the Dex token
