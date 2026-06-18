@@ -2,6 +2,10 @@
 {{- $route := .Values.klausGateway.agentgatewayRoute }}
 {{- $ns := .Values.klausGateway.namespaceOverride | default .Release.Namespace }}
 {{- $fullname := .Values.klausGateway.fullnameOverride | default "klausgateway" }}
+{{- $paths := list "/v1" "/web" "/cli/v1" }}
+{{- if .Values.klausGateway.slack.enabled }}
+{{- $paths = append $paths "/channels/slack" }}
+{{- end }}
 # AgentgatewayBackend — registers klausgateway as an agentgateway backend.
 # klausgateway itself has no auth middleware; the agentgateway JWT policy
 # (AgentgatewayPolicy) enforces authentication before forwarding.
@@ -18,7 +22,7 @@ spec:
     host: {{ printf "%s.%s.svc.cluster.local" $fullname $ns }}
     port: 8080
 ---
-# HTTPRoute — exposes /v1, /web, /cli/v1 on the agentgateway data-plane Gateway.
+# HTTPRoute — exposes channel paths on the agentgateway data-plane Gateway.
 # No URLRewrite: klausgateway serves these paths natively.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -38,10 +42,6 @@ spec:
     - {{ $route.hostname | quote }}
   {{- end }}
   rules:
-    {{- $paths := list "/v1" "/web" "/cli/v1" }}
-    {{- if .Values.klausGateway.slack.enabled }}
-    {{- $paths = append $paths "/channels/slack" }}
-    {{- end }}
     {{- range $paths }}
     - matches:
         - path:
@@ -68,10 +68,6 @@ spec:
   hostnames:
     - {{ $route.hostname | quote }}
   rules:
-    {{- $paths := list "/v1" "/web" "/cli/v1" }}
-    {{- if .Values.klausGateway.slack.enabled }}
-    {{- $paths = append $paths "/channels/slack" }}
-    {{- end }}
     {{- range $paths }}
     - matches:
         - path:
