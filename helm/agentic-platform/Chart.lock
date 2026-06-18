@@ -4,7 +4,7 @@ dependencies:
   version: 0.7.4
 - name: agentgateway
   repository: oci://cr.agentgateway.dev/charts
-  version: v1.2.1
+  version: v1.3.0
 - name: valkey
   repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
   version: 0.1.2
@@ -20,5 +20,5 @@ dependencies:
 - name: agent-sandbox
   repository: oci://gsoci.azurecr.io/charts/giantswarm
   version: 0.1.1
-digest: sha256:dc351b7491dbed95d8972113626ae59cc6b00311f285a7b35a08ec605dbf0f14
-generated: "2026-06-18T21:41:52.029105715Z"
+digest: sha256:defb9f3e7d1fb16417d65de3ebb426b1ad8dfd53ee157a0524187b695271eceb
+generated: "2026-06-18T23:02:46.079006209Z"
