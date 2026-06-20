@@ -29,6 +29,11 @@ gitops:
   # the child releases live in a tenancy-guarded namespace (instead of using an
   # exempt `namespace` above). Empty = omit.
   serviceAccountName: ""
+  # install/upgrade remediation retries for every child HelmRelease. Lets the
+  # children self-heal transient/ordering failures (e.g. a component installs
+  # before another has created its namespace) instead of stalling after one
+  # attempt. -1 = retry forever.
+  retries: 5
   argo:
     project: default
     server: https://kubernetes.default.svc
