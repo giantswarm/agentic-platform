@@ -16,9 +16,9 @@ dependencies:
   version: 0.9.9
 - name: klaus-gateway
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.2.2
+  version: 0.2.4
 - name: agent-sandbox
   repository: oci://gsoci.azurecr.io/charts/giantswarm
   version: 0.1.2
-digest: sha256:7db6f9f0895a20353b0d37fc8258be74108c31de0bd710edefbc2e691a01b95f
-generated: "2026-06-20T14:30:46.726288012Z"
+digest: sha256:7dbaf6420748edc756aa77ef7fc109def77882da01204ba36ef11c6dcef7d59e
+generated: "2026-06-20T14:34:31.63324547Z"

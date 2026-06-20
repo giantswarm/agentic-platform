@@ -71,7 +71,7 @@ dependencies:
   # The alias maps the hyphenated chart name to a YAML-safe values key.
   - name: klaus-gateway
     alias: klausGateway
-    version: 0.2.2
+    version: 0.2.4
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     condition: klausGateway.enabled
   # agent-sandbox — kubernetes-sigs/agent-sandbox controller (Sandbox runtime),
