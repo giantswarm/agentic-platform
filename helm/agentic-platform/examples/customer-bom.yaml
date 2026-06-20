@@ -14,7 +14,7 @@ gitops:
   interval: 30m
 
 components:
-  agentic-platform-crds:         { versionRange: "0.2.0" }
+  agentic-platform-crds:         { versionRange: "1.5.0" }
   muster:                        { versionRange: "0.9.0" }
   agentgateway:                  { versionRange: "v1.3.0" }
   valkey:                        { versionRange: "0.1.2" }
@@ -22,4 +22,4 @@ components:
   kagent:                        { versionRange: "0.9.9" }
   klaus-gateway:                 { versionRange: "0.2.4" }
   agent-sandbox:                 { versionRange: "0.1.2" }
-  agentic-platform-connectivity: { versionRange: "1.1.34" }
+  agentic-platform-connectivity: { versionRange: "1.5.0" }

@@ -86,6 +86,17 @@ verify-meta: ## Assert the app-of-apps meta-package render (pure renderer, range
 	@grep -q 'semver: "0.9.0"' /tmp/ap-bom.out || { echo "FAIL: BOM did not pin muster to 0.9.0"; exit 1; }
 	@if grep -qE 'semver: "[0-9]+\.x"' /tmp/ap-bom.out; then echo "FAIL: BOM still contains an unpinned x-range"; exit 1; fi
 	@echo "ok: customer BOM pinned"
+	@echo "--> gitops.namespace routes the Flux CRs to an exempt ns, targetNamespace routes workloads"
+	@helm template t $(CHART_DIR) -f $(CHART_DIR)/ci/ci-values.yaml --set gitops.namespace=flux-giantswarm --set gitops.targetNamespace=agentic-platform >/tmp/ap-ns.out 2>&1 || { cat /tmp/ap-ns.out; exit 1; }
+	@if grep -E '^  namespace:' /tmp/ap-ns.out | grep -vq 'flux-giantswarm'; then \
+		echo "FAIL: a rendered CR is not in the gitops.namespace"; grep -E '^  namespace:' /tmp/ap-ns.out | grep -v 'flux-giantswarm'; exit 1; \
+	else echo "ok: all CRs in flux-giantswarm"; fi
+	@grep -q 'targetNamespace: agentic-platform' /tmp/ap-ns.out || { echo "FAIL: HelmRelease targetNamespace not routed"; exit 1; }
+	@echo "ok: gitops namespace routing"
+	@echo "--> components.<name>.enabled=false delegates a component to a prerequisite"
+	@helm template t $(CHART_DIR) -f $(CHART_DIR)/ci/ci-values.yaml --set components.agentic-platform-crds.enabled=false >/tmp/ap-noc.out 2>&1 || { cat /tmp/ap-noc.out; exit 1; }
+	@if grep -qE '^  name: agentic-platform-crds$$' /tmp/ap-noc.out; then echo "FAIL: crds still rendered when disabled"; exit 1; else echo "ok: crds component skipped (dependsOn refs to the prerequisite remain)"; fi
+	@grep -q 'name: muster' /tmp/ap-noc.out || { echo "FAIL: disabling crds dropped other components"; exit 1; }
 	@echo "--> connectivity chart owns the wiring (renders an HTTPRoute)"
 	@helm template t $(CONNECTIVITY_DIR) -f $(CONNECTIVITY_DIR)/ci/ci-values.yaml >/tmp/ap-conn.out 2>&1 || { cat /tmp/ap-conn.out; exit 1; }
 	@grep -q 'kind: HTTPRoute' /tmp/ap-conn.out || { echo "FAIL: connectivity did not render the muster HTTPRoute"; exit 1; }
