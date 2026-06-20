@@ -4,12 +4,12 @@ dependencies:
   version: v1.3.0
 - name: muster-crds
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.7.5
+  version: 0.8.0
 - name: kagent-crds
   repository: oci://ghcr.io/kagent-dev/kagent/helm
   version: 0.9.9
 - name: agent-sandbox-crds
   repository: oci://gsoci.azurecr.io/charts/giantswarm
   version: 0.1.1
-digest: sha256:9c8d0f225703f5fc486d6451bf70d4f0913821cc1cf5937b44ab2b747cd863f1
-generated: "2026-06-19T00:06:42.290576008+01:00"
+digest: sha256:1e7980aa1c3e5d61374e41b378a56fa3c1ea35788d14d41a7baa6098f2597e57
+generated: "2026-06-20T14:36:15.635785085+02:00"
