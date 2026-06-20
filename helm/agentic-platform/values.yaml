@@ -37,7 +37,9 @@ components:
   agentic-platform-crds:
     chart: agentic-platform-crds
     repository: oci://gsoci.azurecr.io/charts/giantswarm
-    versionRange: "0.x"
+    # In-repo chart: architect replaces its version with this repo's git tag,
+    # so it tracks the 1.x line (same as agentic-platform itself), NOT 0.x.
+    versionRange: ">=1.0.0"
     injectGlobal: false
   muster:
     chart: muster
