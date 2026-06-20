@@ -22,6 +22,8 @@ knowledge:
       (agentic-platform-mcps, agent-sandbox).
   enabledFrom   — dotted path (two levels) to the existing on/off toggle. Omit to
       force-enable (crds, muster, connectivity).
+  enabled       — explicit on/off, overrides enabledFrom. Set false to delegate a
+      component to a cluster prerequisite (e.g. crds shipped by the platform base).
   dependsOn     — Flux dependsOn / Argo sync-wave ordering (CRDs before consumers).
 */ -}}
 {{- $root := . -}}
@@ -39,6 +41,9 @@ then routes the actual workloads to a separate namespace. */ -}}
 {{- range $key, $c := .Values.components }}
 {{- $on := true }}
 {{- with $c.enabledFrom }}{{- $on = index $root.Values (first (splitList "." .)) (last (splitList "." .)) }}{{- end }}
+{{- /* explicit `enabled` overrides enabledFrom — lets a deployment delegate a
+component to a cluster prerequisite (e.g. crds shipped by the platform base) */ -}}
+{{- if hasKey $c "enabled" }}{{- $on = $c.enabled }}{{- end }}
 {{- if $on }}
 {{- $name := $c.chart }}
 {{- /* passthrough values */ -}}
