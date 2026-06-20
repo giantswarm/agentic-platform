@@ -96,6 +96,23 @@ components:
     valuesFrom: kagent
     enabledFrom: kagent.enabled
     dependsOn: [agentic-platform-crds]
+    # The upstream kagent chart stamps `.Chart.Version` into the
+    # app.kubernetes.io/version label unsanitized. When helm-controller sources
+    # the chart via OCIRepository it appends the OCI digest as SemVer build
+    # metadata (e.g. 0.9.9+be08504485a7); the `+` is illegal in a k8s label, so
+    # every kagent resource is rejected at admission. Overwrite the label on all
+    # release-owned resources with a clean value. ponytail: static value (does
+    # not track the running version) — drop this once the label is sanitized
+    # upstream (kagent-dev/kagent _helpers.tpl) or kagent is vendored by GS.
+    postRenderers:
+      - kustomize:
+          patches:
+            - target:
+                labelSelector: app.kubernetes.io/managed-by=Helm
+              patch: |
+                - op: add
+                  path: /metadata/labels/app.kubernetes.io~1version
+                  value: "0.9.9"
   klaus-gateway:
     chart: klaus-gateway
     repository: oci://gsoci.azurecr.io/charts/giantswarm
