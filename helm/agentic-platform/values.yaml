@@ -13,6 +13,22 @@ global:
 gitops:
   engine: flux                 # flux | argo
   interval: 10m                # cadence Flux re-evaluates the version range
+  # Namespace the rendered OCIRepository/HelmRelease (or Argo Application) objects
+  # are CREATED in. Empty = the release namespace. Set this to a namespace that is
+  # exempt from a multi-tenancy admission policy when one is enforced — on Giant
+  # Swarm clusters the flux-multi-tenancy Kyverno policy rejects HelmReleases that
+  # omit serviceAccountName everywhere EXCEPT flux-giantswarm/giantswarm/monitoring,
+  # so set `namespace: flux-giantswarm` there.
+  namespace: ""
+  # Namespace the child releases install their WORKLOADS into (HelmRelease
+  # targetNamespace / Argo destination.namespace). Empty = the release namespace.
+  # Pair with `namespace` above to render the Flux CRs in an exempt namespace while
+  # the workloads land in the platform namespace (e.g. agentic-platform).
+  targetNamespace: ""
+  # Optional serviceAccountName stamped on every rendered HelmRelease. Needed when
+  # the child releases live in a tenancy-guarded namespace (instead of using an
+  # exempt `namespace` above). Empty = omit.
+  serviceAccountName: ""
   argo:
     project: default
     server: https://kubernetes.default.svc

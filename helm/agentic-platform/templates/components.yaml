@@ -29,6 +29,13 @@ knowledge:
 {{- if not (or (eq $g.engine "flux") (eq $g.engine "argo")) -}}
 {{- fail (printf "gitops.engine=%s is invalid; must be one of: flux, argo" $g.engine) -}}
 {{- end -}}
+{{- /* Namespace the rendered Flux/Argo CRs live in. Defaults to the release
+namespace; set gitops.namespace to a tenancy-exempt namespace (e.g.
+flux-giantswarm on Giant Swarm clusters) so the child HelmReleases are not
+rejected by the flux-multi-tenancy admission policy. gitops.targetNamespace
+then routes the actual workloads to a separate namespace. */ -}}
+{{- $ns := $g.namespace | default $root.Release.Namespace -}}
+{{- $targetNs := $g.targetNamespace | default $root.Release.Namespace -}}
 {{- range $key, $c := .Values.components }}
 {{- $on := true }}
 {{- with $c.enabledFrom }}{{- $on = index $root.Values (first (splitList "." .)) (last (splitList "." .)) }}{{- end }}
@@ -49,7 +56,7 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
   name: {{ $name }}
-  namespace: {{ $root.Release.Namespace }}
+  namespace: {{ $ns }}
   labels:
     {{- include "labels.common" $root | nindent 4 }}
 spec:
@@ -69,16 +76,20 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: {{ $name }}
-  namespace: {{ $root.Release.Namespace }}
+  namespace: {{ $ns }}
   labels:
     {{- include "labels.common" $root | nindent 4 }}
 spec:
   interval: {{ $g.interval }}
   releaseName: {{ $name }}
+  targetNamespace: {{ $targetNs }}
+  {{- with $g.serviceAccountName }}
+  serviceAccountName: {{ . }}
+  {{- end }}
   chartRef:
     kind: OCIRepository
     name: {{ $name }}
-    namespace: {{ $root.Release.Namespace }}
+    namespace: {{ $ns }}
   install:
     createNamespace: true
   {{- with $deps }}
@@ -95,7 +106,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: {{ $name }}
-  namespace: {{ $root.Release.Namespace }}
+  namespace: {{ $ns }}
   labels:
     {{- include "labels.common" $root | nindent 4 }}
   annotations:
@@ -106,7 +117,7 @@ spec:
   project: {{ $g.argo.project }}
   destination:
     server: {{ $g.argo.server }}
-    namespace: {{ $root.Release.Namespace }}
+    namespace: {{ $targetNs }}
   source:
     repoURL: {{ trimPrefix "oci://" $c.repository | quote }}
     chart: {{ $c.chart }}
