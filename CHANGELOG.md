@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bump `muster` (and `muster-crds`) sub-chart `0.7.5` -> `0.8.0`, which adds workflow control flow (giantswarm/muster#865): `forEach` (sequential loops over a list), `parallel` (concurrent sub-step groups with isolated contexts), workflow-level `onFailure` (best-effort cleanup/rollback), and `condition.template` (boolean Go-template step gates). The `muster-crds` chart carries the matching `Workflow` CRD schema (new `spec.steps[].forEach`/`parallel`, `spec.onFailure`, `condition.template`; the dead `step.outputs` field is removed in favour of `store: true` + `{{ .results.<step_id> }}`), so the CRDs chart must be upgraded alongside the app chart. Also fixes camelCase field-name parsing (`allowFailure`/`fromStep`/`expectNot`/`jsonPath`) in the structured `workflow_create`/`update`/`validate` tool path.
+
 - klausgateway: the agentgateway HTTPRoute now includes `/channels/slack` when `klausGateway.slack.enabled` is true, exposing the Slack Events API webhook endpoint through the data-plane.
 
 ### Fixed
