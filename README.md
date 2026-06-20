@@ -7,6 +7,34 @@ The agentic platform is Giant Swarm's MCP gateway deploy unit. It ships [muster]
 
 Owner: team-bumblebee.
 
+This repo publishes **three** charts:
+
+| Chart | What it is |
+|---|---|
+| `agentic-platform` | the **meta-package** — an app-of-apps that renders each component and the connectivity layer as Flux `OCIRepository` + `HelmRelease` (or Argo `Application`). The single thing you install. |
+| `agentic-platform-connectivity` | the consumer-side **wiring** the meta-package renders as a child release: the public muster route, the agentgateway data-plane `Gateway` + `AgentgatewayParameters` + `HTTPRoute`s + `BackendTrafficPolicy`s, the `NetworkPolicy`s, the kagent/klaus-gateway routes, the kagent declarative-agent CRs, and the CNPG `Cluster`. |
+| `agentic-platform-crds` | the CRDs every CR above consumes. Rendered first; everything else `dependsOn` it. |
+
+## Meta-package release flow
+
+> Implements [giantswarm/giantswarm#36875](https://github.com/giantswarm/giantswarm/issues/36875). Concept write-up: klaus-lab `architecture/agentic-platform-meta-package.md`.
+
+The `agentic-platform` chart no longer bundles its components as pinned Helm subcharts. It is an **app-of-apps meta-package**: `templates/components.yaml` renders, per entry in `.Values.components`, a Flux `OCIRepository` + `HelmRelease` — or an Argo `Application` when `gitops.engine: argo`. It emits **only** those objects (a *pure* renderer — no raw CRs of its own).
+
+The decisive change: each component's version is a **constraint expressed as a value** (`components.<name>.versionRange`), not a `Chart.yaml` pin. Flux re-resolves the range on every reconcile, so a new component release rolls forward **with no PR to this chart and no umbrella re-package**.
+
+- **One gitops entry.** You install the meta-package (one `OCIRepository` + `HelmRelease`). It renders the `agentic-platform-crds` release, each component release, and the `agentic-platform-connectivity` release for you.
+- **CRD-before-CR ordering is preserved** — every rendered release `dependsOn` `agentic-platform-crds` (Flux) / orders after it via `argocd.argoproj.io/sync-wave` (Argo). Because the connectivity CRs live in their own release (not in the meta-package's own manifest), they only apply after the CRDs are Established — the meta-package itself ships no CR that could race a CRD.
+- **On/off and per-component values are unchanged** — the existing `muster:`, `agentgateway:`, `kagent:`, `valkey:`, `klausGateway:`, `agentSandbox:`, `agentic-platform-mcps:`/`mcps:` blocks and `*.enabled` toggles still drive each component; the connectivity wiring blocks (`ingress:`, `gateway:`, `networkPolicy:`, `postgres:`, `extraObjects:`) still drive the wiring. Each `components.<name>` entry names its source block via `valuesFrom` (connectivity uses `forwardAllValues`); `values.schema.json` is unchanged.
+- **Dev vs customer track** — keep the `components.*.versionRange` values **wide** for the internal/dogfooding track (continuous auto-update, the default). **Pin** them to exact versions for a customer **bill-of-materials**; see [`helm/agentic-platform/examples/customer-bom.yaml`](helm/agentic-platform/examples/customer-bom.yaml). A "product release" is that pinned values snapshot.
+
+```bash
+helm template r helm/agentic-platform -f helm/agentic-platform/ci/ci-values.yaml                          # flux objects, wide ranges
+helm template r helm/agentic-platform -f helm/agentic-platform/ci/ci-values.yaml --set gitops.engine=argo
+helm template r helm/agentic-platform -f helm/agentic-platform/ci/ci-values.yaml -f helm/agentic-platform/examples/customer-bom.yaml
+make verify-meta verify-modes
+```
+
 ## Prerequisites
 
 - Kubernetes ≥ 1.33 on the install target.
@@ -17,21 +45,11 @@ Owner: team-bumblebee.
 
 ## Installing
 
-Two charts from this repo, installed **in order**: the companion `agentic-platform-crds` chart first (it ships every CRD this chart's CRs need), then `agentic-platform`. CRD and workload lifecycles are decoupled — ordering is just "two releases in sequence", agnostic of Flux `dependsOn` / Argo sync-waves.
+**One gitops entry.** Install the `agentic-platform` meta-package; it renders the `agentic-platform-crds`, per-component, and `agentic-platform-connectivity` releases for you (each `dependsOn` the CRDs release, so CRDs Establish before any CR applies). Flux (`gitops.engine: flux`, default) or Argo (`gitops.engine: argo`) is required on the install target — the meta-package's output is Flux/Argo objects.
 
 ### Flux
 
 ```yaml
-apiVersion: source.toolkit.fluxcd.io/v1
-kind: OCIRepository
-metadata:
-  name: agentic-platform-crds
-  namespace: muster
-spec:
-  interval: 1h
-  url: oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-crds
-  ref: { tag: <agentic-platform-crds-version> }
----
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
@@ -40,16 +58,8 @@ metadata:
 spec:
   interval: 1h
   url: oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform
-  ref: { tag: <agentic-platform-version> }
----
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: agentic-platform-crds
-  namespace: muster
-spec:
-  interval: 10m
-  chartRef: { kind: OCIRepository, name: agentic-platform-crds }
+  ref:
+    semver: ">=1.0.0"   # pin a tag for a customer release
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -59,23 +69,28 @@ metadata:
 spec:
   interval: 10m
   chartRef: { kind: OCIRepository, name: agentic-platform }
-  dependsOn:
-    - { name: agentic-platform-crds }
+  install:
+    createNamespace: true
   valuesFrom:
     - kind: Secret
       name: agentic-platform-values
 ```
 
-### Raw Helm
+The meta-package then renders, in the same namespace: an `OCIRepository` + `HelmRelease` for `agentic-platform-crds`, for each enabled component, and for `agentic-platform-connectivity`. Component `versionRange`s default to **wide** (continuous auto-update); pin them in your values for a reproducible release.
+
+### Raw Helm (no GitOps controller)
+
+The meta-package renders Flux/Argo objects, so a raw `helm install` of it needs a controller present. For a controller-free install, drive the components directly from a pinned bill-of-materials — install `agentic-platform-crds`, then `agentic-platform-connectivity` and each component chart at the exact versions in [`examples/customer-bom.yaml`](helm/agentic-platform/examples/customer-bom.yaml):
 
 ```bash
 helm install agentic-platform-crds \
   oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-crds \
-  --version <crds-chart-version> --namespace muster --create-namespace
+  --version <crds-version> --namespace muster --create-namespace
 
-helm install agentic-platform \
-  oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
-  --version <chart-version> --namespace muster -f values.yaml
+# then each component chart (muster, agentgateway, …) and finally:
+helm install agentic-platform-connectivity \
+  oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-connectivity \
+  --version <connectivity-version> --namespace muster -f values.yaml
 ```
 
 #### Raw CRD-chart fallback (no `agentic-platform-crds`)
