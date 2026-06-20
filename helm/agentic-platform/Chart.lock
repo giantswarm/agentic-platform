@@ -19,6 +19,6 @@ dependencies:
   version: 0.2.2
 - name: agent-sandbox
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.1.1
-digest: sha256:e2f82a20a60dedeec9992e117ee294556d1b76b65658f4cf430f9af6627201a3
-generated: "2026-06-20T14:36:28.137813097+02:00"
+  version: 0.1.2
+digest: sha256:806cf692f997010955fd4164d22dbab990d37cb6bd000ed5ca4dd89cc82b6a12
+generated: "2026-06-20T13:37:30.633877819Z"
