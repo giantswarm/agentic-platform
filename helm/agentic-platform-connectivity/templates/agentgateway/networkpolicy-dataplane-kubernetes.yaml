@@ -55,12 +55,13 @@ spec:
       ports:
         - port: 8090
           protocol: TCP
+    # xDS to the agentgateway controller (its own release; match the
+    # controller-only `agentgateway: agentgateway` label, not the release name).
     - to:
         - podSelector:
             matchLabels:
               agentgateway: agentgateway
               app.kubernetes.io/name: agentgateway
-              app.kubernetes.io/instance: {{ .Release.Name }}
       ports:
         - port: 9978
           protocol: TCP

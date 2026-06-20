@@ -8,10 +8,11 @@ metadata:
     {{- include "labels.common" . | nindent 4 }}
 spec:
   podSelector:
+    # agentgateway runs as its own release; `agentgateway: agentgateway` is
+    # unique to the controller, so do not scope by the connectivity release name.
     matchLabels:
       agentgateway: agentgateway
       app.kubernetes.io/name: agentgateway
-      app.kubernetes.io/instance: {{ .Release.Name }}
   policyTypes: [Ingress, Egress]
   ingress:
     # xDS from the provisioned data-plane pods. They carry

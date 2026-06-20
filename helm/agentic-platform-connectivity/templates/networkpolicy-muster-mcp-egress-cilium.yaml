@@ -12,10 +12,11 @@ spec:
   # (e.g. the bundled pro / runbooks MCP servers on 8080) reached via a
   # ClusterIP. Cilium policies are additive, so this supplements muster's
   # policy — widening its egress without forking the sub-chart.
+  # muster runs as its own release (separate from this connectivity release), so
+  # select it by name only rather than a release-scoped instance label.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: muster
-      app.kubernetes.io/instance: {{ .Release.Name }}
   egress:
     - toEntities:
         - cluster
