@@ -92,7 +92,12 @@ components:
   kagent:
     chart: kagent
     repository: oci://ghcr.io/kagent-dev/kagent/helm
-    versionRange: "0.x"
+    # Pinned (exception to wide ranges): the upstream chart derives both the image
+    # tag and the app.kubernetes.io/version label from .Chart.Version, which
+    # helm-controller corrupts with the OCI +digest. The kagent.tag value and this
+    # pin must stay in lockstep so the running image matches the chart. Widen this
+    # back to "0.x" once the upstream chart sanitizes the tag/label (or GS vendors).
+    versionRange: "0.9.9"
     valuesFrom: kagent
     enabledFrom: kagent.enabled
     dependsOn: [agentic-platform-crds]
@@ -495,6 +500,14 @@ kagent:
   # Pull kagent images from the GS-retagged registry (retagger uses override_repo_name
   # so the repository paths are flat, not the upstream kagent-dev/kagent/* hierarchy).
   registry: gsoci.azurecr.io/giantswarm
+  # Explicit image tag. The chart otherwise falls back to `.Chart.Version` for the
+  # image tag (coalesce controller.image.tag / .Values.tag / .Chart.Version), but
+  # helm-controller appends the OCI digest as SemVer build metadata when sourcing
+  # via OCIRepository (0.9.9+<digest>), and `+` is illegal in an image tag → the
+  # controller/ui pods land in InvalidImageName. ponytail: must track the pinned
+  # chart version below (components.kagent.versionRange) — bump both together, and
+  # drop once kagent sanitizes the tag upstream or is vendored by GS.
+  tag: "0.9.9"
   controller:
     image:
       repository: kagent-controller
