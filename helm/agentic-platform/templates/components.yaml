@@ -97,6 +97,11 @@ spec:
     namespace: {{ $ns }}
   install:
     createNamespace: true
+    remediation:
+      retries: {{ $g.retries }}
+  upgrade:
+    remediation:
+      retries: {{ $g.retries }}
   {{- with $deps }}
   dependsOn:
     {{- range . }}
