@@ -2,11 +2,13 @@ apiVersion: v2
 name: agentic-platform
 type: application
 description: |
-  Giant Swarm agentic platform — MCP gateway consumer-side deploy unit. Bundles
-  muster (MCP aggregator control plane) and the agentgateway controller +
-  data-plane proxy, plus an opt-in giantswarm/valkey-app for muster's OAuth
-  session storage. CRDs ship separately in the companion agentic-platform-crds
-  chart, which must be installed first; the Gateway API CRDs and GatewayClass
+  Giant Swarm agentic platform — MCP gateway deploy unit, packaged as an
+  app-of-apps meta-package. Renders each component (muster, agentgateway, kagent,
+  klaus-gateway, valkey, agentic-platform-mcps, agent-sandbox) and the consumer-side
+  connectivity layer as a Flux OCIRepository + HelmRelease (or Argo Application),
+  with each component's version expressed as a value RANGE rather than a Chart.yaml
+  pin — so a component release rolls forward with no PR to this chart. CRDs ship in
+  the companion agentic-platform-crds chart; the Gateway API CRDs and GatewayClass
   remain cluster-level prerequisites — see README.
 home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
@@ -18,69 +20,19 @@ annotations:
   io.giantswarm.application.audience: all
   io.giantswarm.application.managed: "true"
   io.giantswarm.application.team: bumblebee
-dependencies:
-  - name: muster
-    version: 0.9.0
-    repository: oci://gsoci.azurecr.io/charts/giantswarm
-  - name: agentgateway
-    version: v1.3.0
-    repository: oci://cr.agentgateway.dev/charts
-    condition: agentgateway.enabled
-  # CRDs (agentgateway: AgentgatewayParameters / Policy / Backend; muster:
-  # MCPServer / Workflow) now ship in the companion agentic-platform-crds
-  # chart, NOT here. This chart renders the CRs that consume them, so the
-  # agentic-platform-crds release must be installed (and Established) first.
-  # See README "CRD lifecycle".
-  # Bundled Valkey (giantswarm/valkey-app — wraps upstream valkey-io/valkey-helm)
-  # for muster's OAuth session storage. Single-pod Deployment with PVC; primary
-  # Service at `muster-valkey.<namespace>.svc:6379` (no `-primary` suffix).
-  # Opt-in via `valkey.enabled`; pairs with muster's default storage.type=valkey.
-  - name: valkey
-    version: 0.1.2
-    repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
-    condition: valkey.enabled
-  # agentic-platform-mcps renders the platform's MCP server CRs (muster
-  # MCPServer and/or agentgateway AgentgatewayBackend + AgentgatewayPolicy) from
-  # one abstract `mcpServers` list. Like this chart's other CRs, those resources
-  # consume CRDs that ship in the companion agentic-platform-crds chart (install
-  # first). Opt-in via the top-level `mcps.enabled`; renders nothing until
-  # `agentic-platform-mcps.mcpServers` is populated. The toggle lives outside the
-  # `agentic-platform-mcps` value namespace because the sub-chart's strict
-  # values.schema.json (additionalProperties: false) rejects an `enabled` key.
-  - name: agentic-platform-mcps
-    version: 0.4.3
-    repository: oci://gsoci.azurecr.io/charts/giantswarm
-    condition: mcps.enabled
-  # kagent — Kubernetes-native AI agent runtime (controller + UI). Opt-in via
-  # `kagent.enabled`. CRDs ship in the companion agentic-platform-crds chart
-  # (install first). The kagent subchart has no strict values schema, so the
-  # `enabled` key lives directly under `kagent:` (no separate toggle namespace
-  # needed). Default namespace is overridden to `kagent` via
-  # `kagent.namespaceOverride`; the chart renders every resource namespace
-  # explicitly via its `kagent.namespace` helper.
-  # When `postgres.enabled` is also true, configure the CNPG DSN wiring under
-  # `kagent.database.postgres` — see values.yaml for the commented-out example.
-  - name: kagent
-    version: 0.9.9
-    repository: oci://ghcr.io/kagent-dev/kagent/helm
-    condition: kagent.enabled
-  # Klaus Gateway — channel front door (Slack, CLI, web) for Klaus instances.
-  # Forwards Slack turns to kagent via A2A; kagent orchestrates the agent pod.
-  # The ChannelRoute CRD is managed inline by the sub-chart's `crd.install: true`,
-  # so no companion crds chart is needed.
-  # The alias maps the hyphenated chart name to a YAML-safe values key.
-  - name: klaus-gateway
-    alias: klausGateway
-    version: 0.2.4
-    repository: oci://gsoci.azurecr.io/charts/giantswarm
-    condition: klausGateway.enabled
-  # agent-sandbox — kubernetes-sigs/agent-sandbox controller (Sandbox runtime),
-  # the substrate kagent's SandboxAgent delegates isolation to. CRDs ship in the
-  # companion agentic-platform-crds chart (install first). Opt-in via the top-level
-  # `agentSandbox.enabled` toggle, which lives OUTSIDE the agent-sandbox value
-  # namespace because that chart's strict values.schema.json (additionalProperties:
-  # false) rejects an `enabled` key — same reason `mcps.enabled` is separate.
-  - name: agent-sandbox
-    version: 0.1.2
-    repository: oci://gsoci.azurecr.io/charts/giantswarm
-    condition: agentSandbox.enabled
+# META-PACKAGE (app-of-apps): intentionally NO `dependencies:` block.
+#
+# Previously this was a Helm umbrella that pinned each component (muster,
+# agentgateway, kagent, klaus-gateway, valkey, agentic-platform-mcps, agent-sandbox)
+# to an exact version here. Helm bundles subchart .tgz archives at PACKAGE time, so
+# picking up a new component release required a bump PR + umbrella re-release +
+# gitops bump.
+#
+# Components are now rendered as per-component OCIRepository + HelmRelease (Flux)
+# or Application (Argo) by templates/components.yaml, with the version CONSTRAINT
+# expressed as a value (`components.<name>.versionRange`). Flux re-resolves the
+# range on every reconcile, so a component release rolls forward with NO PR to
+# this chart. The consumer-side wiring lives in the agentic-platform-connectivity
+# chart, rendered the same way; the agentic-platform-crds chart is rendered as a
+# HelmRelease that every other release `dependsOn` (CRD-before-CR ordering).
+# See README "Meta-package release flow" and values.yaml `components`.

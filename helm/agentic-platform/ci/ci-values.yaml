@@ -1,12 +1,18 @@
-global:
-  registry: gsoci.azurecr.io
-
-ingress:
-  mode: muster-direct
-  parentRefs:
-    - name: giantswarm-default
-      namespace: envoy-gateway-system
-      group: gateway.networking.k8s.io
-      kind: Gateway
-  hostnames:
-    - muster.ci.example.com
+# Meta-package render smoke values. The root chart emits only Flux
+# OCIRepository + HelmRelease (or Argo Application) objects; it has no workloads
+# and needs no ingress wiring (that lives in the connectivity chart). Enabling
+# every component here exercises the full render path in chart-testing.
+gitops:
+  engine: flux
+agentgateway:
+  enabled: true
+valkey:
+  enabled: true
+kagent:
+  enabled: true
+klausGateway:
+  enabled: true
+agentSandbox:
+  enabled: true
+mcps:
+  enabled: true

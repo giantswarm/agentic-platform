@@ -1,24 +1,19 @@
-{{ .Chart.Name }} {{ .Chart.Version }} installed in namespace {{ .Release.Namespace }}.
+agentic-platform meta-package installed (release {{ .Release.Name }}, namespace {{ .Release.Namespace }}).
 
-Gateway:        {{ .Values.gateway.name }} (class {{ .Values.gateway.gatewayClassName }})
-Listener port:  {{ (index .Values.gateway.listeners 0).port }}
-Service type:   {{ .Values.gateway.parameters.serviceType }} (data-plane Service forced via AgentgatewayParameters overlay)
+This chart ships no workloads itself. It rendered, via gitops.engine={{ .Values.gitops.engine }},
+one release per enabled component plus the connectivity layer:
 
-Prerequisite check (run BEFORE installing the agentic platform):
-  kubectl get crd gateways.gateway.networking.k8s.io
-  kubectl get crd agentgatewayparameters.agentgateway.dev
-  kubectl get crd mcpservers.muster.giantswarm.io
+{{- range $key, $c := .Values.components }}
+{{- $on := true }}
+{{- with $c.enabledFrom }}{{- $on = index $.Values (first (splitList "." .)) (last (splitList "." .)) }}{{- end }}
+{{- if $on }}
+  - {{ $c.chart }} (versionRange {{ $c.versionRange }}{{ with $c.dependsOn }}, dependsOn {{ join "," . }}{{ end }})
+{{- end }}
+{{- end }}
 
-This chart installs NO CRDs. Install the companion agentic-platform-crds
-chart first (it ships the agentgateway + muster CRDs); wait for them to be
-Established; then install this release.
+Flux re-resolves each versionRange on every reconcile, so component releases roll
+forward with no PR to this chart. Pin every range to an exact version (see
+examples/customer-bom.yaml) for a reproducible customer bill-of-materials.
 
-  helm install agentic-platform-crds \
-    oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-crds \
-    --version <crds-chart-version> -n {{ .Release.Namespace }} --create-namespace
-  helm install {{ .Release.Name }} \
-    oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
-    --version <agentic-platform-version> -n {{ .Release.Namespace }}
-
-Verify the data-plane Deployment renders after the controller picks up the Gateway:
-  kubectl -n {{ .Release.Namespace }} get gateway,deployment -l gateway.networking.k8s.io/gateway-name={{ .Values.gateway.name }}
+CRD-before-CR ordering: agentic-platform-crds installs first; every other release
+dependsOn it (Flux) or orders after it via sync-wave (Argo).

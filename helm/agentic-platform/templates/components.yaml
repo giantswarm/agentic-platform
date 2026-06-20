@@ -1,0 +1,125 @@
+{{- /*
+META-PACKAGE render loop (app-of-apps).
+
+For each enabled entry in `.Values.components`, emit either a Flux
+OCIRepository + HelmRelease (gitops.engine=flux) or an Argo Application
+(gitops.engine=argo). The version constraint comes from
+`components.<name>.versionRange` (a VALUE, resolved at reconcile time) — never
+from a Chart.yaml pin.
+
+Each entry is fully self-describing; this template has no per-component
+knowledge:
+  chart/repository/versionRange — where to pull and which versions (filterTags
+      optional, for dev-tag streams).
+  valuesFrom    — name of the TOP-LEVEL values block passed straight through to
+      this release's values. Omit for components that take no values.
+  forwardAllValues — pass the WHOLE values tree (minus the meta keys) instead of
+      a single block. Used by agentic-platform-connectivity, which reads many
+      blocks (ingress, gateway, networkPolicy, kagent, klausGateway, …).
+  injectGlobal  — inject `.Values.global` into the forwarded values (default
+      true). Set false for components whose strict values.schema.json
+      (additionalProperties:false) rejects an unexpected `global` key
+      (agentic-platform-mcps, agent-sandbox).
+  enabledFrom   — dotted path (two levels) to the existing on/off toggle. Omit to
+      force-enable (crds, muster, connectivity).
+  dependsOn     — Flux dependsOn / Argo sync-wave ordering (CRDs before consumers).
+*/ -}}
+{{- $root := . -}}
+{{- $g := .Values.gitops -}}
+{{- if not (or (eq $g.engine "flux") (eq $g.engine "argo")) -}}
+{{- fail (printf "gitops.engine=%s is invalid; must be one of: flux, argo" $g.engine) -}}
+{{- end -}}
+{{- range $key, $c := .Values.components }}
+{{- $on := true }}
+{{- with $c.enabledFrom }}{{- $on = index $root.Values (first (splitList "." .)) (last (splitList "." .)) }}{{- end }}
+{{- if $on }}
+{{- $name := $c.chart }}
+{{- /* passthrough values */ -}}
+{{- $vals := dict }}
+{{- if $c.forwardAllValues }}
+{{- $vals = omit $root.Values "gitops" "components" }}
+{{- else }}
+{{- with $c.valuesFrom }}{{- $vals = index $root.Values . | default dict }}{{- end }}
+{{- if ne $c.injectGlobal false }}{{- $vals = merge (deepCopy $vals) (dict "global" $root.Values.global) }}{{- end }}
+{{- end }}
+{{- $deps := $c.dependsOn | default list }}
+{{- if eq $g.engine "flux" }}
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: {{ $name }}
+  namespace: {{ $root.Release.Namespace }}
+  labels:
+    {{- include "labels.common" $root | nindent 4 }}
+spec:
+  interval: {{ $g.interval }}
+  url: {{ printf "%s/%s" (trimSuffix "/" $c.repository) $c.chart }}
+  ref:
+    semver: {{ required (printf "components.%s.versionRange is required" $key) $c.versionRange | quote }}
+    {{- with $c.filterTags }}
+    filterTags:
+      pattern: {{ .pattern | quote }}
+      {{- with .extract }}
+      extract: {{ . | quote }}
+      {{- end }}
+    {{- end }}
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $name }}
+  namespace: {{ $root.Release.Namespace }}
+  labels:
+    {{- include "labels.common" $root | nindent 4 }}
+spec:
+  interval: {{ $g.interval }}
+  releaseName: {{ $name }}
+  chartRef:
+    kind: OCIRepository
+    name: {{ $name }}
+    namespace: {{ $root.Release.Namespace }}
+  install:
+    createNamespace: true
+  {{- with $deps }}
+  dependsOn:
+    {{- range . }}
+    - name: {{ . }}
+    {{- end }}
+  {{- end }}
+  values:
+    {{- toYaml $vals | nindent 4 }}
+{{- else }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: {{ $root.Release.Namespace }}
+  labels:
+    {{- include "labels.common" $root | nindent 4 }}
+  annotations:
+    # dependsOn has no Argo equivalent; CRDs (wave 0) apply and Establish before
+    # their consumers (wave 1).
+    argocd.argoproj.io/sync-wave: {{ if $deps }}"1"{{ else }}"0"{{ end }}
+spec:
+  project: {{ $g.argo.project }}
+  destination:
+    server: {{ $g.argo.server }}
+    namespace: {{ $root.Release.Namespace }}
+  source:
+    repoURL: {{ trimPrefix "oci://" $c.repository | quote }}
+    chart: {{ $c.chart }}
+    targetRevision: {{ required (printf "components.%s.versionRange is required" $key) $c.versionRange | quote }}
+    helm:
+      valuesObject:
+        {{- toYaml $vals | nindent 8 }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}
+{{- end }}
+{{- end }}
