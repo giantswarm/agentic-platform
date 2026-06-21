@@ -1,0 +1,35 @@
+{{- if and .Values.kagent.enabled .Values.muster.enabled }}
+{{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{/*
+Re-mints the muster token Secret on a schedule. The projected token is short-lived
+(agents.muster.tokenExpirationSeconds), so the bootstrap Job's snapshot would expire
+between Helm upgrades; this CronJob keeps it fresh. The schedule must be well inside
+the token TTL so a missed run still leaves a valid token. kagent's RemoteMCPServer
+controller watches the Secret and re-resolves the header on change, so the rotation
+takes effect without restarting the agent.
+*/}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "name" . }}-kagent-muster-token-refresh
+  namespace: {{ $kagentNs }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.agents.muster.tokenRefreshSchedule | quote }}
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: kagent-muster-token-refresh
+            app.kubernetes.io/managed-by: {{ .Release.Service }}
+        spec:
+          {{- include "agentic-platform.musterTokenPodSpec" . | nindent 10 }}
+{{- end }}
