@@ -3,11 +3,13 @@ name: agentic-platform-crds
 type: application
 description: |
   CustomResourceDefinitions for the Giant Swarm agentic platform. Ships the
-  agentgateway CRDs (AgentgatewayParameters / AgentgatewayPolicy /
-  AgentgatewayBackend) and muster CRDs (MCPServer / Workflow) as a single
-  install unit. Install this chart first; once the CRDs are Established the
-  companion agentic-platform chart can apply its CRs. The Gateway API CRDs and
-  GatewayClass remain cluster-level prerequisites — see README.
+  upstream-chart CRDs that cannot yet travel with their own app — agentgateway
+  (AgentgatewayParameters / AgentgatewayPolicy / AgentgatewayBackend), kagent,
+  and agent-sandbox — as a single install unit. Install this chart first; once the
+  CRDs are Established the companion agentic-platform chart can apply its CRs.
+  muster's CRDs (MCPServer / Workflow) are NO LONGER here: muster now ships them in
+  its own app chart (app-owned CRDs, upgraded via Flux CreateReplace). The Gateway
+  API CRDs and GatewayClass remain cluster-level prerequisites — see README.
 home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
@@ -29,12 +31,12 @@ dependencies:
   - name: agentgateway-crds
     version: v1.3.0
     repository: oci://cr.agentgateway.dev/charts
-  # muster CRDs (MCPServer / Workflow). CRD-only chart split out of the muster
-  # app chart. These CRDs ARE marked `helm.sh/resource-policy: keep` and
-  # survive uninstall (see values.yaml crds.annotations). No condition.
-  - name: muster-crds
-    version: 0.10.0
-    repository: oci://gsoci.azurecr.io/charts/giantswarm
+  # muster CRDs (MCPServer / Workflow) are intentionally NOT bundled here anymore.
+  # muster ships them in its own app chart's crds/ dir and owns their version
+  # (app-owned CRDs, upgraded atomically via the agentic-platform component's
+  # `crds: CreateReplace` policy). The live CRDs on existing clusters carry
+  # `helm.sh/resource-policy: keep`, so dropping the dependency does not delete
+  # them — the muster release adopts and upgrades them on its next reconcile.
   # kagent CRDs (Agent / AgentHarness / ModelConfig / MCPServer / RemoteMCPServer /
   # Memory / ToolServer / SandboxAgent). No condition — a CRDs chart installs all
   # of its CRDs unconditionally so that the companion chart's kagent-managed CRs

@@ -154,12 +154,13 @@ muster:
   # for its Service, so all three stay in lockstep regardless of release name or
   # any future change to muster's naming algorithm — no silent backendRef drift.
   fullnameOverride: muster
-  # muster's CRDs (MCPServer / Workflow) now ship via the companion
-  # agentic-platform-crds chart, not the muster sub-chart. The currently
-  # pinned muster (0.1.197) still defaults `crds.install: true`, so we MUST
-  # disable it here to avoid duplicate CRD ownership with the CRDs release.
-  # The muster-crds split (muster #750) defaults this to false upstream; this
-  # override stays as a guard regardless of the muster version pinned below.
+  # App-owned CRDs: muster's MCPServer / Workflow CRDs now ship in the muster app
+  # chart's own crds/ directory and are upgraded atomically with the app via the
+  # muster component's `crds: CreateReplace` policy — NOT via the
+  # agentic-platform-crds bundle and NOT via the sub-chart's templated CRDs.
+  # `crds.install: false` keeps the sub-chart from also templating the CRDs under
+  # templates/ (which Helm would own and could prune), avoiding duplicate ownership
+  # with the crds/-dir copy. Stays as a guard regardless of the muster version below.
   crds:
     install: false
   # muster does not currently support OTLP push; ServiceMonitor is the
