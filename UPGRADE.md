@@ -2,6 +2,38 @@
 
 Operator action required between releases. CHANGELOG.md captures the diff; UPGRADE.md captures what an operator has to *do*.
 
+## \<current\> → \<next\> (muster app-owned CRDs)
+
+muster's CRDs (`MCPServer` / `Workflow`) move from the `agentic-platform-crds`
+bundle into muster's own app chart (app-owned CRDs). The `muster` component now
+sets `crds: CreateReplace` and no longer `dependsOn` the bundle; `agentic-platform-crds`
+drops its `muster-crds` dependency (it keeps agentgateway / kagent / agent-sandbox CRDs).
+
+### What changed
+
+- `agentic-platform-crds` no longer ships `mcpservers` / `workflows.muster.giantswarm.io`.
+- The `agentic-platform` `muster` component renders `spec.install.crds: CreateReplace`
+  and `spec.upgrade.crds: CreateReplace`, so muster's release applies and upgrades
+  its own CRDs (from the muster chart's `crds/` dir) atomically with the app.
+- `agentic-platform-mcps` now `dependsOn: [muster, agentic-platform-crds]` (its
+  `MCPServer` CRs need the muster-owned CRD; its agentgateway CRs need the bundle).
+
+### Operator action: none (non-destructive automatic handoff)
+
+The live muster CRDs carry `helm.sh/resource-policy: keep` (injected by the prior
+bundle handoff), so dropping the `muster-crds` dependency does **not** delete them —
+Helm's prune is blocked by `keep`, and no `MCPServer` / `Workflow` CR cascade occurs.
+On the next reconcile the muster release applies the (identical-content) CRDs via
+`CreateReplace` and owns their upgrades thereafter. Verify afterwards:
+
+```bash
+kubectl get crd mcpservers.muster.giantswarm.io workflows.muster.giantswarm.io
+helm get manifest <muster-release> -n <ns> | grep -c 'kind: CustomResourceDefinition'  # CRDs now ride muster
+```
+
+Prerequisite: a muster app chart version that ships its CRDs in `crds/` (resolved by
+the `muster` component's `versionRange`).
+
 ## 0.2.0 → \<next\> (two-chart CRD split)
 
 CRDs are no longer bundled in `agentic-platform`. They now ship in the companion **`agentic-platform-crds`** chart, which must be installed (and Established) **before** `agentic-platform`. There are now **two releases** from this repo, in order.

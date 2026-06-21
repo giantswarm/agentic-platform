@@ -30,6 +30,15 @@ knowledge:
       bugs without forking — e.g. kagent stamps the chart version into
       app.kubernetes.io/version, which helm-controller corrupts with the OCI
       +digest build-metadata (invalid in a label); a kustomize patch overwrites it.
+  crds          — Helm CRD lifecycle policy for an app-owned-CRDs component (a chart
+      that ships its CRDs in its own crds/ directory). Rendered into the child
+      HelmRelease's spec.install.crds and spec.upgrade.crds (flux engine only).
+      Set to CreateReplace so the app's CRDs upgrade atomically with the app at the
+      same version (Helm otherwise never upgrades crds/-dir CRDs). Such a component
+      owns its CRD version itself and must NOT dependsOn the shared CRDs bundle;
+      its CR consumers dependsOn it instead. Omit for components whose CRDs still
+      ship via the agentic-platform-crds bundle. Argo applies crds/ unconditionally,
+      so this field is flux-only.
 */ -}}
 {{- $root := . -}}
 {{- $g := .Values.gitops -}}
@@ -102,9 +111,15 @@ spec:
     namespace: {{ $ns }}
   install:
     createNamespace: true
+    {{- with $c.crds }}
+    crds: {{ . }}
+    {{- end }}
     remediation:
       retries: {{ $g.retries }}
   upgrade:
+    {{- with $c.crds }}
+    crds: {{ . }}
+    {{- end }}
     remediation:
       retries: {{ $g.retries }}
   {{- with $deps }}

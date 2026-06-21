@@ -95,16 +95,15 @@ helm install agentic-platform-connectivity \
 
 #### Raw CRD-chart fallback (no `agentic-platform-crds`)
 
-`agentic-platform-crds` is a thin umbrella over two upstream CRD charts. If you prefer to manage the CRD charts directly (or already run a shared `agentgateway-crds` release), install both source charts instead — they provide the same five CRDs:
+`agentic-platform-crds` is a thin umbrella over the upstream CRD charts that cannot yet travel with their own app (agentgateway, kagent, agent-sandbox). If you prefer to manage them directly (or already run a shared `agentgateway-crds` release), install the source charts instead. muster's CRDs are **not** among them — muster ships its own CRDs in its app chart (app-owned CRDs), so installing the muster release is sufficient:
 
 ```bash
 helm install agentgateway-crds \
   oci://cr.agentgateway.dev/charts/agentgateway-crds \
-  --version v1.2.1 --namespace muster --create-namespace
+  --version v1.3.0 --namespace muster --create-namespace
 
-helm install muster-crds \
-  oci://gsoci.azurecr.io/charts/giantswarm/muster-crds \
-  --version <muster-crds-version> --namespace muster
+# muster's MCPServer / Workflow CRDs ride the muster app chart (crds/ dir) —
+# no separate muster-crds install needed.
 
 helm install agentic-platform \
   oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
@@ -387,7 +386,7 @@ All CRDs ship in the companion **`agentic-platform-crds`** chart (installed firs
 |---|---|
 | `gateways.gateway.networking.k8s.io`, `httproutes…`, `gatewayclasses…` | Gateway API upstream — cluster prerequisite (not shipped by either chart) |
 | `agentgatewayparameters.agentgateway.dev`, `agentgatewaybackends…`, `agentgatewaypolicies…` | `agentic-platform-crds` chart (vendors the upstream `agentgateway-crds` sub-chart) |
-| `mcpservers.muster.giantswarm.io`, `workflows.muster.giantswarm.io` | `agentic-platform-crds` chart (vendors the `muster-crds` sub-chart) |
+| `mcpservers.muster.giantswarm.io`, `workflows.muster.giantswarm.io` | muster app chart (app-owned CRDs in its `crds/` dir; upgraded via the `muster` component's `crds: CreateReplace`) — **not** the `agentic-platform-crds` bundle |
 | `sandboxes.agents.x-k8s.io`, `sandboxtemplates…`, `sandboxclaims…`, `sandboxwarmpools.extensions.agents.x-k8s.io` | `agentic-platform-crds` chart (vendors the `agent-sandbox-crds` sub-chart) |
 
 `helm uninstall agentic-platform` (the workload release) leaves all CRDs and CRs intact — it owns none of them.
