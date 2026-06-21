@@ -710,41 +710,47 @@ agents:
     # caps it via --service-account-max-token-expiration.
     tokenExpirationSeconds: 31536000
 
-    # Header-less companion RemoteMCPServer for human-triggered agents that must
-    # impersonate the end user against muster.
-    #
-    # WHY THIS EXISTS (workaround, remove once upstream lands): the default
-    # `muster` server pins a static SA Bearer token (headersFrom Secret). In
-    # kagent's MCP transport static headers have the HIGHEST precedence, so they
-    # override any token the agent runtime forwards (KAGENT_PROPAGATE_TOKEN / STS).
-    # A single `muster` server therefore cannot both (a) let the controller list
-    # muster's tools with the M2M SA token and (b) carry the end-user token on the
-    # agent's tool calls. RemoteMCPServer has no per-server header-forwarding field,
-    # so the user-token path needs its OWN server with no static Authorization.
-    # The controller's discovery of this header-less server fails auth (cosmetic
-    # not-ready status); the AGENT still works because it discovers and calls at
-    # runtime — its tool wiring comes from the agent's tool refs + the server spec,
-    # not from controller-side discovery.
-    #
-    # Once kagent kagent-dev/kagent#2044 (KAGENT_PROPAGATE_TOKEN_OVERRIDES_STATIC)
-    # ships, this can collapse back to the single `muster` server (SA for
-    # controller discovery, user token wins on agent calls) and userServer removed.
-    #
-    # Human agents reference this server and forward the user token via either:
-    #   - the agent's tool reference: allowedHeaders: ["authorization"] (forwards
-    #     the Dex token verbatim; no global env needed), or
-    #   - spec.deployment.env: KAGENT_PROPAGATE_TOKEN=true and/or
-    #     STS_WELL_KNOWN_URI=<muster well-known> for RFC 8693 OBO.
-    # The static-token `muster` server stays for autonomous / M2M agents.
-    #
-    # When enabled, also ensure muster trusts the user identity:
-    #   - propagate mode: downstream MCP servers' trusted_audiences accept the Dex token
-    #   - OBO mode: muster's STS accepts Dex as subject_token and the kagent SA as actor
-    userServer:
-      enabled: false
-      # Name of the header-less RemoteMCPServer. Human agents reference this name
-      # in their tool config instead of `muster`.
-      name: muster-user
+  # Bundled SRE agent: a Declarative kagent Agent that reaches muster as a
+  # machine (M2M). It calls muster through the static `muster` RemoteMCPServer,
+  # whose headersFrom Secret carries the kagent-muster-client SA Bearer token, so
+  # muster authenticates every tool call as
+  # system:serviceaccount:<kagent-ns>:kagent-muster-client (NOT the agent pod's
+  # own SA). spec.declarative.deployment.serviceAccountName is intentionally
+  # omitted in the template: the kagent controller then auto-creates an SA named
+  # after the agent (sre-agent), the intended actor for future on-behalf-of
+  # delegation. Runs the Python ADK (kagent default runtime).
+  #
+  # Disabled by default; flip enabled per cluster in giantswarm-config.
+  sreAgent:
+    enabled: false
+    # ModelConfig CR the agent uses. Defaults to the one kagent's sub-chart
+    # creates from kagent.providers.anthropic.
+    modelConfig: default-model-config
+    description: "Giant Swarm SRE agent"
+    systemMessage: |-
+      You are a Giant Swarm SRE agent. You investigate cluster, workload, and
+      observability issues using the tools exposed through the muster MCP
+      gateway. Prefer read-only diagnosis; explain findings concisely and cite
+      the evidence (resources, metrics, logs) you base conclusions on.
+    # RemoteMCPServer this agent calls. The static `muster` server (SA token,
+    # M2M) is the only one rendered by default.
+    toolServer: muster
+    # Tools to expose from toolServer. Empty = all tools the server advertises
+    # (muster's meta-tools: list_tools, filter_tools, call_tool, ...).
+    toolNames: []
+    # Request headers forwarded from the inbound A2A call onto muster tool calls.
+    # INERT today: user-token forwarding additionally needs kagent-dev/kagent#2044
+    # (a forwarded token overriding the static SA Authorization on call_tool),
+    # which is absent from the pinned kagent 0.9.9. Leave [] for M2M; set
+    # ["authorization"] only once kagent ships #2044 (see subplans 09/10).
+    allowedHeaders: []
+    # Optional container resources for the agent Deployment
+    # (spec.declarative.deployment.resources).
+    resources: {}
+    # Optional extra env for the agent Deployment
+    # (spec.declarative.deployment.env). Do NOT set
+    # KAGENT_PROPAGATE_TOKEN_OVERRIDES_STATIC here: it is dead on kagent 0.9.9.
+    env: []
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
