@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `agents.muster.userServer`: opt-in companion `muster-user` RemoteMCPServer with no static `Authorization` header, for human-triggered agents that impersonate the end user against muster. The default `muster` server pins a static SA Bearer token that kagent's MCP transport applies as a static header, overriding any token the agent runtime forwards; a header-less server lets the agent forward the end-user token (via the tool ref's `allowedHeaders: ["authorization"]`, or `KAGENT_PROPAGATE_TOKEN` / STS OBO on `spec.deployment.env`). Disabled by default; the static-token `muster` server is unchanged for autonomous/M2M agents. Workaround until kagent-dev/kagent#2044 lets a forwarded token override a static `Authorization`, after which this collapses back to the single `muster` server.
+- `agents.sreAgent`: opt-in bundled Declarative kagent `Agent` (`sre-agent`) that reaches muster machine-to-machine through the static `muster` RemoteMCPServer (SA Bearer token from the `<name>-kagent-muster-token` Secret). `spec.declarative.deployment.serviceAccountName` is omitted so the kagent controller auto-creates the `sre-agent` SA. Configurable `modelConfig` (default `default-model-config`), `systemMessage`, `toolServer` (default `muster`), `toolNames`, `allowedHeaders`, `deployment.resources`, and `deployment.env`. `allowedHeaders` is inert: forwarding a request header onto muster tool calls additionally needs kagent-dev/kagent#2044, absent from the pinned kagent 0.9.9. Disabled by default.
+
+### Removed
+
+- `agents.muster.userServer` and the header-less `muster-user` RemoteMCPServer. On the pinned kagent 0.9.9 it lists zero tools (no static `Authorization` for controller discovery) and the forwarded-token override it depended on (kagent-dev/kagent#2044) is absent, so it could not impersonate the end user. User impersonation returns once kagent ships #2044 and muster carries the human identity (`email`/`groups`).
 
 ### Changed
 
