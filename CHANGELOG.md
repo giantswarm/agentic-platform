@@ -69,6 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentSandbox.podSecurity.namespace` drifts from the controller's actual namespace, which
   would otherwise leave the Kyverno policy silently targeting the wrong namespace.
 
+### Security
+
+- The kagent muster M2M token now defaults to a 1-hour TTL (`agents.muster.tokenExpirationSeconds: 3600`, was 365 days) and is re-minted by a new `muster-token-refresh` CronJob on `agents.muster.tokenRefreshSchedule` (default every 15 minutes). The bootstrap Job still seeds the Secret on install/upgrade; kagent's RemoteMCPServer picks up the rotated Secret without restarting the agent. Removes the year-long at-rest bearer token.
+
 ## [1.1.33] - 2026-06-16
 
 ### Changed

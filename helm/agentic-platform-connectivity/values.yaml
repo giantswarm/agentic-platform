@@ -705,10 +705,15 @@ agents:
       registry: gsoci.azurecr.io
       repository: giantswarm/busybox
       tag: "1.38.0"
-    # Expiration requested for the projected muster token, in seconds. Snapshotted
-    # into the headersFrom Secret on every helm install/upgrade; the API server
-    # caps it via --service-account-max-token-expiration.
-    tokenExpirationSeconds: 31536000
+    # Expiration requested for the projected muster token, in seconds. The token
+    # is snapshotted into the headersFrom Secret and re-minted by the
+    # muster-token-refresh CronJob; keep this comfortably above tokenRefreshSchedule
+    # so a missed refresh still leaves a valid token. The API server caps it via
+    # --service-account-max-token-expiration.
+    tokenExpirationSeconds: 3600
+    # Cron schedule for re-minting the muster token Secret. Must run well inside
+    # tokenExpirationSeconds (default: every 15 minutes, a quarter of the 1h TTL).
+    tokenRefreshSchedule: "*/15 * * * *"
 
   # Bundled SRE agent: a Declarative kagent Agent that reaches muster as a
   # machine (M2M). It calls muster through the static `muster` RemoteMCPServer,
