@@ -1,5 +1,6 @@
 # Minimal CI values for `ct lint`/`ct install` parity. This chart is a thin
-# umbrella over the agentgateway-crds and muster-crds sub-charts; the defaults
-# in values.yaml are sufficient to render. Kept as an explicit (empty-of-
-# overrides) file so the chart-testing tooling has a values file to load.
+# umbrella over the agentgateway-crds, kagent-crds and agent-sandbox-crds
+# sub-charts; the defaults in values.yaml are sufficient to render. Kept as an
+# explicit (empty-of-overrides) file so the chart-testing tooling has a values
+# file to load.
 {}

@@ -36,11 +36,12 @@
       "allowedVersions": "!/^v2\\./",
     },
     {
-      // muster app chart and muster-crds are the same upstream project but
-      // versioned independently (0.2.x vs 0.1.x). Group into one PR for review
-      // coherence; versions still bump independently within it.
+      // muster app chart. Its CRDs now ride the muster app chart itself
+      // (app-owned CRDs via the meta-package's `crds: CreateReplace` policy), so
+      // muster-crds is no longer a bundle dependency here. Kept as a named group
+      // so a muster bump lands in a clearly-labelled PR.
       "matchManagers": ["helmv3"],
-      "matchDepNames": ["muster", "muster-crds"],
+      "matchDepNames": ["muster"],
       "groupName": "muster",
     },
   ],
