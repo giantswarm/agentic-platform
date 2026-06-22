@@ -1,22 +1,31 @@
 {{- if .Values.kagent.enabled }}
 {{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- $musterUrl := printf "http://%s.%s.svc.cluster.local:%v/mcp" (include "agentic-platform.musterFullname" .) .Release.Namespace (include "agentic-platform.musterServicePort" .) }}
 {{- if .Values.muster.enabled }}
+{{/* One muster RemoteMCPServer per enabled agent: same muster Service, but each
+carries the agent's own SA token via headersFrom so muster sees a per-agent identity. */}}
+{{- range $name, $cfg := .Values.agents.definitions }}
+{{- $agent := merge (dict "name" $name) $cfg }}
+{{- if $agent.enabled }}
+{{- $tokenSecretName := include "agentic-platform.musterTokenSecretName" (dict "root" $ "agent" $agent) }}
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
 metadata:
-  name: muster
+  name: {{ include "agentic-platform.musterServerName" $agent | quote }}
   namespace: {{ $ns }}
 spec:
-  description: "muster MCP gateway"
-  url: {{ printf "http://%s.%s.svc.cluster.local:%v/mcp" (include "agentic-platform.musterFullname" .) .Release.Namespace (include "agentic-platform.musterServicePort" .) | quote }}
+  description: {{ printf "muster MCP gateway (%s)" $agent.name | quote }}
+  url: {{ $musterUrl | quote }}
   protocol: STREAMABLE_HTTP
   headersFrom:
   - name: Authorization
     valueFrom:
       type: Secret
-      name: {{ printf "%s-kagent-muster-token" (include "name" .) | quote }}
+      name: {{ $tokenSecretName | quote }}
       key: token
+{{- end }}
+{{- end }}
 {{- end }}
 {{- range .Values.agents.remoteMcpServers }}
 ---
@@ -33,7 +42,7 @@ spec:
   - name: Authorization
     valueFrom:
       type: Secret
-      name: {{ .tokenSecret | default (printf "%s-kagent-muster-token" (include "name" $)) | quote }}
+      name: {{ required "agents.remoteMcpServers[].tokenSecret is required" .tokenSecret | quote }}
       key: token
 {{- end }}
 {{- end }}

@@ -1,24 +1,55 @@
 {{/*
-Pod spec shared by the muster-token bootstrap Job and the refresh CronJob.
+ServiceAccount whose token an agent presents to muster (M2M subject). Defaults to
+the agent name, which is the SA the kagent controller creates for the Agent CR.
+Input: an agents.list entry.
+*/}}
+{{- define "agentic-platform.agentServiceAccount" -}}
+{{- .serviceAccount | default .name -}}
+{{- end -}}
 
-A projected serviceAccountToken volume mints a short-lived token for the Job's
-own ServiceAccount (kagent-muster-client, the identity muster trusts), scoped to
-the muster audience. The init container reads it, prepends "Bearer ", and renders
-a Secret manifest; the distroless kubectl container applies it. kagent's
-RemoteMCPServer reads that Secret via headersFrom and its controller re-resolves
-the header when the Secret changes, so refreshing the Secret rotates the token in
-place without a restart.
+{{/*
+Name of the per-agent muster RemoteMCPServer (the agent's toolServer).
+Input: an agents.list entry.
+*/}}
+{{- define "agentic-platform.musterServerName" -}}
+{{- printf "muster-%s" .name -}}
+{{- end -}}
+
+{{/*
+Name of the headersFrom Secret holding "Bearer <token>" for one agent.
+Input: dict "root" $ "agent" <agents.list entry>.
+*/}}
+{{- define "agentic-platform.musterTokenSecretName" -}}
+{{- $root := .root -}}
+{{- $agent := .agent -}}
+{{- $agent.tokenSecret | default (printf "%s-muster-token-%s" (include "name" $root) $agent.name) -}}
+{{- end -}}
+
+{{/*
+Pod spec shared by one agent's muster-token bootstrap Job and refresh CronJob.
+Input: dict "root" $ "agent" <agents.list entry>.
+
+The Job runs as the agent's own ServiceAccount. A projected serviceAccountToken
+volume mints a short-lived token for that SA, scoped to the muster audience, so
+muster authenticates the agent under its own identity. The init container reads the
+token, prepends "Bearer ", and renders a Secret manifest; the distroless kubectl
+container applies it. kagent's RemoteMCPServer reads that Secret via headersFrom and
+its controller re-resolves the header when the Secret changes, so refreshing the
+Secret rotates the token in place without a restart.
 */}}
 {{- define "agentic-platform.musterTokenPodSpec" -}}
-{{- $kagentNs := .Values.kagent.namespaceOverride | default .Release.Namespace -}}
-{{- $tokenSecretName := printf "%s-kagent-muster-token" (include "name" .) -}}
-{{- $resourceId := .Values.muster.muster.oauth.server.resourceIdentifier -}}
-{{- $hostname := first .Values.ingress.hostnames -}}
+{{- $root := .root -}}
+{{- $agent := .agent -}}
+{{- $kagentNs := $root.Values.kagent.namespaceOverride | default $root.Release.Namespace -}}
+{{- $tokenSecretName := include "agentic-platform.musterTokenSecretName" (dict "root" $root "agent" $agent) -}}
+{{- $identitySA := include "agentic-platform.agentServiceAccount" $agent -}}
+{{- $resourceId := $root.Values.muster.muster.oauth.server.resourceIdentifier -}}
+{{- $hostname := first $root.Values.ingress.hostnames -}}
 {{- if and (not $resourceId) (not $hostname) -}}
   {{- fail "set muster.muster.oauth.server.resourceIdentifier or ingress.hostnames[0]: required to compute the muster token audience" -}}
 {{- end -}}
 {{- $musterAudience := $resourceId | default (printf "https://%s/mcp" $hostname) -}}
-serviceAccountName: kagent-muster-client
+serviceAccountName: {{ $identitySA }}
 restartPolicy: OnFailure
 securityContext:
   runAsNonRoot: true
@@ -31,7 +62,7 @@ volumes:
       sources:
         - serviceAccountToken:
             audience: {{ $musterAudience | quote }}
-            expirationSeconds: {{ .Values.agents.muster.tokenExpirationSeconds | int64 }}
+            expirationSeconds: {{ $root.Values.agents.muster.tokenExpirationSeconds | int64 }}
             path: token
   - name: work
     emptyDir: {}
@@ -39,7 +70,7 @@ volumes:
     emptyDir: {}
 initContainers:
   - name: render
-    image: {{ printf "%s/%s:%s" .Values.agents.muster.busyboxImage.registry .Values.agents.muster.busyboxImage.repository .Values.agents.muster.busyboxImage.tag | quote }}
+    image: {{ printf "%s/%s:%s" $root.Values.agents.muster.busyboxImage.registry $root.Values.agents.muster.busyboxImage.repository $root.Values.agents.muster.busyboxImage.tag | quote }}
     securityContext:
       allowPrivilegeEscalation: false
       capabilities:
@@ -68,7 +99,7 @@ initContainers:
         mountPath: /work
 containers:
   - name: apply
-    image: {{ printf "%s/%s:%s" .Values.agents.muster.kubectlImage.registry .Values.agents.muster.kubectlImage.repository .Values.agents.muster.kubectlImage.tag | quote }}
+    image: {{ printf "%s/%s:%s" $root.Values.agents.muster.kubectlImage.registry $root.Values.agents.muster.kubectlImage.repository $root.Values.agents.muster.kubectlImage.tag | quote }}
     securityContext:
       allowPrivilegeEscalation: false
       capabilities:
