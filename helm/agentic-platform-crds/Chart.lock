@@ -7,6 +7,6 @@ dependencies:
   version: 0.9.9
 - name: agent-sandbox-crds
   repository: oci://gsoci.azurecr.io/charts/giantswarm
-  version: 0.1.2
-digest: sha256:2f4dda415b627e1720ff1012dd008edd7fee810c4551b43137fc6e908dfbf2b3
-generated: "2026-06-21T14:10:01.806181421+02:00"
+  version: 0.1.3
+digest: sha256:5f9cc5d275b6e58e78724e077dacaa8d5fe9a1fdb9ebbd7389a541860acd55e3
+generated: "2026-06-21T22:22:41.969754869Z"
