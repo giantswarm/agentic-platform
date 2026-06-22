@@ -1,4 +1,9 @@
-{{- if and .Values.kagent.enabled .Values.agents.sreAgent.enabled .Values.agents.sreAgent.m2m.enabled }}
-{{- $imp := .Values.agents.sreAgent.m2m }}
-{{- include "agentic-platform.agentImpersonation" (dict "ctx" . "agentName" "sre-agent" "user" $imp.granted.user "groups" $imp.granted.groups "impersonators" $imp.impersonators "clusterRoles" $imp.granted.clusterRoles) }}
+{{- if .Values.kagent.enabled }}
+{{- range $name, $cfg := .Values.agents.definitions }}
+{{- $agent := merge (dict "name" $name) $cfg }}
+{{- if and $agent.enabled $agent.m2m.enabled }}
+{{- $imp := $agent.m2m }}
+{{- include "agentic-platform.agentImpersonation" (dict "ctx" $ "agentName" $agent.name "user" $imp.granted.user "groups" $imp.granted.groups "impersonators" $imp.impersonators "clusterRoles" $imp.granted.clusterRoles) }}
+{{- end }}
+{{- end }}
 {{- end }}

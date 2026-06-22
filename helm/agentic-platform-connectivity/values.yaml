@@ -679,10 +679,11 @@ kagent:
 #
 # muster RemoteMCPServer, SA, and egress CNP are gated on kagent.enabled + muster.enabled.
 agents:
-  # Config for the built-in muster MCP gateway connection. Active when
-  # kagent.enabled + muster.enabled — the umbrella creates a RemoteMCPServer CR, a
-  # ServiceAccount + long-lived SA token Secret, and a Helm hook Job that
-  # writes "Bearer <token>" into the headersFrom Secret.
+  # Shared muster token-mint infrastructure. Active when kagent.enabled +
+  # muster.enabled. Each agent in `list` below gets a RemoteMCPServer plus the
+  # Helm hook Job + refresh CronJob that mint a short-lived token for the agent's
+  # own SA and write "Bearer <token>" into its headersFrom Secret; this block only
+  # holds the images and token lifetime shared by all of them.
   #
   # Prerequisite: muster.muster.oauth.server.trustedIssuers must include an
   # entry for the cluster SA OIDC issuer (find with:
@@ -716,73 +717,69 @@ agents:
     # tokenExpirationSeconds (default: every 15 minutes, a quarter of the 1h TTL).
     tokenRefreshSchedule: "*/15 * * * *"
 
-  # Bundled SRE agent: a Declarative kagent Agent that reaches muster as a
-  # machine (M2M). It calls muster through the static `muster` RemoteMCPServer,
-  # whose headersFrom Secret carries the kagent-muster-client SA Bearer token, so
-  # muster authenticates every tool call as
-  # system:serviceaccount:<kagent-ns>:kagent-muster-client (NOT the agent pod's
-  # own SA). spec.declarative.deployment.serviceAccountName is intentionally
-  # omitted in the template: the kagent controller then auto-creates an SA named
-  # after the agent (sre-agent), the intended actor for future on-behalf-of
-  # delegation. Runs the Python ADK (kagent default runtime).
+  # kagent agents, keyed by agent name. Each enabled entry renders: the Agent CR
+  # (prompt, model, tools); a per-agent muster RemoteMCPServer named "muster-<name>"
+  # whose headersFrom Secret carries the agent's OWN SA Bearer token (so muster
+  # authenticates tool calls as system:serviceaccount:<kagent-ns>:<serviceAccount>,
+  # the M2M subject); the mint Job + refresh CronJob + Secret RBAC that run as that
+  # SA; and, when m2m.enabled, the impersonation RBAC. Add an agent = add a key.
+  # Keyed by name (not a list) so per-cluster values deep-merge field-by-field — a
+  # cluster can flip enabled or tweak the prompt without restating the whole entry.
+  # The kagent controller auto-creates the SA named after the agent, which is both
+  # the M2M subject and the on-behalf-of actor. Agents run the Python ADK.
   #
-  # Disabled by default; flip enabled per cluster in giantswarm-config.
-  sreAgent:
-    enabled: false
-    # ModelConfig CR the agent uses. Defaults to the one kagent's sub-chart
-    # creates from kagent.providers.anthropic.
-    modelConfig: default-model-config
-    description: "Giant Swarm SRE agent"
-    systemMessage: |-
-      You are a Giant Swarm SRE agent. You investigate cluster, workload, and
-      observability issues using the tools exposed through the muster MCP
-      gateway. Prefer read-only diagnosis; explain findings concisely and cite
-      the evidence (resources, metrics, logs) you base conclusions on.
-    # RemoteMCPServer this agent calls. The static `muster` server (SA token,
-    # M2M) is the only one rendered by default.
-    toolServer: muster
-    # Tools to expose from toolServer. Empty = all tools the server advertises
-    # (muster's meta-tools: list_tools, filter_tools, call_tool, ...).
-    toolNames: []
-    # Request headers forwarded from the inbound A2A call onto muster tool calls.
-    # INERT today: user-token forwarding additionally needs kagent-dev/kagent#2044
-    # (a forwarded token overriding the static SA Authorization on call_tool),
-    # which is absent from the pinned kagent 0.9.9. Leave [] for M2M; set
-    # ["authorization"] only once kagent ships #2044 (see subplans 09/10).
-    allowedHeaders: []
-    # Optional container resources for the agent Deployment
-    # (spec.declarative.deployment.resources).
-    resources: {}
-    # Optional extra env for the agent Deployment
-    # (spec.declarative.deployment.env). Do NOT set
-    # KAGENT_PROPAGATE_TOKEN_OVERRIDES_STATIC here: it is dead on kagent 0.9.9.
-    env: []
-    # Impersonation RBAC for this agent's M2M identity: lets the deputy SAs
-    # (mcp-kubernetes) impersonate the agent at the apiserver, and binds the agent's
-    # groups to ClusterRoles for its actual access. The matching muster
-    # workloadGroupGrant (which inbound subject muster mints for) is configured in
-    # giantswarm-config next to the rest of the muster broker config; it and
-    # mcp-kubernetes' impersonateUser/impersonateGroups must agree with `granted`
-    # below. Disabled by default; flip per cluster in giantswarm-config.
-    m2m:
+  # Disabled by default; enable per cluster in giantswarm-config.
+  definitions:
+    sre-agent:
       enabled: false
-      # Identity the deputy impersonates; must equal mcp-kubernetes' impersonateUser.
-      # An SA-prefixed user renders a namespaced serviceaccounts Role; a plain
-      # username (e.g. "agent:sre") renders a cluster-scoped users rule instead.
-      granted:
-        user: "system:serviceaccount:kagent:sre-agent"
-        # Groups the deputy impersonates (muster injects them; the deputy also
-        # appends system:authenticated, which the ClusterRole therefore allows).
-        groups:
-          - agent:sre
-        # ClusterRoles to bind the granted groups to (the agent's actual K8s authz);
-        # one ClusterRoleBinding per role. Empty = no binding (granting cluster-wide
-        # read is left an explicit per-cluster opt-in). Set e.g. [read-all].
-        clusterRoles: []
-      # ServiceAccounts permitted to impersonate `granted` at the apiserver.
-      impersonators:
-        - name: mcp-kubernetes
-          namespace: mcp-kubernetes
+      # SA whose token is minted and presented to muster. Defaults to the agent
+      # name (the SA the kagent controller creates for it). Must match the muster
+      # workloadGroupGrant subject and mcp-kubernetes impersonateUser.
+      serviceAccount: sre-agent
+      # ModelConfig CR the agent uses. Defaults to the one kagent's sub-chart
+      # creates from kagent.providers.anthropic.
+      modelConfig: default-model-config
+      description: "Giant Swarm SRE agent"
+      systemMessage: |-
+        You are a Giant Swarm SRE agent. You investigate cluster, workload, and
+        observability issues using the tools exposed through the muster MCP
+        gateway. Prefer read-only diagnosis; explain findings concisely and cite
+        the evidence (resources, metrics, logs) you base conclusions on.
+      # Tools to expose from the agent's muster server. Empty = all tools the
+      # server advertises (muster's meta-tools: list_tools, filter_tools, ...).
+      toolNames: []
+      # Request headers forwarded from the inbound A2A call onto muster tool calls.
+      # Set ["authorization"] to forward the human token for on-behalf-of (the STS
+      # plugin then exchanges it); leave [] for pure M2M.
+      allowedHeaders: []
+      # Optional container resources for the agent Deployment.
+      resources: {}
+      # Optional extra env for the agent Deployment.
+      env: []
+      # Impersonation RBAC for this agent's M2M identity: lets the deputy SAs
+      # (mcp-kubernetes) impersonate the agent at the apiserver, and binds the
+      # agent's groups to ClusterRoles for its actual access. The matching muster
+      # workloadGroupGrant is configured in giantswarm-config; it and
+      # mcp-kubernetes' impersonateUser/impersonateGroups must agree with `granted`.
+      m2m:
+        enabled: false
+        # Identity the deputy impersonates; must equal mcp-kubernetes' impersonateUser.
+        # An SA-prefixed user renders a namespaced serviceaccounts Role; a plain
+        # username (e.g. "agent:sre") renders a cluster-scoped users rule instead.
+        granted:
+          user: "system:serviceaccount:kagent:sre-agent"
+          # Groups the deputy impersonates (muster injects them; the deputy also
+          # appends system:authenticated, which the ClusterRole therefore allows).
+          groups:
+            - agent:sre
+          # ClusterRoles to bind the granted groups to (the agent's actual K8s authz);
+          # one ClusterRoleBinding per role. Empty = no binding (granting cluster-wide
+          # read is left an explicit per-cluster opt-in). Set e.g. [read-all].
+          clusterRoles: []
+        # ServiceAccounts permitted to impersonate `granted` at the apiserver.
+        impersonators:
+          - name: mcp-kubernetes
+            namespace: mcp-kubernetes
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
