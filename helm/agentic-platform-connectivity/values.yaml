@@ -757,6 +757,32 @@ agents:
     # (spec.declarative.deployment.env). Do NOT set
     # KAGENT_PROPAGATE_TOKEN_OVERRIDES_STATIC here: it is dead on kagent 0.9.9.
     env: []
+    # Impersonation RBAC for this agent's M2M identity: lets the deputy SAs
+    # (mcp-kubernetes) impersonate the agent at the apiserver, and binds the agent's
+    # groups to ClusterRoles for its actual access. The matching muster
+    # workloadGroupGrant (which inbound subject muster mints for) is configured in
+    # giantswarm-config next to the rest of the muster broker config; it and
+    # mcp-kubernetes' impersonateUser/impersonateGroups must agree with `granted`
+    # below. Disabled by default; flip per cluster in giantswarm-config.
+    m2m:
+      enabled: false
+      # Identity the deputy impersonates; must equal mcp-kubernetes' impersonateUser.
+      # An SA-prefixed user renders a namespaced serviceaccounts Role; a plain
+      # username (e.g. "agent:sre") renders a cluster-scoped users rule instead.
+      granted:
+        user: "system:serviceaccount:kagent:sre-agent"
+        # Groups the deputy impersonates (muster injects them; the deputy also
+        # appends system:authenticated, which the ClusterRole therefore allows).
+        groups:
+          - agent:sre
+        # ClusterRoles to bind the granted groups to (the agent's actual K8s authz);
+        # one ClusterRoleBinding per role. Empty = no binding (granting cluster-wide
+        # read is left an explicit per-cluster opt-in). Set e.g. [read-all].
+        clusterRoles: []
+      # ServiceAccounts permitted to impersonate `granted` at the apiserver.
+      impersonators:
+        - name: mcp-kubernetes
+          namespace: mcp-kubernetes
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one

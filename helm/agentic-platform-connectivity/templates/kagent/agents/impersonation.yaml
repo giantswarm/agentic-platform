@@ -1,0 +1,4 @@
+{{- if and .Values.kagent.enabled .Values.agents.sreAgent.enabled .Values.agents.sreAgent.m2m.enabled }}
+{{- $imp := .Values.agents.sreAgent.m2m }}
+{{- include "agentic-platform.agentImpersonation" (dict "ctx" . "agentName" "sre-agent" "user" $imp.granted.user "groups" $imp.granted.groups "impersonators" $imp.impersonators "clusterRoles" $imp.granted.clusterRoles) }}
+{{- end }}

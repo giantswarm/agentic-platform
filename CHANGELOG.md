@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `agents.sreAgent`: opt-in bundled Declarative kagent `Agent` (`sre-agent`) that reaches muster machine-to-machine through the static `muster` RemoteMCPServer (SA Bearer token from the `<name>-kagent-muster-token` Secret). `spec.declarative.deployment.serviceAccountName` is omitted so the kagent controller auto-creates the `sre-agent` SA. Configurable `modelConfig` (default `default-model-config`), `systemMessage`, `toolServer` (default `muster`), `toolNames`, `allowedHeaders`, `deployment.resources`, and `deployment.env`. `allowedHeaders` is inert: forwarding a request header onto muster tool calls additionally needs kagent-dev/kagent#2044, absent from the pinned kagent 0.9.9. Disabled by default.
+- `agents.sreAgent.m2m`: opt-in impersonation RBAC for the agent's M2M identity. `m2m.impersonators` (list of `{name, namespace}` SAs, default `mcp-kubernetes`) get a `Role`/`ClusterRole` allowing them to impersonate `m2m.granted`. A `system:serviceaccount:…` `granted.user` renders a namespaced `serviceaccounts` Role + groups `ClusterRole`; a plain username renders a single `users`+`groups` ClusterRole. `m2m.granted.clusterRoles` (default `[]`) binds the granted groups to the listed ClusterRoles (the agent's K8s authz, e.g. `read-all`), one ClusterRoleBinding each. The matching muster `workloadGroupGrant` and mcp-kubernetes `impersonateUser`/`impersonateGroups` are configured per cluster and must agree with `m2m.granted`. Disabled by default.
 
 ### Removed
 
