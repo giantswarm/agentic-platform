@@ -13,6 +13,15 @@ knowledge:
       optional, for dev-tag streams).
   valuesFrom    — name of the TOP-LEVEL values block passed straight through to
       this release's values. Omit for components that take no values.
+  valuesKey     — when set, the valuesFrom block is NESTED under this key before
+      being forwarded (e.g. valuesKey: kagent → {kagent: {…block…}}). Needed for
+      GS wrapper charts that vendor an upstream chart as a SUBCHART of the same
+      name: Helm only passes parent values to a subchart when they sit under the
+      subchart's key. The top-level block (and every per-cluster override path and
+      the connectivity chart's reads of it) stays flat — only the copy handed to
+      this release is wrapped. global is injected at the wrapped top level so the
+      subchart still inherits it. Omit for charts whose values are already at top
+      level (muster, the GS-owned connectivity/crds charts).
   forwardAllValues — pass the WHOLE values tree (minus the meta keys) instead of
       a single block. Used by agentic-platform-connectivity, which reads many
       blocks (ingress, gateway, networkPolicy, kagent, klausGateway, …).
@@ -66,6 +75,9 @@ component to a cluster prerequisite (e.g. crds shipped by the platform base) */ 
 {{- $vals = omit $root.Values "gitops" "components" }}
 {{- else }}
 {{- with $c.valuesFrom }}{{- $vals = index $root.Values . | default dict }}{{- end }}
+{{- /* GS wrapper charts vendor the upstream chart as a subchart of the same name;
+nest the forwarded block under that key so Helm hands it to the subchart. */ -}}
+{{- with $c.valuesKey }}{{- $vals = dict . $vals }}{{- end }}
 {{- if ne $c.injectGlobal false }}{{- $vals = merge (deepCopy $vals) (dict "global" $root.Values.global) }}{{- end }}
 {{- end }}
 {{- $deps := $c.dependsOn | default list }}

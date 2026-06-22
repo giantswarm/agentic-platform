@@ -79,10 +79,21 @@ components:
     crds: CreateReplace
   agentgateway:
     chart: agentgateway
-    repository: oci://cr.agentgateway.dev/charts
-    versionRange: ">=1.0.0 <2.0.0"   # exclude a future v2 semver reset
+    # GS-vendored wrapper chart (upstream agentgateway controller as a subchart),
+    # shipping the agentgateway.dev CRDs in its own crds/ dir (app-owned CRDs).
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    versionRange: "0.x"
     valuesFrom: agentgateway
+    # The wrapper vendors the upstream chart under a subchart named `agentgateway`,
+    # so the forwarded block must be nested under that key.
+    valuesKey: agentgateway
     enabledFrom: agentgateway.enabled
+    # App-owned CRDs: upgrade the crds/-dir CRDs atomically with the app. Release A
+    # of the staged migration keeps the agentic-platform-crds dependency so this
+    # CreateReplace first overwrites the live (un-annotated) CRDs with the chart's
+    # helm.sh/resource-policy: keep copies; release B then drops the bundle dep and
+    # repoints CR consumers (AgentgatewayBackend/Policy) to dependsOn this component.
+    crds: CreateReplace
     dependsOn: [agentic-platform-crds]
   valkey:
     chart: valkey
@@ -103,33 +114,30 @@ components:
     dependsOn: [muster, agentic-platform-crds]
   kagent:
     chart: kagent
-    repository: oci://ghcr.io/kagent-dev/kagent/helm
-    # Pinned (exception to wide ranges): the upstream chart derives both the image
-    # tag and the app.kubernetes.io/version label from .Chart.Version, which
-    # helm-controller corrupts with the OCI +digest. The kagent.tag value and this
-    # pin must stay in lockstep so the running image matches the chart. Widen this
-    # back to "0.x" once the upstream chart sanitizes the tag/label (or GS vendors).
-    versionRange: "0.9.9"
+    # GS-vendored wrapper chart (giantswarm/kagent-app): upstream kagent controller
+    # vendored as a subchart, shipping the kagent.dev + kmcp CRDs in its own crds/
+    # dir (app-owned CRDs). Wrapping the upstream chart as a subchart keeps the
+    # subchart's `.Chart.Version` a clean pinned 0.9.9 even when helm-controller
+    # appends the OCI +digest to THIS umbrella's version, so the
+    # app.kubernetes.io/version label is no longer corrupted — the postRenderer
+    # kustomize hack and the version pin the meta-package needed for the upstream
+    # chart are both gone.
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    versionRange: "0.x"
     valuesFrom: kagent
+    # The wrapper vendors the upstream chart under a subchart named `kagent`, so the
+    # forwarded block (controller/providers/oauth2-proxy/otel/… overrides, plus the
+    # per-cluster SOPS overrides that target the same flat paths) must be nested
+    # under that key.
+    valuesKey: kagent
     enabledFrom: kagent.enabled
+    # App-owned CRDs: upgrade the crds/-dir CRDs atomically with the app. Release A
+    # of the staged migration keeps the agentic-platform-crds dependency so this
+    # CreateReplace first overwrites the live (un-annotated) kagent.dev/kmcp CRDs
+    # with the chart's helm.sh/resource-policy: keep copies; release B then drops
+    # the bundle dep and repoints CR consumers to dependsOn this component.
+    crds: CreateReplace
     dependsOn: [agentic-platform-crds]
-    # The upstream kagent chart stamps `.Chart.Version` into the
-    # app.kubernetes.io/version label unsanitized. When helm-controller sources
-    # the chart via OCIRepository it appends the OCI digest as SemVer build
-    # metadata (e.g. 0.9.9+be08504485a7); the `+` is illegal in a k8s label, so
-    # every kagent resource is rejected at admission. Overwrite the label on all
-    # release-owned resources with a clean value. ponytail: static value (does
-    # not track the running version) — drop this once the label is sanitized
-    # upstream (kagent-dev/kagent _helpers.tpl) or kagent is vendored by GS.
-    postRenderers:
-      - kustomize:
-          patches:
-            - target:
-                labelSelector: app.kubernetes.io/managed-by=Helm
-              patch: |
-                - op: add
-                  path: /metadata/labels/app.kubernetes.io~1version
-                  value: "0.9.9"
   klaus-gateway:
     chart: klaus-gateway
     repository: oci://gsoci.azurecr.io/charts/giantswarm
@@ -142,6 +150,12 @@ components:
     versionRange: "0.x"
     enabledFrom: agentSandbox.enabled
     injectGlobal: false              # strict values.schema.json
+    # App-owned CRDs: the GS agent-sandbox chart now ships its CRDs in its own
+    # crds/ dir (the standalone agent-sandbox-crds chart is retired). The live CRDs
+    # already carry helm.sh/resource-policy: keep, so this CreateReplace is a no-op
+    # re-apply on existing clusters; it makes the app own CRD upgrades when enabled.
+    # No valuesKey: this component forwards no values (uses the chart's GS defaults).
+    crds: CreateReplace
     dependsOn: [agentic-platform-crds]
   agentic-platform-connectivity:
     chart: agentic-platform-connectivity
