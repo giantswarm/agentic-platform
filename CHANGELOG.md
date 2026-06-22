@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Retired the `agentic-platform-crds` bundle chart** — every component now owns its CRDs (app-owned CRDs). The standalone chart (`helm/agentic-platform-crds/`), its CircleCI build/test/push jobs, and the now-dead Renovate `helmv3` lockstep `packageRules` are deleted. There is no longer a `components.agentic-platform-crds` entry in the meta-package.
+
+### Changed
+
+- **App-owned CRDs, release B + bundle retirement** (completes the staged migration begun in release A). `agentgateway`, `kagent`, and `agent-sandbox` drop their `dependsOn: [agentic-platform-crds]` (they already ship their CRDs with `crds: CreateReplace`). The CR consumers repoint to the CRD-owning components: `agentic-platform-mcps` now `dependsOn: [muster, agentgateway]` and `agentic-platform-connectivity` now `dependsOn: [agentgateway, kagent]` (both were `agentic-platform-crds`). The handoff is non-destructive: release A had already overwritten the live agentgateway/kagent/kmcp CRDs with the wrapper charts' `helm.sh/resource-policy: keep` copies, so Flux pruning the retired bundle `HelmRelease` cannot delete the CRDs or cascade to any CR.
+- The meta-package's generic component loop now **drops a `dependsOn` reference to a component that is toggled off** (new `agentic-platform.componentEnabled` helper). With app-owned CRDs a CR consumer dependsOn the opt-in component that ships the CRD it needs; in the default `muster-direct` topology `agentgateway`/`kagent` are off and render no `HelmRelease`, so without this filtering the always-on `agentic-platform-connectivity` release would block forever on a dependency that was never rendered.
+
 ### Added
 
 - `agents.sreAgent`: opt-in bundled Declarative kagent `Agent` (`sre-agent`) that reaches muster machine-to-machine through the static `muster` RemoteMCPServer (SA Bearer token from the `<name>-kagent-muster-token` Secret). `spec.declarative.deployment.serviceAccountName` is omitted so the kagent controller auto-creates the `sre-agent` SA. Configurable `modelConfig` (default `default-model-config`), `systemMessage`, `toolServer` (default `muster`), `toolNames`, `allowedHeaders`, `deployment.resources`, and `deployment.env`. `allowedHeaders` is inert: forwarding a request header onto muster tool calls additionally needs kagent-dev/kagent#2044, absent from the pinned kagent 0.9.9. Disabled by default.

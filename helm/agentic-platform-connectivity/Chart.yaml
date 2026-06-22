@@ -8,8 +8,9 @@ description: |
   AgentgatewayParameters + HTTPRoutes + BackendTrafficPolicies, the NetworkPolicies,
   the kagent and klaus-gateway routes, the kagent declarative-agent wiring, and the
   CloudNativePG Cluster. Ships NO workloads of its own — those are separate releases
-  rendered by the agentic-platform meta-chart. The CRDs these CRs consume ship in the
-  companion agentic-platform-crds chart, which must be installed first.
+  rendered by the agentic-platform meta-chart. The CRDs these CRs consume are
+  app-owned: each component (agentgateway, kagent, …) ships its own CRDs, so this
+  chart's HelmRelease dependsOn those CRD-owning component releases.
 home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
@@ -27,5 +28,7 @@ annotations:
 # kagent/klaus-gateway routes, kagent declarative-agent wiring, CNPG Cluster).
 # The components it wires (muster, agentgateway, kagent, …) are installed as
 # separate releases by the agentic-platform meta-chart, which renders THIS chart
-# as a HelmRelease that `dependsOn` the agentic-platform-crds release — so every
-# CRD these CRs consume is Established before they apply.
+# as a HelmRelease that `dependsOn` the agentgateway + kagent component releases
+# (each ships its own CRDs — app-owned CRDs) — so every CRD these CRs consume is
+# Established before they apply. The dependsOn entries for components toggled off
+# are dropped at render time, since no CR needing that CRD is rendered then.

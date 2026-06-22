@@ -156,8 +156,8 @@ muster:
   fullnameOverride: muster
   # App-owned CRDs: muster's MCPServer / Workflow CRDs now ship in the muster app
   # chart's own crds/ directory and are upgraded atomically with the app via the
-  # muster component's `crds: CreateReplace` policy — NOT via the
-  # agentic-platform-crds bundle and NOT via the sub-chart's templated CRDs.
+  # muster component's `crds: CreateReplace` policy — NOT via the sub-chart's
+  # templated CRDs (the standalone CRD bundle has been retired).
   # `crds.install: false` keeps the sub-chart from also templating the CRDs under
   # templates/ (which Helm would own and could prune), avoiding duplicate ownership
   # with the crds/-dir copy. Stays as a guard regardless of the muster version below.
@@ -293,9 +293,10 @@ valkey:
 #   .muster.enabled        — render muster.giantswarm.io MCPServer CRs (default true)
 #   .agentgateway.enabled  — render agentgateway.dev AgentgatewayBackend +
 #                            per-target AgentgatewayPolicy CRs (default false)
-# The CRDs these CRs consume ship in the companion agentic-platform-crds chart
-# (install first) — this sub-chart ships no CRDs. Even when enabled it renders
-# nothing until `agentic-platform-mcps.mcpServers` is populated.
+# The CRDs these CRs consume are app-owned: muster.giantswarm.io ships with the
+# muster app chart, agentgateway.dev with the agentgateway app chart — this
+# sub-chart ships no CRDs. Even when enabled it renders nothing until
+# `agentic-platform-mcps.mcpServers` is populated.
 # Full value reference: https://github.com/giantswarm/agentic-platform-mcps
 #
 # The on/off toggle lives here, OUTSIDE the `agentic-platform-mcps` namespace,
@@ -336,8 +337,8 @@ agentic-platform-mcps:
 
 # kagent — Kubernetes-native AI agent runtime (controller + UI).
 # All keys pass through to the kagent subchart (no strict schema filtering).
-# Prerequisite: kagent-crds must be installed via the companion
-# agentic-platform-crds chart before enabling this.
+# The kagent.dev + kmcp CRDs ship with the kagent app chart itself (app-owned
+# CRDs), so enabling kagent installs them too.
 #
 # When postgres.enabled is true, configure the CNPG DSN wiring below so kagent
 # uses the platform Postgres instead of its bundled instance. CNPG auto-generates
@@ -674,7 +675,7 @@ kagent:
 
 # Platform agents — kagent RemoteMCPServer CRs and supporting network policies.
 # All CRs land in kagent.namespaceOverride (default: kagent).
-# Prerequisite: kagent.enabled: true and kagent-crds installed.
+# Prerequisite: kagent.enabled: true (the kagent app chart ships the kagent CRDs).
 #
 # muster RemoteMCPServer, SA, and egress CNP are gated on kagent.enabled + muster.enabled.
 agents:

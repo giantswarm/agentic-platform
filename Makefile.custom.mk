@@ -58,13 +58,15 @@ verify-meta: ## Assert the app-of-apps meta-package render (pure renderer, range
 	@if grep -q '^dependencies:' $(CHART_DIR)/Chart.yaml; then \
 		echo "FAIL: Chart.yaml still pins component versions as dependencies"; exit 1; \
 	else echo "ok: zero pinned dependencies"; fi
-	@echo "--> flux engine renders OCIRepository + HelmRelease with version RANGES + CRD dependsOn"
+	@echo "--> flux engine renders OCIRepository + HelmRelease with version RANGES + app-owned CRDs"
 	@helm template t $(CHART_DIR) -f $(CHART_DIR)/ci/ci-values.yaml >/tmp/ap-flux.out 2>&1 || { cat /tmp/ap-flux.out; exit 1; }
 	@grep -q 'kind: OCIRepository' /tmp/ap-flux.out || { echo "FAIL: no OCIRepository"; exit 1; }
 	@grep -q 'kind: HelmRelease'   /tmp/ap-flux.out || { echo "FAIL: no HelmRelease"; exit 1; }
 	@grep -q 'semver: "0.x"'       /tmp/ap-flux.out || { echo "FAIL: muster range not rendered as a value"; exit 1; }
-	@grep -q 'name: agentic-platform-crds' /tmp/ap-flux.out || { echo "FAIL: crds release / dependsOn target missing"; exit 1; }
 	@grep -q 'name: agentic-platform-connectivity' /tmp/ap-flux.out || { echo "FAIL: connectivity release missing"; exit 1; }
+	@if grep -q 'agentic-platform-crds' /tmp/ap-flux.out; then echo "FAIL: retired agentic-platform-crds bundle still referenced"; exit 1; else echo "ok: no agentic-platform-crds bundle (app-owned CRDs)"; fi
+	@grep -q 'crds: CreateReplace' /tmp/ap-flux.out || { echo "FAIL: app-owned CRDs (crds: CreateReplace) not rendered"; exit 1; }
+	@grep -qE '^    - name: agentgateway$$' /tmp/ap-flux.out || { echo "FAIL: a CR consumer no longer dependsOn its CRD-owning component (agentgateway)"; exit 1; }
 	@echo "ok: flux render"
 	@echo "--> PURE app-of-apps: root emits ONLY OCIRepository + HelmRelease (no raw CRs)"
 	@if grep -E '^kind:' /tmp/ap-flux.out | grep -vqE '^kind: (OCIRepository|HelmRelease)$$'; then \
@@ -93,10 +95,12 @@ verify-meta: ## Assert the app-of-apps meta-package render (pure renderer, range
 	else echo "ok: all CRs in flux-giantswarm"; fi
 	@grep -q 'targetNamespace: agentic-platform' /tmp/ap-ns.out || { echo "FAIL: HelmRelease targetNamespace not routed"; exit 1; }
 	@echo "ok: gitops namespace routing"
-	@echo "--> components.<name>.enabled=false delegates a component to a prerequisite"
-	@helm template t $(CHART_DIR) -f $(CHART_DIR)/ci/ci-values.yaml --set components.agentic-platform-crds.enabled=false >/tmp/ap-noc.out 2>&1 || { cat /tmp/ap-noc.out; exit 1; }
-	@if grep -qE '^  name: agentic-platform-crds$$' /tmp/ap-noc.out; then echo "FAIL: crds still rendered when disabled"; exit 1; else echo "ok: crds component skipped (dependsOn refs to the prerequisite remain)"; fi
-	@grep -q 'name: muster' /tmp/ap-noc.out || { echo "FAIL: disabling crds dropped other components"; exit 1; }
+	@echo "--> components.<name>.enabled=false skips that component's release"
+	@helm template t $(CHART_DIR) -f $(CHART_DIR)/ci/ci-values.yaml --set components.kagent.enabled=false >/tmp/ap-noc.out 2>&1 || { cat /tmp/ap-noc.out; exit 1; }
+	@if grep -qE '^  name: kagent$$' /tmp/ap-noc.out; then echo "FAIL: kagent still rendered when disabled"; exit 1; else echo "ok: kagent component skipped"; fi
+	@grep -q 'name: muster' /tmp/ap-noc.out || { echo "FAIL: disabling kagent dropped other components"; exit 1; }
+	@echo "--> a dependsOn ref to a disabled component is dropped (no dangling dependency)"
+	@if grep -qE '^    - name: kagent$$' /tmp/ap-noc.out; then echo "FAIL: connectivity still dependsOn disabled kagent (would block forever)"; exit 1; else echo "ok: dangling dependsOn dropped"; fi
 	@echo "--> connectivity chart owns the wiring (renders an HTTPRoute)"
 	@helm template t $(CONNECTIVITY_DIR) -f $(CONNECTIVITY_DIR)/ci/ci-values.yaml >/tmp/ap-conn.out 2>&1 || { cat /tmp/ap-conn.out; exit 1; }
 	@grep -q 'kind: HTTPRoute' /tmp/ap-conn.out || { echo "FAIL: connectivity did not render the muster HTTPRoute"; exit 1; }

@@ -9,13 +9,15 @@ Prerequisite check (run BEFORE installing the agentic platform):
   kubectl get crd agentgatewayparameters.agentgateway.dev
   kubectl get crd mcpservers.muster.giantswarm.io
 
-This chart installs NO CRDs. Install the companion agentic-platform-crds
-chart first (it ships the agentgateway + muster CRDs); wait for them to be
-Established; then install this release.
+This chart installs NO CRDs. The CRDs its CRs consume are app-owned: each
+component (agentgateway, kagent, muster, agent-sandbox) ships its own CRDs in its
+chart's crds/ dir. Install the component charts that own the CRDs this wiring
+references first (or let the agentic-platform meta-package order it for you — it
+renders this chart as a HelmRelease that dependsOn the agentgateway + kagent
+component releases), then install this release.
 
-  helm install agentic-platform-crds \
-    oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform-crds \
-    --version <crds-chart-version> -n {{ .Release.Namespace }} --create-namespace
+  # agentgateway.dev CRDs ride the agentgateway component chart; kagent.dev CRDs
+  # ride the kagent component chart; muster.giantswarm.io CRDs ride muster.
   helm install {{ .Release.Name }} \
     oci://gsoci.azurecr.io/charts/giantswarm/agentic-platform \
     --version <agentic-platform-version> -n {{ .Release.Namespace }}

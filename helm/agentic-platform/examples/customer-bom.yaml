@@ -14,7 +14,6 @@ gitops:
   interval: 30m
 
 components:
-  agentic-platform-crds:         { versionRange: "1.5.0" }
   muster:                        { versionRange: "0.9.0" }
   agentgateway:                  { versionRange: "v1.3.0" }
   valkey:                        { versionRange: "0.1.2" }

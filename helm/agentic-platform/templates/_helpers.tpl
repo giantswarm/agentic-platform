@@ -34,6 +34,35 @@ app.kubernetes.io/instance: {{ .Release.Name | quote }}
 {{- end -}}
 
 {{/*
+Whether a component is enabled — mirrors the enable logic in
+templates/components.yaml (enabledFrom path, then an explicit `enabled`
+override). `name` is the components.<key> name, which equals the component's
+chart name and is therefore what a dependsOn entry references. Emits "true" when
+on, empty string otherwise.
+
+Used to drop a dependsOn reference to a component that is toggled off, so a
+consumer does not wait forever on a HelmRelease that was never rendered. With
+app-owned CRDs a CR consumer dependsOn the component that ships the CRD (e.g.
+connectivity dependsOn agentgateway + kagent), but those components are opt-in —
+in the default muster-direct topology they are off and render no HelmRelease, so
+an unfiltered dependsOn would block the always-on consumer indefinitely. An
+unknown name (not in components) is kept rather than silently dropped.
+Usage: include "agentic-platform.componentEnabled" (dict "root" $root "name" "agentgateway")
+*/}}
+{{- define "agentic-platform.componentEnabled" -}}
+{{- $root := .root -}}
+{{- $c := index $root.Values.components .name -}}
+{{- if $c -}}
+{{- $on := true -}}
+{{- with $c.enabledFrom }}{{- $on = index $root.Values (first (splitList "." .)) (last (splitList "." .)) }}{{- end }}
+{{- if hasKey $c "enabled" }}{{- $on = $c.enabled }}{{- end }}
+{{- if $on }}true{{- end -}}
+{{- else -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
 Name of the AgentgatewayParameters CR — defaults to release name.
 */}}
 {{- define "agentic-platform.parametersName" -}}
