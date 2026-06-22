@@ -47,11 +47,12 @@ gitops:
 #   forwardAllValues — forward the whole values tree (connectivity reads many
 #       blocks). injectGlobal — inject .Values.global (default true; false for
 #       strict-schema charts that reject an unexpected `global` key).
-#   enabledFrom  — existing on/off toggle path. dependsOn — CRD-before-CR order.
+#   enabledFrom  — existing on/off toggle path. dependsOn — CRD-before-CR order
+#       (a reference to a toggled-off component is dropped at render time).
 #   crds         — Helm CRD lifecycle (CreateReplace) for a component that ships its
 #       own CRDs in its chart's crds/ dir (app-owned CRDs). Such a component owns its
-#       CRD version and does NOT dependsOn the agentic-platform-crds bundle; its CR
-#       consumers dependsOn it instead. Flux-only (Argo applies crds/ unconditionally).
+#       CRD version; its CR consumers dependsOn it instead. Flux-only (Argo applies
+#       crds/ unconditionally).
 #
 # The per-component VALUES + on/off toggles live in their existing top-level
 # blocks below (muster:, agentgateway:, kagent:, valkey:, klausGateway:,
@@ -59,13 +60,10 @@ gitops:
 # (ingress:, gateway:, networkPolicy:, postgres:, extraObjects:) — unchanged, so
 # every existing override path and values.schema.json still applies.
 components:
-  agentic-platform-crds:
-    chart: agentic-platform-crds
-    repository: oci://gsoci.azurecr.io/charts/giantswarm
-    # In-repo chart: architect replaces its version with this repo's git tag,
-    # so it tracks the 1.x line (same as agentic-platform itself), NOT 0.x.
-    versionRange: ">=1.0.0"
-    injectGlobal: false
+  # NOTE: there is no longer an agentic-platform-crds component. Every component
+  # ships its own CRDs in its chart's crds/ dir (app-owned CRDs) and sets
+  # `crds: CreateReplace`; its CR consumers dependsOn it directly. The standalone
+  # CRD bundle has been retired — see CHANGELOG / UPGRADE.
   muster:
     chart: muster
     repository: oci://gsoci.azurecr.io/charts/giantswarm
@@ -74,8 +72,8 @@ components:
     # App-owned CRDs: muster ships its MCPServer/Workflow CRDs in its own chart
     # crds/ dir and owns their version. CreateReplace makes Flux upgrade them
     # atomically with the app on every release (Helm never upgrades crds/-dir CRDs
-    # on its own). It therefore does NOT dependsOn agentic-platform-crds; consumers
-    # of its CR kinds (agentic-platform-mcps) dependsOn muster instead.
+    # on its own). It owns their version, so no CRD dependsOn; consumers of its CR
+    # kinds (agentic-platform-mcps) dependsOn muster instead.
     crds: CreateReplace
   agentgateway:
     chart: agentgateway
@@ -88,13 +86,13 @@ components:
     # so the forwarded block must be nested under that key.
     valuesKey: agentgateway
     enabledFrom: agentgateway.enabled
-    # App-owned CRDs: upgrade the crds/-dir CRDs atomically with the app. Release A
-    # of the staged migration keeps the agentic-platform-crds dependency so this
-    # CreateReplace first overwrites the live (un-annotated) CRDs with the chart's
-    # helm.sh/resource-policy: keep copies; release B then drops the bundle dep and
-    # repoints CR consumers (AgentgatewayBackend/Policy) to dependsOn this component.
+    # App-owned CRDs: the wrapper chart ships the agentgateway.dev CRDs (with
+    # helm.sh/resource-policy: keep) in its own crds/ dir; CreateReplace upgrades
+    # them atomically with the app on every release. It owns their version, so it
+    # does NOT dependsOn anything for CRDs; its CR consumers (agentic-platform-mcps
+    # for AgentgatewayBackend/Policy, agentic-platform-connectivity for
+    # AgentgatewayParameters) dependsOn this component instead.
     crds: CreateReplace
-    dependsOn: [agentic-platform-crds]
   valkey:
     chart: valkey
     # Pull from gsoci (the primary GS registry every other component uses); the
@@ -112,10 +110,12 @@ components:
     valuesFrom: agentic-platform-mcps
     enabledFrom: mcps.enabled
     injectGlobal: false              # strict values.schema.json
-    # Creates muster.giantswarm.io/MCPServer CRs (CRD now owned by the muster app,
-    # so dependsOn muster) and, when agentgateway.enabled, agentgateway.dev CRs
-    # (CRDs still in the bundle, so dependsOn agentic-platform-crds too).
-    dependsOn: [muster, agentic-platform-crds]
+    # Creates muster.giantswarm.io/MCPServer CRs (CRD owned by the muster app) and,
+    # when agentgateway is enabled, agentgateway.dev CRs (CRDs owned by the
+    # agentgateway app). Both CRDs are now app-owned, so dependsOn those components
+    # directly. The agentgateway reference is dropped at render time when the
+    # agentgateway component is off (no agentgateway CRs are rendered then anyway).
+    dependsOn: [muster, agentgateway]
   kagent:
     chart: kagent
     # GS-vendored wrapper chart (giantswarm/kagent-app): upstream kagent controller
@@ -135,13 +135,13 @@ components:
     # under that key.
     valuesKey: kagent
     enabledFrom: kagent.enabled
-    # App-owned CRDs: upgrade the crds/-dir CRDs atomically with the app. Release A
-    # of the staged migration keeps the agentic-platform-crds dependency so this
-    # CreateReplace first overwrites the live (un-annotated) kagent.dev/kmcp CRDs
-    # with the chart's helm.sh/resource-policy: keep copies; release B then drops
-    # the bundle dep and repoints CR consumers to dependsOn this component.
+    # App-owned CRDs: the wrapper chart ships the kagent.dev + kmcp CRDs (with
+    # helm.sh/resource-policy: keep) in its own crds/ dir; CreateReplace upgrades
+    # them atomically with the app on every release. It owns their version, so it
+    # does NOT dependsOn anything for CRDs; its CR consumers
+    # (agentic-platform-connectivity for the kagent RemoteMCPServer/ModelConfig
+    # CRs) dependsOn this component instead.
     crds: CreateReplace
-    dependsOn: [agentic-platform-crds]
   klaus-gateway:
     chart: klaus-gateway
     repository: oci://gsoci.azurecr.io/charts/giantswarm
@@ -154,19 +154,24 @@ components:
     versionRange: "0.x"
     enabledFrom: agentSandbox.enabled
     injectGlobal: false              # strict values.schema.json
-    # App-owned CRDs: the GS agent-sandbox chart now ships its CRDs in its own
-    # crds/ dir (the standalone agent-sandbox-crds chart is retired). The live CRDs
-    # already carry helm.sh/resource-policy: keep, so this CreateReplace is a no-op
-    # re-apply on existing clusters; it makes the app own CRD upgrades when enabled.
+    # App-owned CRDs: the GS agent-sandbox chart ships its CRDs in its own crds/
+    # dir (the standalone agent-sandbox-crds chart is retired). The CRDs carry
+    # helm.sh/resource-policy: keep; CreateReplace makes the app own CRD upgrades
+    # when enabled. It owns their version, so no CRD dependsOn.
     # No valuesKey: this component forwards no values (uses the chart's GS defaults).
     crds: CreateReplace
-    dependsOn: [agentic-platform-crds]
   agentic-platform-connectivity:
     chart: agentic-platform-connectivity
     repository: oci://gsoci.azurecr.io/charts/giantswarm
     versionRange: ">=1.0.0"          # this repo's own wiring chart
     forwardAllValues: true
-    dependsOn: [agentic-platform-crds]
+    # Renders the consumer-side CRs: AgentgatewayParameters (agentgateway.dev CRD,
+    # owned by the agentgateway app) and the kagent RemoteMCPServer/ModelConfig CRs
+    # (kagent.dev CRD, owned by the kagent app). dependsOn those CRD-owning
+    # components; both references are dropped at render time when the component is
+    # off (in muster-direct mode neither renders, and connectivity's only CR then
+    # is muster's public HTTPRoute, which needs the cluster-prereq Gateway API CRDs).
+    dependsOn: [agentgateway, kagent]
 
 # === Ingress topology ===
 # mode selects the whole request topology. What each mode renders/consumes:
@@ -323,7 +328,7 @@ muster:
   # App-owned CRDs: muster's MCPServer / Workflow CRDs now ship in the muster app
   # chart's own crds/ directory and are upgraded atomically with the app via the
   # component's `crds: CreateReplace` policy (see components.muster above) — NOT via
-  # the agentic-platform-crds bundle and NOT via the sub-chart's templated CRDs.
+  # the sub-chart's templated CRDs (the standalone CRD bundle has been retired).
   # `crds.install: false` keeps the sub-chart from also templating the CRDs under
   # templates/ (which Helm would own and could prune), avoiding duplicate ownership
   # with the crds/-dir copy. Stays as a guard regardless of the muster version below.
@@ -459,9 +464,10 @@ valkey:
 #   .muster.enabled        — render muster.giantswarm.io MCPServer CRs (default true)
 #   .agentgateway.enabled  — render agentgateway.dev AgentgatewayBackend +
 #                            per-target AgentgatewayPolicy CRs (default false)
-# The CRDs these CRs consume ship in the companion agentic-platform-crds chart
-# (install first) — this sub-chart ships no CRDs. Even when enabled it renders
-# nothing until `agentic-platform-mcps.mcpServers` is populated.
+# The CRDs these CRs consume are app-owned: muster.giantswarm.io ships with the
+# muster app chart, agentgateway.dev with the agentgateway app chart — this
+# sub-chart ships no CRDs. Even when enabled it renders nothing until
+# `agentic-platform-mcps.mcpServers` is populated.
 # Full value reference: https://github.com/giantswarm/agentic-platform-mcps
 #
 # The on/off toggle lives here, OUTSIDE the `agentic-platform-mcps` namespace,
@@ -502,8 +508,8 @@ agentic-platform-mcps:
 
 # kagent — Kubernetes-native AI agent runtime (controller + UI).
 # All keys pass through to the kagent subchart (no strict schema filtering).
-# Prerequisite: kagent-crds must be installed via the companion
-# agentic-platform-crds chart before enabling this.
+# The kagent.dev + kmcp CRDs ship with the kagent app chart itself (app-owned
+# CRDs), so enabling kagent installs them too.
 #
 # When postgres.enabled is true, configure the CNPG DSN wiring below so kagent
 # uses the platform Postgres instead of its bundled instance. CNPG auto-generates
@@ -848,7 +854,7 @@ kagent:
 
 # Platform agents — kagent RemoteMCPServer CRs and supporting network policies.
 # All CRs land in kagent.namespaceOverride (default: kagent).
-# Prerequisite: kagent.enabled: true and kagent-crds installed.
+# Prerequisite: kagent.enabled: true (the kagent app chart ships the kagent CRDs).
 #
 # muster RemoteMCPServer, SA, and egress CNP are gated on kagent.enabled + muster.enabled.
 agents:

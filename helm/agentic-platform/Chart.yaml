@@ -7,9 +7,9 @@ description: |
   klaus-gateway, valkey, agentic-platform-mcps, agent-sandbox) and the consumer-side
   connectivity layer as a Flux OCIRepository + HelmRelease (or Argo Application),
   with each component's version expressed as a value RANGE rather than a Chart.yaml
-  pin — so a component release rolls forward with no PR to this chart. CRDs ship in
-  the companion agentic-platform-crds chart; the Gateway API CRDs and GatewayClass
-  remain cluster-level prerequisites — see README.
+  pin — so a component release rolls forward with no PR to this chart. Each component
+  ships its own CRDs (app-owned CRDs, upgraded via Flux CreateReplace); the Gateway
+  API CRDs and GatewayClass remain cluster-level prerequisites — see README.
 home: https://github.com/giantswarm/agentic-platform
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
 sources:
@@ -33,6 +33,6 @@ annotations:
 # expressed as a value (`components.<name>.versionRange`). Flux re-resolves the
 # range on every reconcile, so a component release rolls forward with NO PR to
 # this chart. The consumer-side wiring lives in the agentic-platform-connectivity
-# chart, rendered the same way; the agentic-platform-crds chart is rendered as a
-# HelmRelease that every other release `dependsOn` (CRD-before-CR ordering).
-# See README "Meta-package release flow" and values.yaml `components`.
+# chart, rendered the same way. Each component ships its own CRDs (app-owned CRDs);
+# a CR consumer `dependsOn` the component that owns the CRD it needs (CRD-before-CR
+# ordering). See README "Meta-package release flow" and values.yaml `components`.

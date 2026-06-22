@@ -33,7 +33,10 @@ knowledge:
       force-enable (crds, muster, connectivity).
   enabled       — explicit on/off, overrides enabledFrom. Set false to delegate a
       component to a cluster prerequisite (e.g. crds shipped by the platform base).
-  dependsOn     — Flux dependsOn / Argo sync-wave ordering (CRDs before consumers).
+  dependsOn     — Flux dependsOn / Argo sync-wave ordering (CRD-owning component
+      before its CR consumers). References that name a component which is toggled
+      off are dropped at render time (see the componentEnabled helper) so an
+      always-on consumer never blocks on a HelmRelease that was never rendered.
   postRenderers — optional Flux helm-controller postRenderers passed straight to
       the child HelmRelease (flux engine only). Used to work around upstream chart
       bugs without forking — e.g. kagent stamps the chart version into
@@ -44,10 +47,8 @@ knowledge:
       HelmRelease's spec.install.crds and spec.upgrade.crds (flux engine only).
       Set to CreateReplace so the app's CRDs upgrade atomically with the app at the
       same version (Helm otherwise never upgrades crds/-dir CRDs). Such a component
-      owns its CRD version itself and must NOT dependsOn the shared CRDs bundle;
-      its CR consumers dependsOn it instead. Omit for components whose CRDs still
-      ship via the agentic-platform-crds bundle. Argo applies crds/ unconditionally,
-      so this field is flux-only.
+      owns its CRD version itself; its CR consumers dependsOn it instead. Argo
+      applies crds/ unconditionally, so this field is flux-only.
 */ -}}
 {{- $root := . -}}
 {{- $g := .Values.gitops -}}
@@ -80,7 +81,17 @@ nest the forwarded block under that key so Helm hands it to the subchart. */ -}}
 {{- with $c.valuesKey }}{{- $vals = dict . $vals }}{{- end }}
 {{- if ne $c.injectGlobal false }}{{- $vals = merge (deepCopy $vals) (dict "global" $root.Values.global) }}{{- end }}
 {{- end }}
-{{- $deps := $c.dependsOn | default list }}
+{{- /* Drop dependsOn references to components that are toggled off, so an
+always-on consumer (e.g. connectivity) does not block on a HelmRelease that was
+never rendered. With app-owned CRDs a consumer dependsOn the opt-in component
+that ships the CRD it needs; when that component is off it renders no CR for
+that CRD either, so the dependency is moot. */ -}}
+{{- $deps := list }}
+{{- range ($c.dependsOn | default list) }}
+{{- if include "agentic-platform.componentEnabled" (dict "root" $root "name" .) }}
+{{- $deps = append $deps . }}
+{{- end }}
+{{- end }}
 {{- if eq $g.engine "flux" }}
 ---
 apiVersion: source.toolkit.fluxcd.io/v1

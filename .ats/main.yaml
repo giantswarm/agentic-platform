@@ -1,6 +1,6 @@
 # app-test-suite config. Consumed by the generated `run-tests-with-ats`
-# CircleCI jobs (execute-chart-tests for the agentic-platform umbrella chart,
-# execute-crds-chart-tests for the agentic-platform-crds chart).
+# CircleCI job (execute-chart-tests for the agentic-platform meta-package chart).
+# The agentic-platform-crds bundle chart has been retired (app-owned CRDs).
 #
 # The cluster test steps are skipped on purpose. agentic-platform is an
 # app-of-apps platform meta-package: it always installs the muster subchart and

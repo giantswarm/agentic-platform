@@ -257,7 +257,7 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Install the kagent subchart. Requires kagent-crds to be present (install agentic-platform-crds first)."
+          "description": "Install the kagent subchart. The kagent.dev + kmcp CRDs ship with the kagent component chart itself (app-owned CRDs), so enabling kagent installs them too."
         },
         "namespaceOverride": {
           "type": "string",
@@ -360,7 +360,7 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Install the agent-sandbox controller subchart. Requires agent-sandbox-crds (install agentic-platform-crds first). It is the runtime kagent's SandboxAgent delegates to.",
+          "description": "Install the agent-sandbox controller subchart. The agent-sandbox CRDs ship with the agent-sandbox component chart itself (app-owned CRDs), so enabling it installs them too. It is the runtime kagent's SandboxAgent delegates to.",
           "default": false
         },
         "podSecurity": {

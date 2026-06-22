@@ -15,5 +15,7 @@ Flux re-resolves each versionRange on every reconcile, so component releases rol
 forward with no PR to this chart. Pin every range to an exact version (see
 examples/customer-bom.yaml) for a reproducible customer bill-of-materials.
 
-CRD-before-CR ordering: agentic-platform-crds installs first; every other release
-dependsOn it (Flux) or orders after it via sync-wave (Argo).
+CRD-before-CR ordering: each component ships its own CRDs (app-owned CRDs,
+upgraded via CreateReplace); a CR consumer dependsOn the component that owns the
+CRD it needs (Flux) or orders after it via sync-wave (Argo). The Gateway API CRDs
+and GatewayClass remain cluster-level prerequisites.

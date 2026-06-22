@@ -10,11 +10,14 @@
 # What this file carries beyond the golden (single-chart) pipeline:
 #   - test-ingress-modes: the `make verify-modes` + `make verify-meta` checks on
 #     branches (ingress-mode guards + app-of-apps meta-package render)
-#   - the standalone agentic-platform-crds chart (build, ATS tests, tag push)
 #   - the standalone agentic-platform-connectivity chart (build, tag push), the
 #     consumer-side wiring rendered by the meta-package as a HelmRelease
-#   all versioned in lockstep with agentic-platform off the same git tag. This
+#   versioned in lockstep with agentic-platform off the same git tag. This
 #   repo has no Dockerfile, so no chart depends on an image build.
+#
+# The agentic-platform-crds chart has been RETIRED — every component now ships
+# its own CRDs (app-owned CRDs), so there is no longer a CRD-bundle chart to
+# build/test/publish here.
 version: 2.1
 
 jobs:
@@ -53,60 +56,6 @@ workflows:
     - test-ingress-modes:
         filters:
           tags:
-            ignore: /.*/
-
-    # ---- agentic-platform-crds: the standalone CRD chart, versioned in
-    #      lockstep with agentic-platform off the same git tag. Same shape as
-    #      the generated agentic-platform chart pipeline: build + lint (persist,
-    #      no push), ATS tests, tag push. No Dockerfile in this repo, so no
-    #      image dependency.
-    - architect/push-to-app-catalog:
-        executor: app-build-suite
-        context: architect
-        name: build-crds-chart
-        app_catalog: giantswarm-catalog
-        app_catalog_test: giantswarm-test-catalog
-        chart: agentic-platform-crds
-        # chart name differs from the repo (agentic-platform) — required by the
-        # orb's chart-name check to publish a second chart from this repo.
-        explicit_allow_chart_name_mismatch: true
-        push_to_appcatalog: false
-        push_to_oci_registry: false
-        persist_chart_archive: true
-        filters:
-          tags:
-            only: /^v.*/
-          branches:
-            ignore:
-            - main
-
-    - architect/run-tests-with-ats:
-        name: execute-crds-chart-tests
-        requires:
-        - build-crds-chart
-        filters:
-          tags:
-            only: /^v.*/
-          branches:
-            ignore:
-            - main
-
-    # ---- Tag: push the CRD chart after its tests. Intentionally independent of
-    #      the primary chart's jobs so either chart can publish on its own.
-    - architect/push-to-app-catalog:
-        executor: app-build-suite
-        context: architect
-        name: push-crds-chart-release
-        app_catalog: giantswarm-catalog
-        app_catalog_test: giantswarm-test-catalog
-        chart: agentic-platform-crds
-        explicit_allow_chart_name_mismatch: true
-        requires:
-        - execute-crds-chart-tests
-        filters:
-          tags:
-            only: /^v.*/
-          branches:
             ignore: /.*/
 
     # ---- agentic-platform-connectivity: the consumer-side wiring chart, versioned

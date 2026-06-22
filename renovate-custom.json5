@@ -4,10 +4,13 @@
   // `extends` entry of the generated renovate.json5. Class-wide rules belong in
   // giantswarm/renovate-presets instead.
   //
-  // The helmv3 manager (enabled via config:recommended in the base preset) parses
-  // the OCI `dependencies:` in helm/*/Chart.yaml and regenerates Chart.lock. The
-  // charts/ .tgz archives are gitignored, so only Chart.yaml + Chart.lock are
-  // committed. All dependency registries are public-anonymous OCI — no hostRules.
+  // No chart in this repo has a Chart.yaml `dependencies:` block anymore: the
+  // agentic-platform meta-package and agentic-platform-connectivity render their
+  // children as Flux/Argo objects (component versions are `components.*.versionRange`
+  // VALUES re-resolved by Flux on every reconcile, not Renovate-managed pins), and
+  // the agentic-platform-crds CRD-bundle chart has been retired in favour of
+  // app-owned CRDs. So the helmv3 manager has nothing to manage here — the only
+  // custom rule left tracks the component image tags pinned in values.yaml.
   "customManagers": [
     {
       // Tracks registry/repository/tag image blocks in Helm values files.
@@ -19,30 +22,6 @@
         "registry: (?<registryUrl>[^\\n]+)\\n\\s+repository: (?<depName>[^\\n]+)\\n\\s+tag: \"?v?(?<currentValue>[^\"\\n]+)\"?"
       ],
       "datasourceTemplate": "docker",
-    },
-  ],
-  "packageRules": [
-    {
-      // agentgateway controller chart (agentic-platform) and its CRDs chart
-      // (agentic-platform-crds) are released together upstream and pinned to the
-      // SAME version. Bump them in one lockstep PR so controller and CRDs never
-      // drift apart.
-      // v2.x are excluded: upstream reset semver to v1.0.0 after releasing v2.2.x
-      // (agentgateway/agentgateway#1249). v2.x is older than v1.0.0 and must
-      // not be treated as an upgrade.
-      "matchManagers": ["helmv3"],
-      "matchDepNames": ["agentgateway", "agentgateway-crds"],
-      "groupName": "agentgateway",
-      "allowedVersions": "!/^v2\\./",
-    },
-    {
-      // muster app chart. Its CRDs now ride the muster app chart itself
-      // (app-owned CRDs via the meta-package's `crds: CreateReplace` policy), so
-      // muster-crds is no longer a bundle dependency here. Kept as a named group
-      // so a muster bump lands in a clearly-labelled PR.
-      "matchManagers": ["helmv3"],
-      "matchDepNames": ["muster"],
-      "groupName": "muster",
     },
   ],
 }
