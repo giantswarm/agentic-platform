@@ -97,7 +97,11 @@ components:
     dependsOn: [agentic-platform-crds]
   valkey:
     chart: valkey
-    repository: oci://giantswarmpublic.azurecr.io/giantswarm-catalog
+    # Pull from gsoci (the primary GS registry every other component uses); the
+    # giantswarmpublic catalog ACR has an IP-allowlist firewall that rejects many
+    # installations' egress, breaking the chart fetch (sardine, cedar, alligator,
+    # finch, …). The same chart/version is mirrored to gsoci.
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
     versionRange: "0.x"
     valuesFrom: valkey
     enabledFrom: valkey.enabled
