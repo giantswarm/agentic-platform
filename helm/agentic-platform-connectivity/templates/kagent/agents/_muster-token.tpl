@@ -76,6 +76,11 @@ initContainers:
       capabilities:
         drop: ["ALL"]
       readOnlyRootFilesystem: true
+    resources:
+      requests:
+        ephemeral-storage: 8Mi
+      limits:
+        ephemeral-storage: 16Mi
     command:
       - /bin/sh
       - -ec
@@ -105,6 +110,11 @@ containers:
       capabilities:
         drop: ["ALL"]
       readOnlyRootFilesystem: true
+    resources:
+      requests:
+        ephemeral-storage: 8Mi
+      limits:
+        ephemeral-storage: 16Mi
     args:
       - apply
       - -f

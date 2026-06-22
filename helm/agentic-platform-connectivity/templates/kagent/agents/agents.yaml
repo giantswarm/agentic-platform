@@ -3,6 +3,20 @@
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
 {{- if $agent.enabled }}
+{{- $identitySA := include "agentic-platform.agentServiceAccount" $agent }}
+---
+# Chart-owned so it exists before the muster-token bootstrap Job (a post-install
+# hook running as this SA) and before the kagent controller needs it. The Agent's
+# serviceAccountName below pins it, so kagent uses this SA instead of creating its
+# own — without it the SA would only appear once the agent Deployment is up, which
+# needs the muster RemoteMCPServer accepted, which needs the token this SA mints.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $identitySA | quote }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "labels.common" $ | nindent 4 }}
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -32,8 +46,8 @@ spec:
         allowedHeaders:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-    {{- if or $agent.resources $agent.env }}
     deployment:
+      serviceAccountName: {{ $identitySA | quote }}
       {{- with $agent.resources }}
       resources:
         {{- toYaml . | nindent 8 }}
@@ -42,7 +56,6 @@ spec:
       env:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-    {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
