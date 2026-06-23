@@ -2,7 +2,7 @@
 {{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
-{{- if and $agent.enabled $agent.agentgatewayRoute.enabled }}
+{{- if $agent.enabled }}
 {{- $route := $agent.agentgatewayRoute }}
 {{- $pathPrefix := printf "/agents/%s" $agent.name }}
 # AgentgatewayBackend — registers the {{ $agent.name }} A2A server as an agentgateway
