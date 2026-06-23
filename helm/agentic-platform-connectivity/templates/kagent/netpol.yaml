@@ -50,9 +50,22 @@ spec:
         - ports:
             - port: {{ $controllerPort | quote }}
               protocol: TCP
+    # Intra-namespace clients of the controller API: agent pods (A2A / tool calls)
+    # and the kagent UI backend. The controller runs under trusted-proxy and trusts
+    # forwarded identity headers, so ingress is restricted to these identities on the
+    # API port rather than the whole namespace.
     - fromEndpoints:
         - matchLabels:
+            app: kagent
             io.kubernetes.pod.namespace: {{ $kagentNs }}
+        - matchLabels:
+            app.kubernetes.io/name: kagent
+            app.kubernetes.io/component: ui
+            io.kubernetes.pod.namespace: {{ $kagentNs }}
+      toPorts:
+        - ports:
+            - port: {{ $controllerPort | quote }}
+              protocol: TCP
 ---
 # Egress from the kagent controller: DNS, Postgres, Kubernetes API, OTLP.
 apiVersion: cilium.io/v2
@@ -309,10 +322,18 @@ spec:
       ports:
         - port: {{ $controllerPort | int }}
           protocol: TCP
+    # Intra-namespace clients of the controller API: agent pods (A2A / tool calls)
+    # and the kagent UI backend. Restricted to these identities on the API port
+    # rather than the whole namespace, since the controller trusts forwarded
+    # identity headers under trusted-proxy.
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ $kagentNs }}
+              app: kagent
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kagent
+              app.kubernetes.io/component: ui
       ports:
         - port: {{ $controllerPort | int }}
           protocol: TCP
