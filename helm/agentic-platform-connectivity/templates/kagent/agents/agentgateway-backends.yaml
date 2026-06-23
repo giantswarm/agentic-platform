@@ -1,4 +1,4 @@
-{{- if .Values.kagent.enabled }}
+{{- if and .Values.kagent.enabled (include "agentic-platform.ingress.agentgateway" .) }}
 {{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
