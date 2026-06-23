@@ -1,4 +1,4 @@
-{{- if .Values.kagent.enabled }}
+{{- if and .Values.kagent.enabled (include "agentic-platform.ingress.agentgateway" .) }}
 {{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
@@ -59,31 +59,6 @@ spec:
         - name: {{ $agent.name | quote }}
           kind: AgentgatewayBackend
           group: agentgateway.dev
-{{- if and $.Values.ingress.parentRefs $route.hostname }}
----
-# HTTPRoute — exposes {{ $agent.name }} on the outer public Gateway (TLS-terminating).
-# No URLRewrite: the prefix strip happens at the inner agentgateway hop.
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: {{ printf "%s-public" $agent.name | quote }}
-  namespace: {{ $.Release.Namespace }}
-  labels:
-    {{- include "labels.common" $ | nindent 4 }}
-spec:
-  parentRefs:
-    {{- toYaml $.Values.ingress.parentRefs | nindent 4 }}
-  hostnames:
-    - {{ $route.hostname | quote }}
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: {{ $pathPrefix }}
-      backendRefs:
-        - name: {{ $.Values.gateway.name }}
-          port: 8080
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
