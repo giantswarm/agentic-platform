@@ -782,10 +782,10 @@ agents:
             namespace: mcp-kubernetes
       # Agentgateway route — exposes this agent's A2A endpoint at /agents/<name>
       # on the agentgateway inner Gateway (agentgateway-* ingress modes only).
-      # Set hostname to the agentgateway Gateway hostname; set ingress.parentRefs to
-      # also create the public HTTPRoute on the outer TLS-terminating Gateway.
+      # Rendered automatically when the agent is enabled; set hostname to the
+      # agentgateway Gateway hostname. Set ingress.parentRefs to also create
+      # the public HTTPRoute on the outer TLS-terminating Gateway.
       agentgatewayRoute:
-        enabled: false
         # Hostname on which the agentgateway Gateway will match /agents/<name>.
         # Example: agentgateway.<cluster>.<base-domain>
         hostname: ""
