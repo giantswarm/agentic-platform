@@ -756,6 +756,9 @@ agents:
       # single-call workflow, the exact x_kubernetes_* argument contract, and the
       # cheap-listing recipe. It cuts wrong-arg retries and avoidable tool round
       # trips against the muster meta-tool interface this agent shares.
+      # NOTE: keep in sync with helm/agentic-platform/values.yaml — the umbrella's
+      # forwardAllValues hands ITS copy to this chart's HelmRelease, shadowing this
+      # default in meta-package installs.
       systemMessage: |-
         You are a Giant Swarm SRE agent. You investigate cluster, workload, and
         observability issues using the tools exposed through the muster MCP
