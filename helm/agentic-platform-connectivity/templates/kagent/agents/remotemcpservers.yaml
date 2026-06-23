@@ -38,11 +38,13 @@ spec:
   description: {{ .description | default (printf "%s MCP server" .name) | quote }}
   url: {{ required "agents.remoteMcpServers[].url is required" .url | quote }}
   protocol: STREAMABLE_HTTP
+  {{- with .tokenSecret }}
   headersFrom:
   - name: Authorization
     valueFrom:
       type: Secret
-      name: {{ required "agents.remoteMcpServers[].tokenSecret is required" .tokenSecret | quote }}
+      name: {{ . | quote }}
       key: token
+  {{- end }}
 {{- end }}
 {{- end }}

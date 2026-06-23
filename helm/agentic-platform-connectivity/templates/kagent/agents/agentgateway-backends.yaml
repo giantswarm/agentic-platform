@@ -1,0 +1,89 @@
+{{- if .Values.kagent.enabled }}
+{{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- range $name, $cfg := .Values.agents.definitions }}
+{{- $agent := merge (dict "name" $name) $cfg }}
+{{- if and $agent.enabled $agent.agentgatewayRoute.enabled }}
+{{- $route := $agent.agentgatewayRoute }}
+{{- $pathPrefix := printf "/agents/%s" $agent.name }}
+# AgentgatewayBackend — registers the {{ $agent.name }} A2A server as an agentgateway
+# backend. Auth passthrough re-injects the validated JWT so trusted-proxy mode
+# can extract the sub claim downstream.
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ $agent.name | quote }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "labels.common" $ | nindent 4 }}
+spec:
+  policies:
+    auth:
+      passthrough: {}
+  static:
+    host: {{ printf "%s.%s.svc.cluster.local" $agent.name $ns }}
+    port: 8080
+---
+# HTTPRoute — exposes the {{ $agent.name }} A2A endpoint at {{ $pathPrefix }} on the
+# agentgateway inner Gateway. The prefix is stripped before forwarding so the
+# agent receives requests at / as it expects.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $agent.name | quote }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "labels.common" $ | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ $.Values.gateway.name }}
+      namespace: {{ $.Release.Namespace }}
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  {{- if $route.hostname }}
+  hostnames:
+    - {{ $route.hostname | quote }}
+  {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ $pathPrefix }}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: {{ $agent.name | quote }}
+          kind: AgentgatewayBackend
+          group: agentgateway.dev
+{{- if and $.Values.ingress.parentRefs $route.hostname }}
+---
+# HTTPRoute — exposes {{ $agent.name }} on the outer public Gateway (TLS-terminating).
+# No URLRewrite: the prefix strip happens at the inner agentgateway hop.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ printf "%s-public" $agent.name | quote }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "labels.common" $ | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml $.Values.ingress.parentRefs | nindent 4 }}
+  hostnames:
+    - {{ $route.hostname | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ $pathPrefix }}
+      backendRefs:
+        - name: {{ $.Values.gateway.name }}
+          port: 8080
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
