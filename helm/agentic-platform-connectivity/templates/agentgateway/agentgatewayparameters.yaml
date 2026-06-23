@@ -32,6 +32,10 @@ spec:
             - name: agentgateway
               securityContext:
                 {{- toYaml .Values.gateway.parameters.containerSecurityContext | nindent 16 }}
+              {{- with .Values.gateway.parameters.dataPlaneResources }}
+              resources:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
               {{- with .Values.gateway.parameters.dataPlaneEnv }}
               env:
                 {{- toYaml . | nindent 16 }}

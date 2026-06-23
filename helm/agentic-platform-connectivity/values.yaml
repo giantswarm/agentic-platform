@@ -86,6 +86,17 @@ gateway:
         value: grpc
     dataPlaneVolumes: []
     dataPlaneVolumeMounts: []
+    # Resources for the agentgateway data-plane container. ephemeral-storage
+    # requests+limits are required because the controller injects a writable
+    # `/tmp` emptyDir (readOnlyRootFilesystem) without a sizeLimit, which trips
+    # the `require-emptydir-requests-and-limits` Kyverno policy unless the
+    # mounting container declares ephemeral-storage. Merged onto the generated
+    # container via AgentgatewayParameters strategic-merge (by container name).
+    dataPlaneResources:
+      requests:
+        ephemeral-storage: 50Mi
+      limits:
+        ephemeral-storage: 512Mi
 
 networkPolicy:
   enabled: true
