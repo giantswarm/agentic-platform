@@ -401,6 +401,15 @@ valkey:
   valkey:
     fullnameOverride: muster-valkey
     replicaCount: 1
+    # Persistence is intentionally RDB-only (no valkeyConfig appendonly). The
+    # muster-valkey store is a CACHE: every critical record is reconstructable
+    # at startup (see the muster chart's storage "Persistence model" doc and
+    # giantswarm/muster#884). Do NOT enable AOF here to "fix" data loss:
+    #   - AOF lives on this same PVC, so it does not survive PVC loss/recreation
+    #     (the failure mode that actually bit) -- only backups/replication would.
+    #   - Flipping appendonly in config + restart is a data-loss footgun: Valkey
+    #     loads the empty AOF dir and ignores the RDB, wiping the live store on
+    #     the enabling deploy. Safe enablement needs a runtime CONFIG SET.
     auth:
       enabled: true
       # Required: name of the Secret with key `valkey-password`. Conventionally
