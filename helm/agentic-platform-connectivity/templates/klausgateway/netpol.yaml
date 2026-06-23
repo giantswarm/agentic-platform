@@ -48,3 +48,65 @@ spec:
           protocol: TCP
 {{- end }}
 {{- end }}
+{{- if and .Values.klausGateway.enabled .Values.klausGateway.obo.enabled .Values.networkPolicy.enabled }}
+{{- if eq .Values.networkPolicy.flavor "cilium" }}
+---
+# Allow klausgateway Slack-OBO egress: DNS + the muster authorization server on
+# :443. The gateway is a muster OAuth client; it runs RFC 8414 discovery and the
+# OAuth token exchange against the PUBLIC muster URL (klausGateway.obo.musterUrl),
+# because muster's discovery doc advertises its public issuer host as the
+# token_endpoint. The a2a-egress policy above (or any other) puts this pod in
+# Cilium default-deny egress, so without this allowance the OBO token call is
+# dropped. world covers a public-NLB muster hostname (e.g. AWS); cluster + 10443
+# cover a private LB VIP / Azure LB DNAT, mirroring the oauth2-proxy egress.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-klausgateway-obo-egress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.klausGateway.fullnameOverride | default "klaus-gateway" | quote }}
+  egress:
+    {{- include "agentic-platform.dnsEgress" . | nindent 4 }}
+    - toEntities:
+        - world
+        - cluster
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "10443"
+              protocol: TCP
+{{- else if eq .Values.networkPolicy.flavor "kubernetes" }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "name" . }}-klausgateway-obo-egress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.klausGateway.fullnameOverride | default "klaus-gateway" | quote }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: {{ toYaml .Values.networkPolicy.kubernetes.worldExcludedCIDRs | nindent 14 }}
+      ports:
+        - port: 443
+          protocol: TCP
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+{{- end }}
+{{- end }}
