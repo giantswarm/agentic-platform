@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- klausgateway Slack OBO (on-behalf-of) wiring. The `klausGateway.obo.*` block (`enabled`, `musterUrl`, `callbackBaseUrl`, `storePath`, `stateKey`, `storeKey`) is now declared and documented in both the umbrella and connectivity `values.yaml` (with matching `values.schema.json` entries) so it is forwarded to the klaus-gateway subchart. The connectivity chart renders a new public `HTTPRoute` (`klausgateway-obo`) that exposes the unauthenticated OAuth-bootstrap paths `/auth/slack/link`, `/auth/slack/callback`, and the CIMD document `/auth/slack/client.json` on the gateway's public hostname (derived from `obo.callbackBaseUrl`), routing straight to the klaus-gateway Service so they bypass the JWT policy that guards the channel paths. Both the linking browser and muster (CIMD fetch) reach the gateway over this route. Disabled by default. A `ci/test-klausgateway-obo-values.yaml` render test covers the new route.
+
+### Fixed
+
+- klausgateway Slack OBO egress: a new `klausgateway-obo-egress` NetworkPolicy (cilium + kubernetes flavors, rendered when `klausGateway.obo.enabled`) lets the klaus-gateway pod reach the muster authorization server on 443/10443 for RFC 8414 discovery and the OAuth token exchange. The gateway is put into default-deny egress by the `klausgateway-a2a-egress` policy, which only allowed DNS + the agentgateway data plane; without this allowance the OBO token call to muster's public issuer host (which resolves to the public NLB / private LB VIP) was dropped. Mirrors the existing kagent-agent and oauth2-proxy `world`+`cluster` 443/10443 egress.
+- klausgateway connectivity route: the `AgentgatewayBackend` `.spec.static.host` now defaults to the correct `klaus-gateway` Service name (the klaus-gateway chart's default, matching `templates/klausgateway/netpol.yaml`) instead of `klausgateway`, which resolved to a non-existent Service when `klausGateway.fullnameOverride` was unset.
+
 ### Removed
 
 - **Retired the `agentic-platform-crds` bundle chart** — every component now owns its CRDs (app-owned CRDs). The standalone chart (`helm/agentic-platform-crds/`), its CircleCI build/test/push jobs, and the now-dead Renovate `helmv3` lockstep `packageRules` are deleted. There is no longer a `components.agentic-platform-crds` entry in the meta-package.

@@ -1130,6 +1130,37 @@ klausGateway:
     mode: events
     secretName: ""
 
+  # Slack on-behalf-of (OBO) muster account linking. When enabled the gateway
+  # acts as a muster OAuth client (CIMD, not DCR): a human links their Slack
+  # identity once via a browser PKCE flow, after which the gateway mints a fresh
+  # human muster token per Slack turn (the agent acts as the human, not pure
+  # M2M). It serves /auth/slack/link, /auth/slack/callback and the CIMD document
+  # /auth/slack/client.json — all three must be reachable on the gateway's public
+  # hostname (the connectivity chart renders the OBO route, deriving that
+  # hostname from callbackBaseUrl). Client registration uses CIMD (Client ID
+  # Metadata Documents): the OAuth client_id is the public URL of the CIMD
+  # document (callbackBaseUrl + /auth/slack/client.json), derived automatically —
+  # muster fetches and validates it, so there is no registration token and no
+  # server-side redirect-URI allowlist.
+  obo:
+    enabled: false
+    # muster authorization-server base URL (RFC 8414 discovery).
+    musterUrl: ""
+    # Gateway's public, externally reachable base URL (e.g.
+    # https://agentgateway.<cluster>.<base-domain>). The muster redirect URI and
+    # the CIMD client_id are derived from it; the connectivity OBO route derives
+    # its public hostname from this value too.
+    callbackBaseUrl: ""
+    # Encrypted bolt link-store path. Empty uses an in-memory store (links lost
+    # on restart).
+    storePath: ""
+    # HMAC key signing link state (CSRF + Slack-user binding). Required when
+    # obo.enabled is true. Provide SOPS-encrypted via per-cluster secret values.
+    stateKey: ""
+    # 32-byte AES-256 key for the encrypted link store. Required only when
+    # storePath is set. Provide SOPS-encrypted via per-cluster secret values.
+    storeKey: ""
+
   # CLI channel adapter (remote klausctl users). Off by default.
   cli:
     enabled: false

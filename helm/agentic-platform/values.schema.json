@@ -551,6 +551,36 @@
               "type": "string"
             }
           }
+        },
+        "obo": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Slack on-behalf-of (OBO) muster account linking via CIMD. Forwarded to the klaus-gateway subchart; the connectivity chart also renders the public OBO route from callbackBaseUrl.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "musterUrl": {
+              "type": "string",
+              "description": "muster authorization-server base URL (RFC 8414 discovery)."
+            },
+            "callbackBaseUrl": {
+              "type": "string",
+              "description": "Gateway's public base URL. The muster redirect URI, the CIMD client_id, and the connectivity OBO route hostname are all derived from it."
+            },
+            "storePath": {
+              "type": "string",
+              "description": "Encrypted bolt link-store path. Empty uses an in-memory store."
+            },
+            "stateKey": {
+              "type": "string",
+              "description": "HMAC key signing link state. Required when obo.enabled is true; provide SOPS-encrypted."
+            },
+            "storeKey": {
+              "type": "string",
+              "description": "AES-256 key for the encrypted link store. Required only when storePath is set; provide SOPS-encrypted."
+            }
+          }
         }
       }
     },
