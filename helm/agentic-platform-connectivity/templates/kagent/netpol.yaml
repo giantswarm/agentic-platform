@@ -204,6 +204,18 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+    # muster's OAuth/STS endpoints (well-known + /oauth/token) are served only on
+    # the public ingress hostname, which resolves to the internal Envoy LB VIP (a
+    # private IP, classified as cluster). The agent's STS token exchange for OBO
+    # needs this path. 443 = LB VIP; 10443 = Envoy listener after Azure LB DNAT.
+    - toEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "10443"
+              protocol: TCP
     {{- include "agentic-platform.dnsEgress" . | nindent 4 }}
 {{- end }}
 {{- if index .Values.kagent "oauth2-proxy" "enabled" }}
