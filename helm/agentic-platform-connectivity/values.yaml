@@ -527,9 +527,12 @@ kagent:
       pass-authorization-header: true
       set-authorization-header: true
       approval-prompt: auto
-      scope: "openid profile email groups"
+      scope: "openid profile email groups offline_access"
       cookie-secure: true
       cookie-samesite: lax
+      # Refresh the upstream id_token before it expires so the forwarded OBO
+      # subject token stays valid. Must stay below the Dex id_token TTL.
+      cookie-refresh: "10m"
       reverse-proxy: true
       skip-jwt-bearer-tokens: true
       skip-auth-route: "^/(health|login)$"
