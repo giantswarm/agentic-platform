@@ -793,9 +793,23 @@ agents:
           status.phase!=Running` to surface only the pods needing attention.
         - A CrashLoopBackOff pod is reported as `Running` by summary/phase — catch
           it via events with `fieldSelector: reason=BackOff`.
-      # Tools to expose from the agent's muster server. Empty = all tools the
-      # server advertises (muster's meta-tools: list_tools, filter_tools, ...).
-      toolNames: []
+      # Tools to expose from the agent's muster server: muster's meta-tools.
+      # Listed explicitly (rather than empty = all) so the kagent UI renders them
+      # by name instead of a single "Unknown Tool" entry. Backend tools
+      # (x_kubernetes_*, x_prometheus_*, workflows) are reached through call_tool,
+      # not listed here.
+      toolNames:
+        - list_tools
+        - describe_tool
+        - list_core_tools
+        - filter_tools
+        - call_tool
+        - list_resources
+        - describe_resource
+        - get_resource
+        - list_prompts
+        - describe_prompt
+        - get_prompt
       # Request headers forwarded from the inbound A2A call onto muster tool calls.
       # Set ["authorization"] to forward the human token for on-behalf-of (the STS
       # plugin then exchanges it); leave [] for pure M2M.
