@@ -813,7 +813,7 @@ agents:
       # Request headers forwarded from the inbound A2A call onto muster tool calls.
       # Set ["authorization"] to forward the human token for on-behalf-of (the STS
       # plugin then exchanges it); leave [] for pure M2M.
-      allowedHeaders: []
+      allowedHeaders: ["authorization"]
       # Optional container resources for the agent Deployment.
       resources: {}
       # Optional extra env for the agent Deployment.
