@@ -23,9 +23,7 @@ Why this Job exists:
 */}}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
-{{/* Skip agents that forward the inbound Authorization to muster: they consume no
-token Secret, so there is nothing to bootstrap. */}}
-{{- if and $agent.enabled (not (include "agentic-platform.agentForwardsAuthorization" $agent)) }}
+{{- if $agent.enabled }}
 ---
 apiVersion: batch/v1
 kind: Job

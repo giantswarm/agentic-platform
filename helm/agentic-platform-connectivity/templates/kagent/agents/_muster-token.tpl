@@ -16,26 +16,6 @@ Input: an agents.list entry.
 {{- end -}}
 
 {{/*
-Whether an agent forwards the inbound Authorization header to muster instead of
-presenting a static service-account token. True when "authorization" appears in the
-agent's allowedHeaders (case-insensitive).
-
-The two are mutually exclusive: a request carries a single Authorization header, so
-an agent that forwards the caller's token must NOT also inject a static token via
-headersFrom (that would shadow the forwarded token). In this mode the muster
-RemoteMCPServer omits headersFrom and the per-agent token-mint Job / refresh CronJob
-/ Secret RBAC are not rendered, since no token Secret is consumed.
-
-Returns "true" or "" (empty), so `if (include …)` gates correctly.
-Input: an agents.definitions entry (with .name merged in).
-*/}}
-{{- define "agentic-platform.agentForwardsAuthorization" -}}
-{{- range .allowedHeaders | default list -}}
-{{- if eq (lower .) "authorization" -}}true{{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Name of the headersFrom Secret holding "Bearer <token>" for one agent.
 Input: dict "root" $ "agent" <agents.list entry>.
 */}}

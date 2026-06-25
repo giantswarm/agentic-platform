@@ -911,9 +911,9 @@ agents:
   # authenticates tool calls as system:serviceaccount:<kagent-ns>:<serviceAccount>,
   # the M2M subject); the mint Job + refresh CronJob + Secret RBAC that run as that
   # SA; and, when m2m.enabled, the impersonation RBAC. Add an agent = add a key.
-  # An agent that forwards the inbound Authorization (allowedHeaders includes
-  # "authorization") drops the headersFrom injection AND the mint Job/CronJob/RBAC —
-  # it presents the caller's own token, not a static service-account token.
+  # An agent that forwards the human token (allowedHeaders includes "authorization",
+  # OBO mode) drops the headersFrom injection AND the mint Job/CronJob/RBAC — it
+  # presents the propagated user muster token, not an SA token.
   # Keyed by name (not a list) so per-cluster values deep-merge field-by-field — a
   # cluster can flip enabled or tweak the prompt without restating the whole entry.
   # The kagent controller auto-creates the SA named after the agent, which is both
@@ -973,12 +973,14 @@ agents:
       # server advertises (muster's meta-tools: list_tools, filter_tools, ...).
       toolNames: []
       # Request headers forwarded from the inbound A2A call onto muster tool calls.
-      # Listing "authorization" forwards the caller's own token to muster: the
-      # RemoteMCPServer then omits the static service-account token (no headersFrom
-      # injection, and the per-agent token-mint Job/CronJob/RBAC are not rendered),
-      # so the forwarded token reaches muster unshadowed. A request carries a single
-      # Authorization header, so the two are mutually exclusive. Leave [] to keep the
-      # static service-account token.
+      # Set ["authorization"] to forward the human token for on-behalf-of; leave []
+      # for pure M2M.
+      #
+      # Listing "authorization" here switches this agent to OBO mode: muster's
+      # RemoteMCPServer omits the static SA-token headersFrom injection (and the
+      # per-agent token-mint Job/CronJob/RBAC are not rendered) so the propagated
+      # human muster token reaches muster as the real user instead of being shadowed
+      # by the agent SA. Leave [] to keep the M2M path (static SA Bearer token).
       allowedHeaders: []
       # Optional container resources for the agent Deployment.
       resources: {}

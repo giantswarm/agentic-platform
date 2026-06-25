@@ -7,9 +7,7 @@ by the kagent controller from the Agent CR, so it is not templated here.
 */}}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
-{{/* Skip agents that forward the inbound Authorization to muster: the token-mint
-Job/CronJob are not rendered for them, so their Secret-writer RBAC is unused. */}}
-{{- if and $agent.enabled (not (include "agentic-platform.agentForwardsAuthorization" $agent)) }}
+{{- if $agent.enabled }}
 {{- $tokenSecretName := include "agentic-platform.musterTokenSecretName" (dict "root" $ "agent" $agent) }}
 {{- $identitySA := include "agentic-platform.agentServiceAccount" $agent }}
 ---

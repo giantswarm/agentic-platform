@@ -14,9 +14,7 @@ agent name is the part that must stay unique across entries.
 */}}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
-{{/* Skip agents that forward the inbound Authorization to muster: no token Secret
-is consumed, so there is nothing to refresh. */}}
-{{- if and $agent.enabled (not (include "agentic-platform.agentForwardsAuthorization" $agent)) }}
+{{- if $agent.enabled }}
 ---
 apiVersion: batch/v1
 kind: CronJob
