@@ -811,9 +811,17 @@ agents:
         - describe_prompt
         - get_prompt
       # Request headers forwarded from the inbound A2A call onto muster tool calls.
-      # Set ["authorization"] to forward the human token for on-behalf-of (the STS
-      # plugin then exchanges it); leave [] for pure M2M.
+      # ["authorization"] forwards the caller's Dex token to muster on each tool call,
+      # making the caller the sub on localMint exchanges. Leave [] to disable forwarding.
       allowedHeaders: ["authorization"]
+      # OBO (on-behalf-of) mode: sends the agent SA's K8s OIDC token as X-Actor-Token
+      # on every request to muster, enabling RFC 8693 delegation (sub=user, act=SA).
+      # Requires allowedHeaders to include "authorization" AND a muster
+      # ActorDelegationPolicy that allows this SA to act for the subject issuers.
+      # M2M autonomous runs (no caller token) still work provided the muster broker
+      # has a self-delegation rule for this SA (actor=subject=SA is a valid grant).
+      obo:
+        enabled: true
       # Optional container resources for the agent Deployment.
       resources: {}
       # Optional extra env for the agent Deployment.

@@ -24,6 +24,13 @@ spec:
       type: Secret
       name: {{ $tokenSecretName | quote }}
       key: token
+{{- if $agent.obo.enabled }}
+  - name: X-Actor-Token
+    valueFrom:
+      type: Secret
+      name: {{ $tokenSecretName | quote }}
+      key: token
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
