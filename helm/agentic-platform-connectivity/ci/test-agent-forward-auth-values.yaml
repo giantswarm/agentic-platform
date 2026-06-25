@@ -1,0 +1,47 @@
+# Agent that forwards the inbound Authorization header: "authorization" is listed in
+# allowedHeaders, so the agent forwards the caller's own token to muster instead of a
+# static service-account token. The muster RemoteMCPServer must omit headersFrom and
+# NO per-agent token-mint Job / refresh CronJob / Secret-writer RBAC may be rendered.
+ingress:
+  mode: agentgateway-muster
+  parentRefs:
+    - name: giantswarm-default
+      namespace: envoy-gateway-system
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  hostnames:
+    - muster.ci.example.com
+
+agentgateway:
+  enabled: true
+
+kagent:
+  enabled: true
+  namespaceOverride: kagent
+  database:
+    postgres:
+      bundled:
+        enabled: true
+
+muster:
+  enabled: true
+  muster:
+    oauth:
+      server:
+        enabled: false
+        storage:
+          type: memory
+
+valkey:
+  enabled: false
+
+agents:
+  definitions:
+    sre-agent:
+      enabled: true
+      serviceAccount: sre-agent
+      # Forward the caller's own Authorization header to muster.
+      allowedHeaders:
+        - authorization
+      m2m:
+        enabled: false
