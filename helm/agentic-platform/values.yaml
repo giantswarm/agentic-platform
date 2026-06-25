@@ -914,6 +914,9 @@ agents:
   # authenticates tool calls as system:serviceaccount:<kagent-ns>:<serviceAccount>,
   # the M2M subject); the mint Job + refresh CronJob + Secret RBAC that run as that
   # SA; and, when m2m.enabled, the impersonation RBAC. Add an agent = add a key.
+  # An agent that forwards the human token (allowedHeaders includes "authorization",
+  # OBO mode) drops the headersFrom injection AND the mint Job/CronJob/RBAC — it
+  # presents the propagated user muster token, not an SA token.
   # Keyed by name (not a list) so per-cluster values deep-merge field-by-field — a
   # cluster can flip enabled or tweak the prompt without restating the whole entry.
   # The kagent controller auto-creates the SA named after the agent, which is both
@@ -987,17 +990,22 @@ agents:
         - describe_prompt
         - get_prompt
       # Request headers forwarded from the inbound A2A call onto muster tool calls.
-      # ["authorization"] forwards the caller's Dex token to muster on each tool call.
-      # On its own this does not switch identity. It becomes the on-behalf-of subject
-      # only once muster's localMint backend runs the RFC 8693 exchange (sub=user) with
-      # the agent's ServiceAccount token as actor (act=sre-agent, carried as the
-      # X-Actor-Token header), minting a user-scoped backend token. That requires both
-      # (a) the kagent runtime override KAGENT_PROPAGATE_TOKEN_OVERRIDES_STATIC so the
-      # forwarded token beats the static M2M Authorization (kagent-dev/kagent#2087), and
-      # (b) a muster ActorDelegationPolicy letting the agent SA act for users. Until both
-      # land, sre-agent runs M2M only. With no caller token (autonomous runs) it always
-      # falls back to the static M2M token. Leave [] to disable forwarding.
+      # With KAGENT_PROPAGATE_TOKEN the inbound Authorization is forwarded regardless;
+      # ["authorization"] additionally allows explicit per-header forwarding. Whether
+      # the call runs as the user or as the agent SA is governed by `obo.enabled` below.
       allowedHeaders: ["authorization"]
+      # OBO (on-behalf-of) mode. When enabled, this agent's muster RemoteMCPServer
+      # OMITS the static SA-token `headersFrom` injection, so kagent's propagated
+      # human muster access_token (iss=muster, aud=.../mcp) reaches muster as the real
+      # user instead of being shadowed by the agent SA. The forwarded token is already
+      # a muster token, so no RFC 8693 act-chain (X-Actor-Token) is used — the human is
+      # the muster subject directly. Trade-off: a tokenless autonomous (M2M) run has no
+      # Authorization and cannot reach muster, so keep obo disabled for agents that must
+      # run autonomously against muster. (kagent-dev/kagent#2087 would let the static SA
+      # token stay as an M2M fallback while a propagated user token still wins; until it
+      # lands the two are mutually exclusive and this chart drops the static token.)
+      obo:
+        enabled: true
       # Optional container resources for the agent Deployment.
       resources: {}
       # Optional extra env for the agent Deployment.
@@ -1154,6 +1162,47 @@ klausGateway:
     enabled: false
     mode: events
     secretName: ""
+    # dmOnly restricts the adapter to direct messages: channel messages and
+    # @-mentions are ignored. Recommended for the OBO gateway (DM-only bot).
+    dmOnly: false
+    # botToken / signingSecret / appToken: when set (SOPS-encrypted via the
+    # per-cluster secret-values patch) the klaus-gateway chart renders the
+    # secretName Secret from them. Leave empty to reference an externally-managed
+    # Secret. appToken is socketmode only.
+    botToken: ""
+    signingSecret: ""
+    appToken: ""
+
+  # Slack on-behalf-of (OBO) muster account linking. When enabled the gateway
+  # acts as a muster OAuth client (CIMD, not DCR): a human links their Slack
+  # identity once via a browser PKCE flow, after which the gateway mints a fresh
+  # human muster token per Slack turn (the agent acts as the human, not pure
+  # M2M). It serves /auth/slack/link, /auth/slack/callback and the CIMD document
+  # /auth/slack/client.json — all three must be reachable on the gateway's public
+  # hostname (the connectivity chart renders the OBO route, deriving that
+  # hostname from callbackBaseUrl). Client registration uses CIMD (Client ID
+  # Metadata Documents): the OAuth client_id is the public URL of the CIMD
+  # document (callbackBaseUrl + /auth/slack/client.json), derived automatically —
+  # muster fetches and validates it, so there is no registration token and no
+  # server-side redirect-URI allowlist.
+  obo:
+    enabled: false
+    # muster authorization-server base URL (RFC 8414 discovery).
+    musterUrl: ""
+    # Gateway's public, externally reachable base URL (e.g.
+    # https://agentgateway.<cluster>.<base-domain>). The muster redirect URI and
+    # the CIMD client_id are derived from it; the connectivity OBO route derives
+    # its public hostname from this value too.
+    callbackBaseUrl: ""
+    # Encrypted bolt link-store path. Empty uses an in-memory store (links lost
+    # on restart).
+    storePath: ""
+    # HMAC key signing link state (CSRF + Slack-user binding). Required when
+    # obo.enabled is true. Provide SOPS-encrypted via per-cluster secret values.
+    stateKey: ""
+    # 32-byte AES-256 key for the encrypted link store. Required only when
+    # storePath is set. Provide SOPS-encrypted via per-cluster secret values.
+    storeKey: ""
 
   # CLI channel adapter (remote klausctl users). Off by default.
   cli:

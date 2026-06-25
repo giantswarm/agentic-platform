@@ -1,0 +1,38 @@
+# Exercises the klaus-gateway connectivity routes, including the Slack OBO/CIMD
+# public route. muster-direct keeps agentgateway off (the klausgateway routes do
+# not depend on the ingress mode); parentRefs is required in every mode.
+ingress:
+  mode: muster-direct
+  parentRefs:
+    - name: giantswarm-default
+      namespace: envoy-gateway-system
+      group: gateway.networking.k8s.io
+      kind: Gateway
+  hostnames:
+    - muster.ci.example.com
+
+muster:
+  muster:
+    oauth:
+      server:
+        enabled: false
+        storage:
+          type: memory
+
+valkey:
+  enabled: false
+
+klausGateway:
+  enabled: true
+  agentgatewayRoute:
+    enabled: true
+    hostname: agentgateway.ci.example.com
+  slack:
+    enabled: true
+    mode: events
+    secretName: slack-credentials
+  obo:
+    enabled: true
+    musterUrl: https://muster.ci.example.com
+    callbackBaseUrl: https://agentgateway.ci.example.com
+    storePath: /var/lib/klaus-gateway/obo/links.bolt
