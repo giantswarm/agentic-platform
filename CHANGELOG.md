@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - klausgateway Slack OBO (on-behalf-of) wiring. The `klausGateway.obo.*` block (`enabled`, `musterUrl`, `callbackBaseUrl`, `storePath`, `stateKey`, `storeKey`) is now declared and documented in both the umbrella and connectivity `values.yaml` (with matching `values.schema.json` entries) so it is forwarded to the klaus-gateway subchart. The connectivity chart renders a new public `HTTPRoute` (`klausgateway-obo`) that exposes the unauthenticated OAuth-bootstrap paths `/auth/slack/link`, `/auth/slack/callback`, and the CIMD document `/auth/slack/client.json` on the gateway's public hostname (derived from `obo.callbackBaseUrl`), routing straight to the klaus-gateway Service so they bypass the JWT policy that guards the channel paths. Both the linking browser and muster (CIMD fetch) reach the gateway over this route. Disabled by default. A `ci/test-klausgateway-obo-values.yaml` render test covers the new route.
+- `klausGateway.slack.dmOnly` (umbrella `values.yaml` + `values.schema.json`) is forwarded to the klaus-gateway subchart, which renders it as `SLACK_DM_ONLY` to restrict the Slack adapter to direct messages (channel messages and @-mentions ignored). Recommended for the OBO gateway, which is a DM-only bot. Default false. Requires the klaus-gateway chart that renders the env (giantswarm/klaus-gateway#113).
 
 ### Fixed
 

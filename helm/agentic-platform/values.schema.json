@@ -499,6 +499,10 @@
             "secretName": {
               "type": "string",
               "description": "Secret containing bot-token, signing-secret, and app-token. Required when slack.enabled is true."
+            },
+            "dmOnly": {
+              "type": "boolean",
+              "description": "Restrict the Slack adapter to direct messages (channel messages and @-mentions ignored)."
             }
           }
         },

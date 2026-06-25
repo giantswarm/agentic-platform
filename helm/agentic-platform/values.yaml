@@ -1129,6 +1129,9 @@ klausGateway:
     enabled: false
     mode: events
     secretName: ""
+    # dmOnly restricts the adapter to direct messages: channel messages and
+    # @-mentions are ignored. Recommended for the OBO gateway (DM-only bot).
+    dmOnly: false
 
   # Slack on-behalf-of (OBO) muster account linking. When enabled the gateway
   # acts as a muster OAuth client (CIMD, not DCR): a human links their Slack
