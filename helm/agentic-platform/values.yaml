@@ -987,8 +987,16 @@ agents:
         - describe_prompt
         - get_prompt
       # Request headers forwarded from the inbound A2A call onto muster tool calls.
-      # Set ["authorization"] to forward the human token for on-behalf-of (the STS
-      # plugin then exchanges it); leave [] for pure M2M.
+      # ["authorization"] forwards the caller's Dex token to muster on each tool call.
+      # On its own this does not switch identity. It becomes the on-behalf-of subject
+      # only once muster's localMint backend runs the RFC 8693 exchange (sub=user) with
+      # the agent's ServiceAccount token as actor (act=sre-agent, carried as the
+      # X-Actor-Token header), minting a user-scoped backend token. That requires both
+      # (a) the kagent runtime override KAGENT_PROPAGATE_TOKEN_OVERRIDES_STATIC so the
+      # forwarded token beats the static M2M Authorization (kagent-dev/kagent#2044), and
+      # (b) a muster ActorDelegationPolicy letting the agent SA act for users. Until both
+      # land, sre-agent runs M2M only. With no caller token (autonomous runs) it always
+      # falls back to the static M2M token. Leave [] to disable forwarding.
       allowedHeaders: ["authorization"]
       # Optional container resources for the agent Deployment.
       resources: {}
