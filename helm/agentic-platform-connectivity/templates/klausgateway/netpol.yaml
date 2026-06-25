@@ -110,3 +110,61 @@ spec:
           protocol: TCP
 {{- end }}
 {{- end }}
+{{- if and .Values.klausGateway.enabled .Values.klausGateway.agentgatewayRoute.enabled .Values.networkPolicy.enabled }}
+{{- $klausgatewayPort := "8080" }}
+{{- $fullname := .Values.klausGateway.fullnameOverride | default "klaus-gateway" }}
+{{- if eq .Values.networkPolicy.flavor "cilium" }}
+---
+# Egress from the agentgateway data-plane to klaus-gateway. The channel paths
+# (/v1, /web, /cli/v1, and /channels/slack when slack.enabled) are served on the
+# agentgateway data-plane Gateway and forwarded to the klaus-gateway Service. The
+# data-plane runs in Cilium default-deny egress (see the -dataplane policy), whose
+# cluster allowance only covers 80/443 — klaus-gateway listens on 8080, so without
+# this rule the data-plane → klaus-gateway connection is dropped and the request
+# fails with a 503 UpstreamFailure ("Connect: deadline has elapsed"). For Slack
+# this means inbound events (delivered to the public hostname, routed through the
+# data-plane) never reach the gateway, so the bot never replies. Mirrors the
+# -dataplane-to-kagent allowance.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "name" . }}-dataplane-to-klausgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: {{ $fullname | quote }}
+      toPorts:
+        - ports:
+            - port: {{ $klausgatewayPort | quote }}
+              protocol: TCP
+{{- else if eq .Values.networkPolicy.flavor "kubernetes" }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "name" . }}-dataplane-to-klausgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: {{ .Values.gateway.name }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ $fullname | quote }}
+      ports:
+        - port: {{ $klausgatewayPort | int }}
+          protocol: TCP
+{{- end }}
+{{- end }}
