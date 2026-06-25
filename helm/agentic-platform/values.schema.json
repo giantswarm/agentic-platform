@@ -503,6 +503,18 @@
             "dmOnly": {
               "type": "boolean",
               "description": "Restrict the Slack adapter to direct messages (channel messages and @-mentions ignored)."
+            },
+            "botToken": {
+              "type": "string",
+              "description": "Slack bot token. When set, the klaus-gateway chart renders the secretName Secret from it; typically SOPS-encrypted."
+            },
+            "signingSecret": {
+              "type": "string",
+              "description": "Slack signing secret for Events API request verification. SOPS-encrypted."
+            },
+            "appToken": {
+              "type": "string",
+              "description": "Slack app-level token (socketmode only). SOPS-encrypted."
             }
           }
         },
