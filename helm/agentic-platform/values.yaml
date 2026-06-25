@@ -993,7 +993,7 @@ agents:
       # the agent's ServiceAccount token as actor (act=sre-agent, carried as the
       # X-Actor-Token header), minting a user-scoped backend token. That requires both
       # (a) the kagent runtime override KAGENT_PROPAGATE_TOKEN_OVERRIDES_STATIC so the
-      # forwarded token beats the static M2M Authorization (kagent-dev/kagent#2044), and
+      # forwarded token beats the static M2M Authorization (kagent-dev/kagent#2087), and
       # (b) a muster ActorDelegationPolicy letting the agent SA act for users. Until both
       # land, sre-agent runs M2M only. With no caller token (autonomous runs) it always
       # falls back to the static M2M token. Leave [] to disable forwarding.
