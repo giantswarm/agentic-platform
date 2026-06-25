@@ -25,6 +25,15 @@ spec:
 # HTTPRoute — exposes the kagent API at <pathPrefix> on the agentgateway Gateway.
 # Path prefix is stripped (URLRewrite) before forwarding so the controller
 # receives requests at /api/... as it expects.
+#
+# This is the internal data-plane hop. It is deliberately NOT hostname-scoped:
+# in-cluster A2A callers (e.g. klaus-gateway's --a2a-url, which points at the
+# agentgateway Service's cluster-DNS name) send Host=<svc>.<ns>.svc.cluster.local,
+# which would not match the public hostname. A host-scoped inner route lets those
+# requests fall through to the catch-all MCP route ("/"), where they are handled
+# as MCP Streamable-HTTP and rejected with 406 ("client must accept both
+# application/json and text/event-stream"). The path prefix (/kagent) is more
+# specific than the MCP "/" route, so a hostname-less route wins for every Host.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -38,10 +47,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       group: gateway.networking.k8s.io
       kind: Gateway
-  {{- if $route.hostname }}
-  hostnames:
-    - {{ $route.hostname | quote }}
-  {{- end }}
   rules:
     - matches:
         - path:
