@@ -704,9 +704,12 @@ kagent:
       pass-authorization-header: true
       set-authorization-header: true
       approval-prompt: auto
-      scope: "openid profile email groups"
+      scope: "openid profile email groups offline_access"
       cookie-secure: true
       cookie-samesite: lax
+      # Refresh the upstream id_token before it expires so the forwarded OBO
+      # subject token stays valid. Must stay below the Dex id_token TTL.
+      cookie-refresh: "10m"
       reverse-proxy: true
       skip-jwt-bearer-tokens: true
       skip-auth-route: "^/(health|login)$"
@@ -969,19 +972,40 @@ agents:
           status.phase!=Running` to surface only the pods needing attention.
         - A CrashLoopBackOff pod is reported as `Running` by summary/phase — catch
           it via events with `fieldSelector: reason=BackOff`.
-      # Tools to expose from the agent's muster server. Empty = all tools the
-      # server advertises (muster's meta-tools: list_tools, filter_tools, ...).
-      toolNames: []
+      # Tools to expose from the agent's muster server: muster's meta-tools.
+      # Listed explicitly (rather than empty = all) so the kagent UI renders them
+      # by name instead of a single "Unknown Tool" entry. Backend tools
+      # (x_kubernetes_*, x_prometheus_*, workflows) are reached through call_tool,
+      # not listed here.
+      toolNames:
+        - list_tools
+        - describe_tool
+        - list_core_tools
+        - filter_tools
+        - call_tool
+        - list_resources
+        - describe_resource
+        - get_resource
+        - list_prompts
+        - describe_prompt
+        - get_prompt
       # Request headers forwarded from the inbound A2A call onto muster tool calls.
-      # Set ["authorization"] to forward the human token for on-behalf-of; leave []
-      # for pure M2M.
-      #
-      # Listing "authorization" here switches this agent to OBO mode: muster's
-      # RemoteMCPServer omits the static SA-token headersFrom injection (and the
-      # per-agent token-mint Job/CronJob/RBAC are not rendered) so the propagated
-      # human muster token reaches muster as the real user instead of being shadowed
-      # by the agent SA. Leave [] to keep the M2M path (static SA Bearer token).
-      allowedHeaders: []
+      # With KAGENT_PROPAGATE_TOKEN the inbound Authorization is forwarded regardless;
+      # ["authorization"] additionally allows explicit per-header forwarding. Whether
+      # the call runs as the user or as the agent SA is governed by `obo.enabled` below.
+      allowedHeaders: ["authorization"]
+      # OBO (on-behalf-of) mode. When enabled, this agent's muster RemoteMCPServer
+      # OMITS the static SA-token `headersFrom` injection, so kagent's propagated
+      # human muster access_token (iss=muster, aud=.../mcp) reaches muster as the real
+      # user instead of being shadowed by the agent SA. The forwarded token is already
+      # a muster token, so no RFC 8693 act-chain (X-Actor-Token) is used — the human is
+      # the muster subject directly. Trade-off: a tokenless autonomous (M2M) run has no
+      # Authorization and cannot reach muster, so keep obo disabled for agents that must
+      # run autonomously against muster. (kagent-dev/kagent#2087 would let the static SA
+      # token stay as an M2M fallback while a propagated user token still wins; until it
+      # lands the two are mutually exclusive and this chart drops the static token.)
+      obo:
+        enabled: true
       # Optional container resources for the agent Deployment.
       resources: {}
       # Optional extra env for the agent Deployment.
@@ -1222,7 +1246,7 @@ agentgateway:
     image:
       registry: gsoci.azurecr.io
       repository: giantswarm/agentgateway
-      tag: v1.3.0
+      tag: v1.3.1
   podAnnotations:
     application.giantswarm.io/team: bumblebee
   podSecurityContext:

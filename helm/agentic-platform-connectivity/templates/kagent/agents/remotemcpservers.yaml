@@ -2,8 +2,9 @@
 {{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $musterUrl := printf "http://%s.%s.svc.cluster.local:%v/mcp" (include "agentic-platform.musterFullname" .) .Release.Namespace (include "agentic-platform.musterServicePort" .) }}
 {{- if .Values.muster.enabled }}
-{{/* One muster RemoteMCPServer per enabled agent: same muster Service, but each
-carries the agent's own SA token via headersFrom so muster sees a per-agent identity. */}}
+{{/* One muster RemoteMCPServer per enabled agent: same muster Service. M2M agents
+carry their own SA token via headersFrom so muster sees a per-agent identity; OBO
+agents (obo.enabled) omit it and forward the propagated human muster token instead. */}}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
 {{- if $agent.enabled }}
@@ -18,12 +19,20 @@ spec:
   description: {{ printf "muster MCP gateway (%s)" $agent.name | quote }}
   url: {{ $musterUrl | quote }}
   protocol: STREAMABLE_HTTP
+{{- if not $agent.obo.enabled }}
+  {{/* M2M agent: inject the static SA Bearer token so muster sees the per-agent
+  identity. OBO agents omit this entirely so kagent's propagated human muster
+  token (KAGENT_PROPAGATE_TOKEN) is the only Authorization reaching muster — the
+  static header would otherwise win (kagent applies static headers last) and
+  shadow the user. No X-Actor-Token act-chain: the forwarded token is already a
+  muster access_token, so the human is the muster subject directly. */}}
   headersFrom:
   - name: Authorization
     valueFrom:
       type: Secret
       name: {{ $tokenSecretName | quote }}
       key: token
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
