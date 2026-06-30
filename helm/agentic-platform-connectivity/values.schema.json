@@ -591,6 +591,28 @@
               "type": "string",
               "description": "Encrypted bolt link-store path. Empty uses an in-memory store."
             },
+            "persistence": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Back the link store with a PVC so links survive pod recreation (rollouts, node drains), not just in-process restarts. Forwarded to the klaus-gateway subchart.",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "size": {
+                  "type": "string"
+                },
+                "accessMode": {
+                  "type": "string"
+                },
+                "storageClass": {
+                  "type": "string"
+                },
+                "existingClaim": {
+                  "type": "string"
+                }
+              }
+            },
             "stateKey": {
               "type": "string",
               "description": "HMAC key signing link state. Required when obo.enabled is true; provide SOPS-encrypted."

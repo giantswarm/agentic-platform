@@ -1197,11 +1197,19 @@ klausGateway:
     # Encrypted bolt link-store path. Empty uses an in-memory store (links lost
     # on restart).
     storePath: ""
+    # Back the link store with a PVC so links survive pod recreation (rollouts,
+    # node drains), not just in-process restarts. Forwarded to the klaus-gateway
+    # subchart. Disabled -> emptyDir.
+    persistence:
+      enabled: false
+      size: 64Mi
     # HMAC key signing link state (CSRF + Slack-user binding). Required when
     # obo.enabled is true. Provide SOPS-encrypted via per-cluster secret values.
     stateKey: ""
-    # 32-byte AES-256 key for the encrypted link store. Required only when
-    # storePath is set. Provide SOPS-encrypted via per-cluster secret values.
+    # AES-256 key for the encrypted link store, required only when storePath is
+    # set. Accepts 32 raw bytes or a base64/hex encoding of 32 bytes (a
+    # SOPS-staged base64 value works directly). Provide SOPS-encrypted via
+    # per-cluster secret values.
     storeKey: ""
 
   # CLI channel adapter (remote klausctl users). Off by default.
