@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **M2M agent impersonation RBAC.** The `agents.<name>.m2m` block (and the `impersonation.yaml` / `_agent-impersonation.tpl` templates it rendered) is removed from `agentic-platform-connectivity`. Agents no longer get a deputy `Role`/`ClusterRole` letting mcp-kubernetes impersonate the agent's own identity or bind its groups to ClusterRoles. The only supported flow is on-behalf-of: muster mints a token with the human as `sub` and the agent SA in the RFC 8693 `act` claim, and the mcp-kubernetes chart's `*-obo-impersonate` ClusterRole authorizes impersonating the human. Requires mcp-kubernetes with M2M removed and muster with the matching broker config.
 - **Retired the `agentic-platform-crds` bundle chart** — every component now owns its CRDs (app-owned CRDs). The standalone chart (`helm/agentic-platform-crds/`), its CircleCI build/test/push jobs, and the now-dead Renovate `helmv3` lockstep `packageRules` are deleted. There is no longer a `components.agentic-platform-crds` entry in the meta-package.
 
 ### Changed

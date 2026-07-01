@@ -173,32 +173,22 @@ agentic-platform-mcps:
         clientSecretKey: client-secret
 ```
 
-### Machine-to-machine (M2M): local mint + impersonation
+### On-behalf-of (OBO): local mint + human impersonation
 
-A kagent agent reaching a downstream server is a machine, not a human with a Dex
-token. muster validates the agent's inbound ServiceAccount token, then
-**local-mints** (`auth.mode: localMint`, `enableJWTMode: true`) a token carrying a
-configured subject and groups for the downstream audience. The downstream server
-(e.g. mcp-kubernetes) cannot present that token to the kube-apiserver as a bearer
-(wrong issuer/audience), so it authenticates with its own SA token and sets
-`Impersonate-User`/`Impersonate-Group` headers to act *as* the agent. Kubernetes RBAC
-and the audit log then reflect the agent, not the proxy.
+A kagent agent reaching a downstream server forwards the human's muster token as
+`Authorization` and its own ServiceAccount token as `X-Actor-Token`. muster
+validates both and **local-mints** (`auth.mode: localMint`, `enableJWTMode: true`) a
+token for the downstream audience carrying the human as `sub` and the agent SA in
+the RFC 8693 `act` claim. The downstream server (e.g. mcp-kubernetes) cannot present
+that token to the kube-apiserver as a bearer (wrong issuer/audience), so it
+authenticates with its own SA token and sets `Impersonate-User` to the human plus
+`Impersonate-Extra-actor` to the agent SA. Kubernetes RBAC and the audit log then
+reflect the human, with the acting agent recorded.
 
-The same identity is configured in three places, which must agree:
-
-- **muster** — the `tokenExchangeBroker.workloadGroupGrants` entry (which inbound
-  subject to mint for, and the groups to inject), set in giantswarm-config next to
-  the rest of the muster broker config;
-- **mcp-kubernetes** — its `trustedIssuers` (`impersonateUser`/`impersonateGroups`),
-  set in its own app values;
-- **the RBAC** — rendered by agentic-platform-connectivity from `agents.<name>.m2m`:
-  the impersonation `Role`/`ClusterRole` letting each `m2m.impersonators` SA
-  impersonate `m2m.granted`, plus a `ClusterRoleBinding` per `m2m.granted.clusterRoles`
-  for the agent's actual access.
-
-A `system:serviceaccount:…` granted user yields a namespaced `serviceaccounts` Role
-plus a groups `ClusterRole`; a plain username (e.g. `agent:sre`) yields a single
-cluster-scoped `users`+`groups` ClusterRole.
+A trusted-issuer token with no `act` claim is rejected: only on-behalf-of is
+accepted, and any cryptographically validated actor is allowed (the impersonated
+human's downstream RBAC governs access). The impersonation `ClusterRole` is rendered
+by the mcp-kubernetes chart (`*-obo-impersonate`), not by agentic-platform.
 
 ---
 
