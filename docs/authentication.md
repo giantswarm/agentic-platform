@@ -173,17 +173,22 @@ agentic-platform-mcps:
         clientSecretKey: client-secret
 ```
 
-### On-behalf-of (OBO): local mint + human impersonation
+### On-behalf-of (OBO): one muster-issued token, forwarded
 
-A kagent agent reaching a downstream server forwards the human's muster token as
-`Authorization` and its own ServiceAccount token as `X-Actor-Token`. muster
-validates both and **local-mints** (`auth.mode: localMint`, `enableJWTMode: true`) a
-token for the downstream audience carrying the human as `sub` and the agent SA in
-the RFC 8693 `act` claim. The downstream server (e.g. mcp-kubernetes) cannot present
-that token to the kube-apiserver as a bearer (wrong issuer/audience), so it
-authenticates with its own SA token and sets `Impersonate-User` to the human plus
-`Impersonate-Extra-actor` to the agent SA. Kubernetes RBAC and the audit log then
-reflect the human, with the acting agent recorded.
+A kagent agent acts on behalf of the human who invoked it. At muster's
+`/oauth/token` the agent performs one RFC 8693 exchange: the human's token as
+`subject_token`, its own projected ServiceAccount token as `actor_token`.
+muster validates both against its `trustedIssuers` and issues a single token it
+signs itself (`enableJWTMode: true`): `iss` = muster, `aud` = muster's
+`resourceIdentifier`, `sub` = the human, the agent SA in the RFC 8693 `act`
+claim, `email`/`groups` copied from the subject. The agent presents that token
+on `/mcp` and muster forwards it unchanged to downstream servers configured
+with `auth.mode: forward` (`forwardToken: true`); there is no per-backend
+re-issue. Each downstream server validates the token against muster's JWKS and
+terminates it there: mcp-kubernetes cannot present it to the kube-apiserver as
+a bearer (wrong issuer/audience), so it authenticates with its own SA token and
+sets `Impersonate-User` to the human. Kubernetes RBAC and the audit log then
+reflect the human.
 
 A trusted-issuer token with no `act` claim is rejected: only on-behalf-of is
 accepted, and any cryptographically validated actor is allowed (the impersonated
