@@ -23,4 +23,12 @@ app-tests-deploy-namespace: agentic-platform
 
 smoke-tests-cluster-type: kind
 
-skip-steps: [smoke,functional,upgrade]
+# EXPERIMENT (do not merge): probe whether the trimmed render converges under a
+# live Flux engine on kind, using the new ats GitOps bundle testing. ats installs
+# Flux, deploys the bundle into agentic-platform-flux, and waits for every
+# HelmRelease/OCIRepository to become Ready. The timeout is short on purpose so a
+# non-converging component set fails fast instead of hanging the job.
+smoke-tests-gitops-engines: flux
+smoke-tests-gitops-bundle-ready-timeout: 5m
+
+skip-steps: [functional,upgrade]

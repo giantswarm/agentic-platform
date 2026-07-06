@@ -37,6 +37,9 @@ workflows:
     # push avoids an ImagePullBackOff race.
     - architect/run-tests-with-ats:
         name: execute-chart-tests
+        # EXPERIMENT (do not merge): pin the ats dev build carrying the GitOps
+        # bundle testing feature (app-test-suite #664-#667).
+        app-test-suite_container_tag: "0.15.0-84cda623836b7c03358837fdcdbcecdfbad8370c"
         requires:
         - build-chart
         filters:
