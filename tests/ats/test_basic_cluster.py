@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import subprocess
+import time
 
 import pykube
 import pytest
@@ -41,6 +42,23 @@ def _is_ready(obj: dict) -> bool:
     return any(c.get("type") == "Ready" and c.get("status") == "True" for c in conditions)
 
 
+def _wait_for_ready_deployments(
+    kube_client: pykube.HTTPClient, selector: dict, timeout_sec: int = 180
+) -> list:
+    """Wait until every Deployment matching the label selector has all replicas ready."""
+    deadline = time.monotonic() + timeout_sec
+    while True:
+        deployments = list(
+            pykube.Deployment.objects(kube_client).filter(namespace=NAMESPACE).filter(selector=selector)
+        )
+        if deployments and all((d.obj.get("status", {}).get("readyReplicas", 0) or 0) >= 1 for d in deployments):
+            return deployments
+        if time.monotonic() >= deadline:
+            status = {d.name: d.obj.get("status", {}) for d in deployments}
+            raise AssertionError(f"Deployments {selector} in '{NAMESPACE}' not ready after {timeout_sec}s: {status}")
+        time.sleep(3)
+
+
 @pytest.mark.smoke
 @pytest.mark.functional
 @pytest.mark.upgrade
@@ -78,3 +96,28 @@ def test_bundle_sources_ready() -> None:
 
     not_ready = [s["metadata"]["name"] for s in sources if not _is_ready(s)]
     assert not not_ready, f"OCIRepository sources not Ready in '{NAMESPACE}': {not_ready}"
+
+
+@flux_leg_only
+@pytest.mark.smoke
+@pytest.mark.functional
+@pytest.mark.upgrade
+@pytest.mark.flaky(reruns=1, reruns_delay=15)
+def test_muster_component_running(kube_cluster: Cluster) -> None:
+    """The muster component the bundle deploys is actually running, not just reconciled.
+
+    The Flux HelmRelease reporting Ready means the child chart installed; this asserts the
+    workload it produced (the muster Deployment) has all replicas ready. Runs in the upgrade
+    scenario too, so the workload is verified before and after the upgrade.
+    """
+    deployments = _wait_for_ready_deployments(kube_cluster.kube_client, {"app.kubernetes.io/name": "muster"})
+    for deployment in deployments:
+        assert int(deployment.obj["status"]["readyReplicas"]) == int(deployment.obj["spec"]["replicas"])
+
+
+@flux_leg_only
+@pytest.mark.functional
+def test_connectivity_httproute_present() -> None:
+    """The connectivity component rendered its Gateway API wiring (an HTTPRoute)."""
+    routes = _kubectl_get("httproutes.gateway.networking.k8s.io")
+    assert routes, f"connectivity did not create an HTTPRoute in '{NAMESPACE}'"
