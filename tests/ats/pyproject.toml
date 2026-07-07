@@ -1,9 +1,8 @@
-# EXPERIMENT (do not merge): ats runs `uv sync`, but the devctl-generated
-# Pipfile here is pipenv-only, so uv can't consume it. This mirrors the Pipfile
-# pins as a uv project so the smoke step can run under the pinned ats dev image.
+# ats test dependencies as a uv project. Mirrors the pins previously carried in
+# the devctl-generated Pipfile; ats runs `uv sync` (pipenv is gone in the new ats).
 [project]
 name = "agentic-platform-ats-tests"
-version = "0.0.0"
+version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "pytest-helm-charts==1.3.4",
@@ -11,4 +10,11 @@ dependencies = [
     "pykube-ng==23.6.0",
     "pytest-rerunfailures==16.3",
     "requests==2.34.2",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "smoke: fast sanity checks run first",
+    "functional: full feature tests",
+    "upgrade: run during upgrade scenario (before and after helm upgrade)",
 ]
