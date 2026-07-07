@@ -38,8 +38,9 @@ workflows:
     - architect/run-tests-with-ats:
         name: execute-chart-tests
         # EXPERIMENT (do not merge): pin the ats dev build carrying the GitOps
-        # bundle testing feature (app-test-suite #664-#667).
-        app-test-suite_container_tag: "0.15.1-dev.gitops-docs.2026-07-06.17-09-14.h84cda62"
+        # bundle testing feature incl. the Argo CD engine (app-test-suite
+        # #664-#667 + #672).
+        app-test-suite_container_tag: "0.15.1-dev.gitops-argo-runner.2026-07-07.10-31-24.he6d6190"
         requires:
         - build-chart
         filters:
