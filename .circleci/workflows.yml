@@ -39,7 +39,7 @@ workflows:
         name: execute-chart-tests
         # EXPERIMENT (do not merge): pin the ats dev build carrying the GitOps
         # bundle testing feature (app-test-suite #664-#667).
-        app-test-suite_container_tag: "0.15.0-84cda623836b7c03358837fdcdbcecdfbad8370c"
+        app-test-suite_container_tag: "0.15.1-dev.gitops-docs.2026-07-06.17-09-14.h84cda62"
         requires:
         - build-chart
         filters:
