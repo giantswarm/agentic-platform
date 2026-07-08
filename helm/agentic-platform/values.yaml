@@ -1027,6 +1027,7 @@ agents:
   # configs. The apiKeySecret must be pre-created in the kagent namespace.
   models: []
   # - name: anthropic-sonnet
+  #   displayName: Anthropic Sonnet 4.6
   #   provider: Anthropic
   #   model: claude-sonnet-4-6
   #   apiKeySecret: kagent-anthropic
