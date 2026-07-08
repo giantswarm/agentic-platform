@@ -250,6 +250,48 @@
         }
       }
     },
+    "agents": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Platform agents config. Only agents.models is schema-validated here; other keys are pass-through.",
+      "properties": {
+        "models": {
+          "type": "array",
+          "description": "ModelConfig CRs to create in the kagent namespace.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "provider", "model", "apiKeySecret"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "ModelConfig name; agents reference it via spec.declarative.modelConfig."
+              },
+              "displayName": {
+                "type": "string",
+                "description": "Optional human-friendly name, rendered as the ui.giantswarm.io/display-name annotation."
+              },
+              "provider": {
+                "type": "string",
+                "description": "Model provider, e.g. Anthropic."
+              },
+              "model": {
+                "type": "string",
+                "description": "Model identifier, e.g. claude-sonnet-4-6."
+              },
+              "apiKeySecret": {
+                "type": "string",
+                "description": "Pre-existing Secret in the kagent namespace holding the API key."
+              },
+              "apiKeySecretKey": {
+                "type": "string",
+                "description": "Key within apiKeySecret. Defaults to ANTHROPIC_API_KEY."
+              }
+            }
+          }
+        }
+      }
+    },
     "kagent": {
       "type": "object",
       "description": "kagent subchart values (pass-through) plus umbrella routing config. Subchart keys are forwarded to the kagent chart; `controllerRoute` and `uiRoute` are consumed by umbrella templates only.",
