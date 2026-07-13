@@ -908,19 +908,6 @@ agents:
     # tokenExpirationSeconds (default: every 15 minutes, a quarter of the 1h TTL).
     tokenRefreshSchedule: "*/15 * * * *"
 
-    # Shared platform gateway: one RemoteMCPServer, always named "muster", in
-    # the release namespace (agentic-platform). The name/namespace pair is the
-    # platform contract — the generic `agent` chart defaults its serverRef to
-    # muster/agentic-platform — so it is fixed by the template, not a value.
-    # `allowedNamespaces: {from: All}` admits every namespace (kagent gates
-    # cross-namespace references on the target side); muster still
-    # authenticates each call. On-behalf-of only: no headersFrom, so the caller
-    # token forwarded by kagent (KAGENT_PROPAGATE_TOKEN) is the only
-    # Authorization reaching muster — unlike the per-agent "muster-<name>"
-    # servers below, which exist to inject a static per-agent SA token (M2M).
-    shared:
-      enabled: true
-
   # kagent agents, keyed by agent name. Each enabled entry renders: the Agent CR
   # (prompt, model, tools); a per-agent muster RemoteMCPServer named "muster-<name>"
   # whose headersFrom Secret carries the agent's OWN SA Bearer token (the
