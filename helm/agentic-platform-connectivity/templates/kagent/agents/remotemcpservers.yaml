@@ -13,7 +13,7 @@ is the only Authorization reaching muster. */}}
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
 metadata:
-  name: {{ .Values.agents.muster.shared.name | quote }}
+  name: muster
   namespace: {{ .Release.Namespace }}
 spec:
   description: "Shared muster MCP gateway for platform agents"
