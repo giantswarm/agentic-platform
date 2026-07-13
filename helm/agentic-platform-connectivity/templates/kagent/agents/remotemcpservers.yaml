@@ -2,6 +2,26 @@
 {{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
 {{- $musterUrl := printf "http://%s.%s.svc.cluster.local:%v/mcp" (include "agentic-platform.musterFullname" .) .Release.Namespace (include "agentic-platform.musterServicePort" .) }}
 {{- if .Values.muster.enabled }}
+{{- if .Values.agents.muster.shared.enabled }}
+{{/* Shared platform gateway: created in the release namespace (not $ns) and
+referenced cross-namespace by tenant agents — the generic `agent` chart defaults
+its serverRef to muster/agentic-platform. allowedNamespaces from: All admits
+every namespace; muster still authenticates each call. On-behalf-of only: no
+headersFrom, so the caller token forwarded by kagent (KAGENT_PROPAGATE_TOKEN)
+is the only Authorization reaching muster. */}}
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: {{ .Values.agents.muster.shared.name | quote }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: "Shared muster MCP gateway for platform agents"
+  url: {{ $musterUrl | quote }}
+  protocol: STREAMABLE_HTTP
+  allowedNamespaces:
+    from: All
+{{- end }}
 {{/* One muster RemoteMCPServer per enabled agent: same muster Service. M2M agents
 carry their own SA token via headersFrom so muster sees a per-agent identity; OBO
 agents (obo.enabled) omit it and forward the propagated human muster token instead. */}}
