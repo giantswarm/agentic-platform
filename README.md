@@ -12,7 +12,7 @@ This repo publishes **two** charts:
 | Chart | What it is |
 |---|---|
 | `agentic-platform` | the **meta-package** — an app-of-apps that renders each component and the connectivity layer as Flux `OCIRepository` + `HelmRelease` (or Argo `Application`). The single thing you install. |
-| `agentic-platform-connectivity` | the consumer-side **wiring** the meta-package renders as a child release: the public muster route, the agentgateway data-plane `Gateway` + `AgentgatewayParameters` + `HTTPRoute`s + `BackendTrafficPolicy`s, the `NetworkPolicy`s, the kagent/klaus-gateway routes, the kagent declarative-agent CRs, and the CNPG `Cluster`. |
+| `agentic-platform-connectivity` | the consumer-side **wiring** the meta-package renders as a child release: the public muster route, the agentgateway data-plane `Gateway` + `AgentgatewayParameters` + `HTTPRoute`s + `BackendTrafficPolicy`s, the `NetworkPolicy`s, the kagent/klaus-gateway routes, the admin-owned kagent shared resources (the shared muster `RemoteMCPServer`, `ModelConfig`s), and the CNPG `Cluster`. Agents themselves are created with the generic [`agent` chart](https://github.com/giantswarm/agent), one release per agent. |
 
 > **CRDs are app-owned.** There is no longer a standalone `agentic-platform-crds` bundle chart — each component (muster, agentgateway, kagent, agent-sandbox) ships its own CRDs in its chart's `crds/` dir and upgrades them atomically with the app via Flux `CreateReplace`. A CR consumer `dependsOn` the component that owns the CRD it needs. See [CRD lifecycle](#crd-lifecycle).
 

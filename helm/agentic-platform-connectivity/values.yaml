@@ -687,119 +687,24 @@ kagent:
       annotations: {}
       labels: {}
 
-# Platform agents — kagent RemoteMCPServer CRs and supporting network policies.
-# All CRs land in kagent.namespaceOverride (default: kagent).
+# Platform agents — admin-owned shared resources for kagent agents: ModelConfig
+# CRs (agents.models) and additional RemoteMCPServer CRs (agents.remoteMcpServers),
+# plus the shared muster RemoteMCPServer and supporting network policies rendered
+# by the connectivity chart. All CRs land in kagent.namespaceOverride (default:
+# kagent), except the shared muster RemoteMCPServer, which lives in the release
+# namespace (its name/namespace are the platform contract the agent chart's
+# default serverRef depends on).
 # Prerequisite: kagent.enabled: true (the kagent app chart ships the kagent CRDs).
 #
-# muster RemoteMCPServer, SA, and egress CNP are gated on kagent.enabled + muster.enabled.
+# Agents themselves are NOT created by this chart. Install one release of the
+# generic agent chart (https://github.com/giantswarm/agent) per agent, per the
+# creating-agents PRD: that chart renders the Agent CR and references the
+# admin-owned resources here by name (the shared muster RemoteMCPServer, an
+# admin-provisioned ModelConfig in the agent's namespace).
+#
+# The shared muster RemoteMCPServer and egress CNP are gated on kagent.enabled
+# + muster.enabled.
 agents:
-  # kagent agents, keyed by agent name. Each enabled entry renders: the Agent CR
-  # (prompt, model, tools), its ServiceAccount (the on-behalf-of actor identity),
-  # and a per-agent muster RemoteMCPServer named "muster-<name>" carrying no
-  # static credentials: kagent propagates the caller's muster token
-  # (KAGENT_PROPAGATE_TOKEN) so muster sees the human as the subject and the
-  # agent SA as the RFC 8693 actor. Add an agent = add a key.
-  # Keyed by name (not a list) so per-cluster values deep-merge field-by-field; a
-  # cluster can flip enabled or tweak the prompt without restating the whole entry.
-  # Agents run the Python ADK.
-  #
-  # Prerequisite: muster.muster.oauth.server.trustedIssuers must include an
-  # entry for the cluster SA OIDC issuer so muster can validate the agent's
-  # actor token at /oauth/token (find with:
-  #   kubectl get --raw /.well-known/openid-configuration | jq .issuer).
-  # Set in per-cluster values — see configmap-values.yaml.template.
-  # Example entry:
-  #   trustedIssuers:
-  #     - issuer: "https://<cluster-oidc-issuer>/"
-  #       allowedClaims:
-  #         sub: "system:serviceaccount:kagent:*"
-  #
-  # Disabled by default; enable per cluster in giantswarm-config.
-  definitions:
-    sre-agent:
-      enabled: false
-      # SA the agent runs as: the on-behalf-of actor presented to muster.
-      # Defaults to the agent name.
-      serviceAccount: sre-agent
-      # ModelConfig CR the agent uses. Defaults to the one kagent's sub-chart
-      # creates from kagent.providers.anthropic.
-      modelConfig: default-model-config
-      description: "Giant Swarm SRE agent"
-      # The muster-tool guidance below is the same contract that was eval-tuned
-      # for the Backstage devportal AI chat (giantswarm/backstage#1775): prefer a
-      # single-call workflow, the exact x_kubernetes_* argument contract, and the
-      # cheap-listing recipe. It cuts wrong-arg retries and avoidable tool round
-      # trips against the muster meta-tool interface this agent shares.
-      # NOTE: keep in sync with helm/agentic-platform/values.yaml — the umbrella's
-      # forwardAllValues hands ITS copy to this chart's HelmRelease, shadowing this
-      # default in meta-package installs.
-      systemMessage: |-
-        You are a Giant Swarm SRE agent. You investigate cluster, workload, and
-        observability issues using the tools exposed through the muster MCP
-        gateway. Prefer read-only diagnosis; explain findings concisely and cite
-        the evidence (resources, metrics, logs) you base conclusions on.
-
-        Your MCP tools come from an aggregator, muster, via meta-tools:
-        `filter_tools` discovers tools (pass a natural-language `query`; it returns
-        a short, relevance-ranked list), `describe_tool` returns a tool's input
-        schema, and `call_tool` runs a tool by its exact `name`.
-
-        Prefer a workflow. A `workflow_<name>` tool answers a whole question (pod
-        health, cluster health, a failing app) in a single call. Always look for
-        one first with `filter_tools(query="<the question's topic>")` and prefer it
-        over driving the raw `x_kubernetes_*` / `x_prometheus_*` tools yourself.
-        Fall back to raw tools only when no workflow fits.
-
-        Kubernetes tool contract. Raw Kubernetes tools are `x_kubernetes_*`
-        (`list`/`get`/`describe`/`logs`), with two easy-to-miss requirements:
-        - `management_cluster` is required, and its value is the full server name
-          `<mc>-mcp-kubernetes` — not the bare `<mc>`, and not `server`/`cluster`.
-          Prometheus tools take `<mc>-mcp-prometheus`.
-        - Argument names are exact: `x_kubernetes_list` selects with `resourceType`
-          (not `kind`); pod logs use `podName` (not `name`) and `tailLines`
-          (not `tail`).
-
-        List cheaply.
-        - `summary: true` for a per-kind overview; `fieldSelector:
-          status.phase!=Running` to surface only the pods needing attention.
-        - A CrashLoopBackOff pod is reported as `Running` by summary/phase — catch
-          it via events with `fieldSelector: reason=BackOff`.
-      # Tools to expose from the agent's muster server: muster's meta-tools.
-      # Listed explicitly (rather than empty = all) so the kagent UI renders them
-      # by name instead of a single "Unknown Tool" entry. Backend tools
-      # (x_kubernetes_*, x_prometheus_*, workflows) are reached through call_tool,
-      # not listed here.
-      toolNames:
-        - list_tools
-        - describe_tool
-        - list_core_tools
-        - filter_tools
-        - call_tool
-        - list_resources
-        - describe_resource
-        - get_resource
-        - list_prompts
-        - describe_prompt
-        - get_prompt
-      # Request headers forwarded from the inbound A2A call onto muster tool calls.
-      # With KAGENT_PROPAGATE_TOKEN the inbound Authorization is forwarded regardless;
-      # ["authorization"] additionally allows explicit per-header forwarding.
-      allowedHeaders: ["authorization"]
-      # Optional container resources for the agent Deployment.
-      resources: {}
-      # Optional extra env for the agent Deployment.
-      env: []
-      # Agentgateway route — exposes this agent's A2A endpoint at /agents/<name>
-      # on the agentgateway inner Gateway (agentgateway-* ingress modes only).
-      # Rendered automatically when the agent is enabled. Only in-cluster callers
-      # (other agents, the kagent controller) are expected to use this path; no
-      # public outer HTTPRoute is created. Use extraObjects for external A2A access.
-      agentgatewayRoute:
-        # Optional: scope the inner HTTPRoute to a specific hostname on the
-        # agentgateway Gateway. Leave empty to match all hostnames.
-        # Example: agentgateway.<cluster>.<base-domain>
-        hostname: ""
-
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
   # CR; agents reference it by name. Set tokenSecret to a pre-existing Secret
