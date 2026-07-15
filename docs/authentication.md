@@ -173,22 +173,22 @@ agentic-platform-mcps:
         clientSecretKey: client-secret
 ```
 
-### On-behalf-of (OBO): local mint + human impersonation
+### On behalf of a user: the user's Dex token, forwarded
 
-A kagent agent reaching a downstream server forwards the human's muster token as
-`Authorization` and its own ServiceAccount token as `X-Actor-Token`. muster
-validates both and **local-mints** (`auth.mode: localMint`, `enableJWTMode: true`) a
-token for the downstream audience carrying the human as `sub` and the agent SA in
-the RFC 8693 `act` claim. The downstream server (e.g. mcp-kubernetes) cannot present
-that token to the kube-apiserver as a bearer (wrong issuer/audience), so it
-authenticates with its own SA token and sets `Impersonate-User` to the human plus
-`Impersonate-Extra-actor` to the agent SA. Kubernetes RBAC and the audit log then
-reflect the human, with the acting agent recorded.
+A kagent agent acts on behalf of the human who invoked it. kagent propagates the
+human's Dex-issued token (`KAGENT_PROPAGATE_TOKEN`) as the only `Authorization`
+reaching muster — no static per-agent header, no separate actor token. muster
+validates that token and, per the downstream server's `auth.mode`, either
+forwards it unchanged (`forward`) or exchanges it at the spoke's Dex (`exchange`,
+above). muster never signs a token of its own: Dex is the sole SSO authority
+(muster v1.0.0 removed JWT mode), so every downstream server validates against
+Dex's JWKS, never muster's. The token carries the human only; the agent's own
+identity is not asserted downstream.
 
-A trusted-issuer token with no `act` claim is rejected: only on-behalf-of is
-accepted, and any cryptographically validated actor is allowed (the impersonated
-human's downstream RBAC governs access). The impersonation `ClusterRole` is rendered
-by the mcp-kubernetes chart (`*-obo-impersonate`), not by agentic-platform.
+For mcp-kubernetes the token is a Dex token with `aud=dex-k8s-authenticator`,
+which mcp-kubernetes forwards to the kube-apiserver via downstream OAuth — so
+Kubernetes RBAC and the audit log reflect the human directly. No muster-issued
+token and no impersonation `ClusterRole` are involved.
 
 ---
 
@@ -205,57 +205,31 @@ on its own. Token exchange (§3) is
 unaffected: agentgateway only ever sees the inbound token; muster's internal
 RFC 8693 exchanges happen behind it.
 
-### Why muster signs its own tokens now
+### Edge validation validates against Dex, not muster
 
-Before agentgateway, muster was the **only** enforcement point: it ran the OAuth
-server (DCR/CIMD), held the session state, and validated every request itself. A
-token only had to mean something *to muster*, so an opaque session reference was
-enough — nothing else ever needed to read it.
+The default is `oauthMode: passthrough`: agentgateway forwards the token to
+muster unchanged, and muster is the sole validator. muster issues only opaque
+tokens — v1.0.0 removed `enableJWTMode`/`jwtSigningKey` and the chart schema now
+rejects both — and must never be trusted as an issuer.
 
-agentgateway changes that. It is now an **independent** enforcement and
-observability layer sitting in front of muster, and edge validation
-(`oauthMode: validate`) means agentgateway must decide *on its own* whether a
-token is valid — without a round-trip back to muster on every request. That only
-works if the token is a **self-contained, signed JWT** whose signature
-agentgateway can verify statelessly against a published key set. An opaque
-session token is unverifiable by anyone but muster, so it can't gate a second,
-independent component.
+If an install turns on edge validation (`oauthMode: validate`), agentgateway
+verifies the JWT against the issuer that signed it — **Dex** — by fetching Dex's
+`/.well-known/jwks.json`. There is no muster JWT mode and no muster JWKS. muster
+still validates downstream as the second layer, and token exchange in §3 is
+untouched. `resourceIdentifier` (`agentgateway-host/mcp`) remains the audience
+the token is bound to, so agentgateway can check `aud` matches the hostname the
+client actually dialled.
 
-So muster takes on an issuer role it did not have before (`enableJWTMode: true`):
-
-- **Signs its own JWTs** (`iss=muster`) with the `jwt-signing-key` (EC P-256),
-  instead of handing out opaque session tokens.
-- **Publishes `/.well-known/jwks.json`** so agentgateway can fetch the public key
-  and verify signatures at the edge.
-- **Audience-binds** each token to `resourceIdentifier` (`agentgateway-host/mcp`),
-  so a token minted for this platform cannot be replayed at an unrelated
-  resource — agentgateway checks that `aud` matches the hostname the client
-  actually dialled.
-
-This is additive, not a replacement: muster still validates downstream as the
-second layer (and token exchange in §3 is untouched). The signed-JWT capability
-exists purely so a *second*, independent component can trust the token without
-asking muster.
-
-Edge validation needs a JWKS to verify token signatures. There are two
-topologies, and they differ in whether the JWKS NetworkPolicy egress rule is
-required.
+Edge validation fetches the JWKS from Dex (the token's issuer), which typically
+runs in another namespace on a non-standard port, so it needs an explicit
+data-plane egress rule.
 
 ```mermaid
 flowchart TD
-    subgraph A["A · muster JWT mode (default for edge validation)"]
-        a_agw["agentgateway :8080<br/>oauthMode: validate"]
-        a_m["muster :8090<br/>enableJWTMode: true<br/>signs own JWTs (iss=muster)<br/>serves /.well-known/jwks.json"]
-        a_agw -->|"jwksBackendRef → agentic-platform-muster:8090<br/>SAME namespace, port 8090"| a_m
-        a_note["existing muster egress rule already covers it<br/>→ gateway.jwksEgress NOT needed"]
-    end
-
-    subgraph B["B · external JWKS (e.g. Dex)"]
-        b_agw["agentgateway :8080<br/>oauthMode: validate"]
-        b_dex["external IdP / Dex<br/>JWKS on a non-standard port<br/>e.g. :5556 in another namespace"]
-        b_agw -->|"cross-namespace, non-80/443 port"| b_dex
-        b_note["needs gateway.jwksEgress.enabled: true<br/>→ adds the data-plane egress rule"]
-    end
+    agw["agentgateway :8080<br/>oauthMode: validate"]
+    dex["Dex (the token issuer)<br/>JWKS on a non-standard port<br/>e.g. :5556 in another namespace"]
+    agw -->|"cross-namespace, non-80/443 port"| dex
+    note["needs gateway.jwksEgress.enabled: true"]
 ```
 
 ### When `gateway.jwksEgress` is required
@@ -269,33 +243,27 @@ The data-plane NetworkPolicy
 muster:8090 and the agentgateway controller:9978 by default. Fetching JWKS from
 anywhere else is blocked unless you open it explicitly:
 
-- **Topology A — muster JWT mode:** JWKS is muster's own `/.well-known/jwks.json`
-  on `:8090` in the **same** namespace. The existing muster egress rule already
-  permits it, so **leave `gateway.jwksEgress.enabled: false`**. No
-  `ReferenceGrant` needed either (same namespace).
-- **Topology B — external JWKS:** the JWKS service (typically Dex on `:5556`)
-  runs in another namespace on a port the default cluster egress rules
-  (80/443) don't cover. Enable the rule:
+- **Default (`oauthMode: passthrough`):** no JWKS fetch — muster is the sole
+  validator. Leave `gateway.jwksEgress.enabled: false`.
+- **Edge validation (`oauthMode: validate`) against Dex:** Dex's JWKS (typically
+  on `:5556`) runs in another namespace on a port the default cluster egress
+  rules (80/443) don't cover. Enable the rule:
 
   ```yaml
   gateway:
     jwksEgress:
       enabled: true
-      namespace: giantswarm     # where the JWKS service lives
+      namespace: giantswarm     # where Dex lives
       port: 5556                # Dex's JWKS port
       podSelector: {}           # optional: narrow beyond namespace
   ```
 
-### Enabling edge validation (Topology A)
+### Enabling edge validation
 
-1. Add a `jwt-signing-key` (EC P-256 PEM) to the cluster's
-   `agentic-platform-secrets`.
-2. `enableJWTMode: true` on muster — it signs its own JWTs (`iss=muster`),
-   exposes `/.well-known/jwks.json`, and audience-binds tokens to
-   `resourceIdentifier` (`agentgateway-host/mcp`).
-3. `oauthMode: validate` with `jwt.jwksBackendRef → agentic-platform-muster:8090`
-   (set in shared-configs).
+1. `oauthMode: validate` on agentgateway, with `jwt.jwksBackendRef` pointing at
+   the Dex that issued the tokens (set in shared-configs).
+2. `gateway.jwksEgress.enabled: true` with Dex's namespace and JWKS port, so the
+   data plane may reach it (see above).
 
-> Requires the muster build that loads the signing key from file and guards the
-> `jwtSigningKeyFile` chart template — without it, `enableJWTMode: true` crashes
-> muster at startup. Track the `muster` dependency version in `Chart.yaml`.
+> muster is not involved in edge validation and signs nothing: v1.0.0 removed
+> `enableJWTMode`/`jwtSigningKey` and the chart schema rejects them.

@@ -8,9 +8,8 @@ its serverRef to muster/agentic-platform; that name/namespace pair is the
 platform contract, so it is fixed here. Rendered whenever kagent + muster are
 enabled: the CR is inert until an agent references it. allowedNamespaces
 from: All admits every namespace; muster still authenticates each call.
-On-behalf-of only: no headersFrom, so the caller token forwarded by kagent
-(KAGENT_PROPAGATE_TOKEN) is the only Authorization reaching muster — unlike the
-per-agent "muster-<name>" servers below, which inject a static SA token (M2M). */}}
+No headersFrom, so the caller token forwarded by kagent (KAGENT_PROPAGATE_TOKEN)
+is the only Authorization reaching muster. */}}
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -23,13 +22,13 @@ spec:
   protocol: STREAMABLE_HTTP
   allowedNamespaces:
     from: All
-{{/* One muster RemoteMCPServer per enabled agent: same muster Service. M2M agents
-carry their own SA token via headersFrom so muster sees a per-agent identity; OBO
-agents (obo.enabled) omit it and forward the propagated human muster token instead. */}}
+{{/* One muster RemoteMCPServer per enabled agent, all pointing at the same muster
+Service. No headersFrom: kagent's propagated user token (KAGENT_PROPAGATE_TOKEN)
+must be the only Authorization reaching muster; a static header would win (kagent
+applies static headers last) and shadow the forwarded user token. */}}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
 {{- if $agent.enabled }}
-{{- $tokenSecretName := include "agentic-platform.musterTokenSecretName" (dict "root" $ "agent" $agent) }}
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
@@ -40,20 +39,6 @@ spec:
   description: {{ printf "muster MCP gateway (%s)" $agent.name | quote }}
   url: {{ $musterUrl | quote }}
   protocol: STREAMABLE_HTTP
-{{- if not $agent.obo.enabled }}
-  {{/* M2M agent: inject the static SA Bearer token so muster sees the per-agent
-  identity. OBO agents omit this entirely so kagent's propagated human muster
-  token (KAGENT_PROPAGATE_TOKEN) is the only Authorization reaching muster — the
-  static header would otherwise win (kagent applies static headers last) and
-  shadow the user. No X-Actor-Token act-chain: the forwarded token is already a
-  muster access_token, so the human is the muster subject directly. */}}
-  headersFrom:
-  - name: Authorization
-    valueFrom:
-      type: Secret
-      name: {{ $tokenSecretName | quote }}
-      key: token
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

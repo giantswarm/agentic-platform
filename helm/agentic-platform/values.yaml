@@ -870,14 +870,19 @@ kagent:
 #
 # muster RemoteMCPServer, SA, and egress CNP are gated on kagent.enabled + muster.enabled.
 agents:
-  # Shared muster token-mint infrastructure. Active when kagent.enabled +
-  # muster.enabled. Each agent in `list` below gets a RemoteMCPServer plus the
-  # Helm hook Job + refresh CronJob that mint a short-lived token for the agent's
-  # own SA and write "Bearer <token>" into its headersFrom Secret; this block only
-  # holds the images and token lifetime shared by all of them.
+  # kagent agents, keyed by agent name. Each enabled entry renders: the Agent CR
+  # (prompt, model, tools), its ServiceAccount (the on-behalf-of actor identity),
+  # and a per-agent muster RemoteMCPServer named "muster-<name>" carrying no
+  # static credentials: kagent propagates the caller's muster token
+  # (KAGENT_PROPAGATE_TOKEN) so muster sees the human as the subject and the
+  # agent SA as the RFC 8693 actor. Add an agent = add a key.
+  # Keyed by name (not a list) so per-cluster values deep-merge field-by-field; a
+  # cluster can flip enabled or tweak the prompt without restating the whole entry.
+  # Agents run the Python ADK.
   #
   # Prerequisite: muster.muster.oauth.server.trustedIssuers must include an
-  # entry for the cluster SA OIDC issuer (find with:
+  # entry for the cluster SA OIDC issuer so muster can validate the agent's
+  # actor token at /oauth/token (find with:
   #   kubectl get --raw /.well-known/openid-configuration | jq .issuer).
   # Set in per-cluster values — see configmap-values.yaml.template.
   # Example entry:
@@ -885,48 +890,13 @@ agents:
   #     - issuer: "https://<cluster-oidc-issuer>/"
   #       allowedClaims:
   #         sub: "system:serviceaccount:kagent:*"
-  muster:
-    # kubectl image used by the token hook Job to apply the Secret. Distroless
-    # (registry.k8s.io/kubectl), no shell — invoked with args only.
-    kubectlImage:
-      registry: gsoci.azurecr.io
-      repository: giantswarm/kubectl
-      tag: v1.36.2
-    # busybox image used by the token hook Job's init container to read the
-    # projected token and render the Secret manifest. Needs a POSIX shell.
-    busyboxImage:
-      registry: gsoci.azurecr.io
-      repository: giantswarm/busybox
-      tag: "1.38.0"
-    # Expiration requested for the projected muster token, in seconds. The token
-    # is snapshotted into the headersFrom Secret and re-minted by the
-    # muster-token-refresh CronJob; keep this comfortably above tokenRefreshSchedule
-    # so a missed refresh still leaves a valid token. The API server caps it via
-    # --service-account-max-token-expiration.
-    tokenExpirationSeconds: 3600
-    # Cron schedule for re-minting the muster token Secret. Must run well inside
-    # tokenExpirationSeconds (default: every 15 minutes, a quarter of the 1h TTL).
-    tokenRefreshSchedule: "*/15 * * * *"
-
-  # kagent agents, keyed by agent name. Each enabled entry renders: the Agent CR
-  # (prompt, model, tools); a per-agent muster RemoteMCPServer named "muster-<name>"
-  # whose headersFrom Secret carries the agent's OWN SA Bearer token (the
-  # on-behalf-of actor presented to muster as X-Actor-Token); the mint Job +
-  # refresh CronJob + Secret RBAC that run as that SA. Add an agent = add a key.
-  # An agent that forwards the human token (allowedHeaders includes "authorization",
-  # OBO mode) drops the headersFrom injection AND the mint Job/CronJob/RBAC — it
-  # presents the propagated user muster token, not an SA token.
-  # Keyed by name (not a list) so per-cluster values deep-merge field-by-field — a
-  # cluster can flip enabled or tweak the prompt without restating the whole entry.
-  # The kagent controller auto-creates the SA named after the agent, which is the
-  # on-behalf-of actor. Agents run the Python ADK.
   #
   # Disabled by default; enable per cluster in giantswarm-config.
   definitions:
     sre-agent:
       enabled: false
-      # SA whose token is minted and presented to muster as the on-behalf-of actor.
-      # Defaults to the agent name (the SA the kagent controller creates for it).
+      # SA the agent runs as: the on-behalf-of actor presented to muster.
+      # Defaults to the agent name.
       serviceAccount: sre-agent
       # ModelConfig CR the agent uses. Defaults to the one kagent's sub-chart
       # creates from kagent.providers.anthropic.
@@ -989,21 +959,8 @@ agents:
         - get_prompt
       # Request headers forwarded from the inbound A2A call onto muster tool calls.
       # With KAGENT_PROPAGATE_TOKEN the inbound Authorization is forwarded regardless;
-      # ["authorization"] additionally allows explicit per-header forwarding. Whether
-      # the call runs as the user or as the agent SA is governed by `obo.enabled` below.
+      # ["authorization"] additionally allows explicit per-header forwarding.
       allowedHeaders: ["authorization"]
-      # OBO (on-behalf-of) mode. When enabled, this agent's muster RemoteMCPServer
-      # OMITS the static SA-token `headersFrom` injection, so kagent's propagated
-      # human muster access_token (iss=muster, aud=.../mcp) reaches muster as the real
-      # user instead of being shadowed by the agent SA. The forwarded token is already
-      # a muster token, so no RFC 8693 act-chain (X-Actor-Token) is used — the human is
-      # the muster subject directly. Trade-off: a tokenless autonomous (M2M) run has no
-      # Authorization and cannot reach muster, so keep obo disabled for agents that must
-      # run autonomously against muster. (kagent-dev/kagent#2087 would let the static SA
-      # token stay as an M2M fallback while a propagated user token still wins; until it
-      # lands the two are mutually exclusive and this chart drops the static token.)
-      obo:
-        enabled: true
       # Optional container resources for the agent Deployment.
       resources: {}
       # Optional extra env for the agent Deployment.
@@ -1011,9 +968,9 @@ agents:
 
   # List of additional RemoteMCPServer CRs to create in the kagent namespace.
   # Use for MCP servers other than the built-in muster. Each entry creates one
-  # CR; agents reference it by name. tokenSecret defaults to the chart-managed
-  # SA-token Secret (written by the muster token hook Job, key "token", value
-  # "Bearer <token>"); set it only for servers needing a different credential.
+  # CR; agents reference it by name. Set tokenSecret to a pre-existing Secret
+  # holding key "token" with value "Bearer <token>" for servers that need a
+  # static credential; omit it for servers reached with the propagated token.
   remoteMcpServers: []
   # - name: external-mcp
   #   url: "https://external-mcp.example.com/mcp"
