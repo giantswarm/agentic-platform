@@ -1,0 +1,51 @@
+{{- $route := .Values.kagent.controllerRoute }}
+{{- if and .Values.kagent.enabled $route.enabled ($route.jwtAuthentication).enabled }}
+{{- $jwt := $route.jwtAuthentication }}
+# AgentgatewayBackend — static backend for the dex JWKS endpoint. Lives in the
+# release namespace so the policy's jwks backendRef needs no ReferenceGrant
+# into the dex namespace.
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: dex-jwks
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  static:
+    host: {{ $jwt.jwks.host }}
+    port: {{ $jwt.jwks.port }}
+---
+# AgentgatewayPolicy — verifies the bearer JWT (signature, issuer, expiry)
+# against dex on the inner kagent-controller HTTPRoute before forwarding. The
+# controller's trusted-proxy mode decodes claims without verification and
+# depends on this boundary being enforced in front of it.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: kagent-controller-jwt
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: kagent-controller
+  traffic:
+    jwtAuthentication:
+      mode: Strict
+      providers:
+        - issuer: {{ $jwt.issuer | quote }}
+          # No audiences: any audience the issuer minted is accepted. dex
+          # id_tokens carry the originating client id as aud, which varies per
+          # caller; requiring one would break the dex human path.
+          jwks:
+            remote:
+              backendRef:
+                group: agentgateway.dev
+                kind: AgentgatewayBackend
+                name: dex-jwks
+              jwksPath: {{ $jwt.jwks.path | quote }}
+{{- end }}

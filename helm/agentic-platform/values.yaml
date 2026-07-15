@@ -842,6 +842,25 @@ kagent:
     parentRef:
       name: giantswarm-default
       namespace: envoy-gateway-system
+    # JWT validation on the inner kagent-controller HTTPRoute. Renders an
+    # AgentgatewayPolicy (plus a static AgentgatewayBackend for the JWKS
+    # endpoint) so agentgateway verifies the bearer's signature, issuer, and
+    # expiry against dex before forwarding. The controller's trusted-proxy mode
+    # decodes claims without verification and depends on this boundary.
+    # Off by default: enabling it rejects every caller that does not present a
+    # dex-issued JWT (opaque muster tokens, Kubernetes ServiceAccount tokens).
+    # Enable gateway.jwksEgress alongside so the data plane can reach dex.
+    jwtAuthentication:
+      enabled: false
+      # dex issuer URL exactly as it appears in the token iss claim.
+      # Example: https://dex.<cluster>.<base-domain>
+      issuer: ""
+      # In-cluster JWKS source for the issuer, rendered as a static
+      # AgentgatewayBackend in the release namespace.
+      jwks:
+        host: dex.giantswarm.svc.cluster.local
+        port: 5556
+        path: /keys
   # Expose kagent UI. Creates an HTTPRoute on the public Gateway pointing at
   # oauth2-proxy (when enabled) or the UI service directly (dev only).
   # Supply oauth2-proxy credentials and set uiRoute.enabled: true together.

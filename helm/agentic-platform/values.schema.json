@@ -261,7 +261,12 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "provider", "model", "apiKeySecret"],
+            "required": [
+              "name",
+              "provider",
+              "model",
+              "apiKeySecret"
+            ],
             "properties": {
               "name": {
                 "type": "string",
@@ -345,6 +350,34 @@
                 },
                 "namespace": {
                   "type": "string"
+                }
+              }
+            },
+            "jwtAuthentication": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "JWT validation on the inner kagent-controller HTTPRoute. Renders an AgentgatewayPolicy (Strict mode, dex issuer, no required audiences) plus a static AgentgatewayBackend for the JWKS endpoint.",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "issuer": {
+                  "type": "string"
+                },
+                "jwks": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "host": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "integer"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
             }
@@ -431,7 +464,7 @@
     },
     "agent-sandbox": {
       "type": "object",
-      "description": "agent-sandbox subchart values (pass-through). The chart nests the upstream controller under its own `agent-sandbox:` key. Usually empty — the chart defaults the gsoci-mirrored image.",
+      "description": "agent-sandbox subchart values (pass-through). The chart nests the upstream controller under its own `agent-sandbox:` key. Usually empty \u2014 the chart defaults the gsoci-mirrored image.",
       "additionalProperties": true
     },
     "klausGateway": {
