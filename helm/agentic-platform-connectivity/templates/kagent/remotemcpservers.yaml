@@ -23,16 +23,16 @@ spec:
   allowedNamespaces:
     from: All
 {{- end }}
-{{- range .Values.agents.remoteMcpServers }}
+{{- range .Values.kagent.remoteMcpServers }}
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
 metadata:
-  name: {{ required "agents.remoteMcpServers[].name is required" .name | quote }}
+  name: {{ required "kagent.remoteMcpServers[].name is required" .name | quote }}
   namespace: {{ $ns }}
 spec:
   description: {{ .description | default (printf "%s MCP server" .name) | quote }}
-  url: {{ required "agents.remoteMcpServers[].url is required" .url | quote }}
+  url: {{ required "kagent.remoteMcpServers[].url is required" .url | quote }}
   protocol: STREAMABLE_HTTP
   {{- with .tokenSecret }}
   headersFrom:

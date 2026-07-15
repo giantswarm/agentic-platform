@@ -1,1 +1,6 @@
 {{- include "agentic-platform.validateIngress" . -}}
+{{- /* The agents.* block is gone; fail loudly so stale per-cluster values don't
+silently stop rendering their ModelConfig/RemoteMCPServer CRs. */ -}}
+{{- if .Values.agents }}
+{{- fail "agents.* has been removed: agents.models is now kagent.modelConfigs, agents.remoteMcpServers is now kagent.remoteMcpServers, and agents.definitions is gone — create agents with the generic agent chart (https://github.com/giantswarm/agent)" }}
+{{- end }}
