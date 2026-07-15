@@ -1,6 +1,5 @@
 {{/*
-ServiceAccount an agent runs as: its identity when acting on behalf of a user
-(the RFC 8693 actor presented to muster). Defaults to the agent name.
+ServiceAccount the agent pod runs as. Defaults to the agent name.
 Input: an agents.definitions entry.
 */}}
 {{- define "agentic-platform.agentServiceAccount" -}}

@@ -3,9 +3,9 @@
 {{- $musterUrl := printf "http://%s.%s.svc.cluster.local:%v/mcp" (include "agentic-platform.musterFullname" .) .Release.Namespace (include "agentic-platform.musterServicePort" .) }}
 {{- if .Values.muster.enabled }}
 {{/* One muster RemoteMCPServer per enabled agent, all pointing at the same muster
-Service. No headersFrom: kagent's propagated muster token (KAGENT_PROPAGATE_TOKEN)
+Service. No headersFrom: kagent's propagated user token (KAGENT_PROPAGATE_TOKEN)
 must be the only Authorization reaching muster; a static header would win (kagent
-applies static headers last) and shadow the on-behalf-of identity. */}}
+applies static headers last) and shadow the forwarded user token. */}}
 {{- range $name, $cfg := .Values.agents.definitions }}
 {{- $agent := merge (dict "name" $name) $cfg }}
 {{- if $agent.enabled }}
