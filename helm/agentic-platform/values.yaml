@@ -570,7 +570,11 @@ kagent:
       # controller is never directly reachable. Use "unsecure" only for local dev
       # without any front proxy.
       mode: trusted-proxy
-      userIdClaim: sub
+      # email, not sub: dex subs are opaque connector-prefixed identifiers
+      # (connector-coupled and unreadable in session listings); email is the
+      # stable human identity and matches muster's trusted-issuer subjectClaim,
+      # so UI (oauth2-proxy) and A2A sessions key identically.
+      userIdClaim: email
     # Expose controller-runtime Prometheus metrics on :8080 (HTTP, no TLS).
     # The default --metrics-bind-address is "0" (disabled) and the chart never
     # sets it. We enable it here and wire a ServiceMonitor via extraObjects.

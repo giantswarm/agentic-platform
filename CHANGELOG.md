@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `kagent.controller.auth.userIdClaim` default changed from `sub` to `email` (umbrella + connectivity `values.yaml`). The kagent controller now keys sessions and identity on the dex `email` claim instead of dex's opaque, connector-prefixed `sub`. This matches muster's trusted-issuer `subjectClaim: email` and makes the UI path (oauth2-proxy forwards the same dex id_token) and the A2A path resolve to the same identity. Existing kagent sessions keyed by old `sub` values are orphaned by this change (session history resets); the claim falls back to `sub` in the controller when `email` is absent from the token.
+
 ### Added
 
 - Shared muster `RemoteMCPServer` for tenant agents. The connectivity chart now renders a single `RemoteMCPServer` named `muster` in the release namespace (`agentic-platform`) with `allowedNamespaces: {from: All}`, so agents in any namespace can reference the muster gateway cross-namespace — this is the admin-owned server the generic [`agent` chart](https://github.com/giantswarm/agent) defaults its `serverRef` to (`muster`/`agentic-platform`), per the [creating-agents PRD](https://github.com/giantswarm/bumblebee-plans/blob/main/creating-agents/PRD.md). On-behalf-of only: the server sets no `headersFrom`, so the caller token forwarded by kagent (`KAGENT_PROPAGATE_TOKEN`) is the only `Authorization` reaching muster, and muster authenticates every call. Rendered unconditionally whenever `kagent.enabled` and `muster.enabled` — the CR is inert until an agent references it — and the name is fixed by the template: name/namespace are the platform contract the agent chart's default `serverRef` depends on, so neither is a value.
