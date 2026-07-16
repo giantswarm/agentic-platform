@@ -1,0 +1,20 @@
+{{- if and .Values.kagent.enabled .Values.kagent.modelConfigs }}
+{{- $ns := .Values.kagent.namespaceOverride | default .Release.Namespace }}
+{{- range .Values.kagent.modelConfigs }}
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: {{ required "kagent.modelConfigs[].name is required" .name | quote }}
+  namespace: {{ $ns }}
+  {{- with .displayName }}
+  annotations:
+    ui.giantswarm.io/display-name: {{ . | quote }}
+  {{- end }}
+spec:
+  provider: {{ required "kagent.modelConfigs[].provider is required" .provider | quote }}
+  model: {{ required "kagent.modelConfigs[].model is required" .model | quote }}
+  apiKeySecret: {{ required "kagent.modelConfigs[].apiKeySecret is required" .apiKeySecret | quote }}
+  apiKeySecretKey: {{ .apiKeySecretKey | default "ANTHROPIC_API_KEY" | quote }}
+{{- end }}
+{{- end }}

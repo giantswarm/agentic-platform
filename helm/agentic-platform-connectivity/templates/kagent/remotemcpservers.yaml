@@ -22,36 +22,17 @@ spec:
   protocol: STREAMABLE_HTTP
   allowedNamespaces:
     from: All
-{{/* One muster RemoteMCPServer per enabled agent, all pointing at the same muster
-Service. No headersFrom: kagent's propagated user token (KAGENT_PROPAGATE_TOKEN)
-must be the only Authorization reaching muster; a static header would win (kagent
-applies static headers last) and shadow the forwarded user token. */}}
-{{- range $name, $cfg := .Values.agents.definitions }}
-{{- $agent := merge (dict "name" $name) $cfg }}
-{{- if $agent.enabled }}
+{{- end }}
+{{- range .Values.kagent.remoteMcpServers }}
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
 metadata:
-  name: {{ include "agentic-platform.musterServerName" $agent | quote }}
-  namespace: {{ $ns }}
-spec:
-  description: {{ printf "muster MCP gateway (%s)" $agent.name | quote }}
-  url: {{ $musterUrl | quote }}
-  protocol: STREAMABLE_HTTP
-{{- end }}
-{{- end }}
-{{- end }}
-{{- range .Values.agents.remoteMcpServers }}
----
-apiVersion: kagent.dev/v1alpha2
-kind: RemoteMCPServer
-metadata:
-  name: {{ required "agents.remoteMcpServers[].name is required" .name | quote }}
+  name: {{ required "kagent.remoteMcpServers[].name is required" .name | quote }}
   namespace: {{ $ns }}
 spec:
   description: {{ .description | default (printf "%s MCP server" .name) | quote }}
-  url: {{ required "agents.remoteMcpServers[].url is required" .url | quote }}
+  url: {{ required "kagent.remoteMcpServers[].url is required" .url | quote }}
   protocol: STREAMABLE_HTTP
   {{- with .tokenSecret }}
   headersFrom:

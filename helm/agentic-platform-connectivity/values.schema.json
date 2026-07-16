@@ -253,14 +253,46 @@
         }
       }
     },
-    "agents": {
+    "kagent": {
       "type": "object",
+      "description": "kagent subchart values (pass-through) plus umbrella routing config. Subchart keys are forwarded to the kagent chart; `controllerRoute` and `uiRoute` are consumed by umbrella templates only.",
       "additionalProperties": true,
-      "description": "Platform agents config. Only agents.models is schema-validated here; other keys are pass-through.",
       "properties": {
-        "models": {
+        "controllerRoute": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Expose kagent controller API through agentgateway (JWT-validated). Creates AgentgatewayBackend + two HTTPRoutes: inner (agentgateway data plane) and outer (public TLS-terminating Gateway).",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "pathPrefix": {
+              "type": "string"
+            },
+            "hostname": {
+              "type": "string"
+            },
+            "parentRef": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "namespace": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Install the kagent subchart. The kagent.dev + kmcp CRDs ship with the kagent component chart itself (app-owned CRDs), so enabling kagent installs them too."
+        },
+        "modelConfigs": {
           "type": "array",
-          "description": "ModelConfig CRs to create in the kagent namespace.",
+          "description": "Additional ModelConfig CRs to create in the kagent namespace - the model catalog beyond the subchart-created default-model-config. Agents reference one by name via spec.declarative.modelConfig.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -297,21 +329,40 @@
               }
             }
           }
-        }
-      }
-    },
-    "kagent": {
-      "type": "object",
-      "description": "kagent subchart values (pass-through) plus umbrella routing config. Subchart keys are forwarded to the kagent chart; `controllerRoute` and `uiRoute` are consumed by umbrella templates only.",
-      "additionalProperties": true,
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "description": "Install the kagent subchart. The kagent.dev + kmcp CRDs ship with the kagent component chart itself (app-owned CRDs), so enabling kagent installs them too."
         },
         "namespaceOverride": {
           "type": "string",
           "description": "Target namespace for all kagent resources. Must match postgres.namespace when postgres.enabled is true."
+        },
+        "remoteMcpServers": {
+          "type": "array",
+          "description": "Additional RemoteMCPServer CRs to create in the kagent namespace, beyond the template-owned shared muster server. Agents reference them by name.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "url"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "RemoteMCPServer name; agents reference it via their tool entries."
+              },
+              "url": {
+                "type": "string",
+                "description": "MCP server URL (Streamable HTTP)."
+              },
+              "description": {
+                "type": "string",
+                "description": "Optional description; defaults to '<name> MCP server'."
+              },
+              "tokenSecret": {
+                "type": "string",
+                "description": "Optional pre-existing Secret with key 'token' holding 'Bearer <token>' for servers that need a static credential; omit for servers reached with the propagated token."
+              }
+            }
+          }
         },
         "serviceMonitor": {
           "type": "object",
@@ -327,67 +378,6 @@
             "labels": {
               "type": "object",
               "description": "Extra labels on the ServiceMonitor. Use observability.giantswarm.io/tenant to route to the correct Mimir instance."
-            }
-          }
-        },
-        "controllerRoute": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Expose kagent controller API through agentgateway (JWT-validated). Creates AgentgatewayBackend + two HTTPRoutes: inner (agentgateway data plane) and outer (public TLS-terminating Gateway).",
-          "properties": {
-            "enabled": {
-              "type": "boolean"
-            },
-            "pathPrefix": {
-              "type": "string"
-            },
-            "hostname": {
-              "type": "string"
-            },
-            "parentRef": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "namespace": {
-                  "type": "string"
-                }
-              }
-            },
-            "jwtAuthentication": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "JWT validation on the inner kagent-controller HTTPRoute. Renders an AgentgatewayPolicy (validation mode set by .mode, dex issuer, no required audiences) plus a static AgentgatewayBackend for the JWKS endpoint.",
-              "properties": {
-                "enabled": {
-                  "type": "boolean"
-                },
-                "mode": {
-                  "type": "string",
-                  "enum": ["Strict", "Optional", "Permissive"],
-                  "description": "AgentgatewayPolicy jwtAuthentication mode. Strict rejects requests with a missing or invalid token; Optional validates a token when present but allows requests with none; Permissive validates but never rejects. Defaults to Strict."
-                },
-                "issuer": {
-                  "type": "string"
-                },
-                "jwks": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "host": {
-                      "type": "string"
-                    },
-                    "port": {
-                      "type": "integer"
-                    },
-                    "path": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
             }
           }
         },
