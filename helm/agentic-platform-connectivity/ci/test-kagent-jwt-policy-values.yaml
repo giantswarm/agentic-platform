@@ -1,5 +1,5 @@
 # kagent controllerRoute with the JWT policy enabled: renders the
-# AgentgatewayPolicy + dex-jwks AgentgatewayBackend alongside the routes.
+# AgentgatewayPolicy + kagent-controller-jwks AgentgatewayBackend alongside the routes.
 kagent:
   enabled: true
   namespaceOverride: kagent

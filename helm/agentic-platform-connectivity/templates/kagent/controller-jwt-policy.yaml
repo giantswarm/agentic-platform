@@ -1,14 +1,14 @@
 {{- $route := .Values.kagent.controllerRoute }}
 {{- if and .Values.kagent.enabled $route.enabled ($route.jwtAuthentication).enabled }}
 {{- $jwt := $route.jwtAuthentication }}
-# AgentgatewayBackend — static backend for the dex JWKS endpoint. Lives in the
-# release namespace so the policy's jwks backendRef needs no ReferenceGrant
-# into the dex namespace.
+# AgentgatewayBackend — static backend for the issuer's JWKS endpoint. Lives in
+# the release namespace so the policy's jwks backendRef needs no ReferenceGrant
+# into the issuer's namespace.
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
 metadata:
-  name: dex-jwks
+  name: kagent-controller-jwks
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "labels.common" . | nindent 4 }}
@@ -46,6 +46,6 @@ spec:
               backendRef:
                 group: agentgateway.dev
                 kind: AgentgatewayBackend
-                name: dex-jwks
+                name: kagent-controller-jwks
               jwksPath: {{ $jwt.jwks.path | quote }}
 {{- end }}
