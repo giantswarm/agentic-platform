@@ -359,10 +359,15 @@
             "jwtAuthentication": {
               "type": "object",
               "additionalProperties": false,
-              "description": "JWT validation on the inner kagent-controller HTTPRoute. Renders an AgentgatewayPolicy (Strict mode, dex issuer, no required audiences) plus a static AgentgatewayBackend for the JWKS endpoint.",
+              "description": "JWT validation on the inner kagent-controller HTTPRoute. Renders an AgentgatewayPolicy (validation mode set by .mode, dex issuer, no required audiences) plus a static AgentgatewayBackend for the JWKS endpoint.",
               "properties": {
                 "enabled": {
                   "type": "boolean"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": ["Strict", "Optional", "Permissive"],
+                  "description": "AgentgatewayPolicy jwtAuthentication mode. Strict rejects requests with a missing or invalid token; Optional validates a token when present but allows requests with none; Permissive validates but never rejects. Defaults to Strict."
                 },
                 "issuer": {
                   "type": "string"

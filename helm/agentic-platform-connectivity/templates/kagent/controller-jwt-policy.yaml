@@ -35,7 +35,7 @@ spec:
       name: kagent-controller
   traffic:
     jwtAuthentication:
-      mode: Strict
+      mode: {{ $jwt.mode | default "Strict" }}
       providers:
         - issuer: {{ $jwt.issuer | quote }}
           # No audiences: any audience the issuer minted is accepted. dex

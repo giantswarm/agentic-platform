@@ -675,6 +675,13 @@ kagent:
     # Enable gateway.jwksEgress alongside so the data plane can reach dex.
     jwtAuthentication:
       enabled: false
+      # Validation strictness. One of Strict, Optional, Permissive.
+      #   Strict     reject requests with a missing or invalid token.
+      #   Optional   validate the token when present, allow requests with none.
+      #   Permissive validate but never reject (observe only, enforces nothing).
+      # Permissive lets an install confirm real traffic carries valid dex tokens
+      # before enforcing; it does not close the gap on its own.
+      mode: Strict
       # dex issuer URL exactly as it appears in the token iss claim.
       # Example: https://dex.<cluster>.<base-domain>
       issuer: ""
