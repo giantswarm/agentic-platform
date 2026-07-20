@@ -160,6 +160,18 @@ components:
     # when enabled. It owns their version, so no CRD dependsOn.
     # No valuesKey: this component forwards no values (uses the chart's GS defaults).
     crds: CreateReplace
+  dicebear:
+    chart: dicebear
+    # Self-hosted DiceBear avatar API + the public avatar HTTPRoute. Lives in its
+    # own repo/chart (giantswarm/dicebear); pulled here by range like every component.
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    versionRange: "0.x"
+    valuesFrom: dicebear
+    # Strict values.schema.json (additionalProperties:false); the chart consumes
+    # registry.domain, not global — so do not inject global.
+    injectGlobal: false
+    # Force-enabled (no enabledFrom/enabled): the avatar renderer ships on every
+    # cluster running the platform, like muster/connectivity.
   agentic-platform-connectivity:
     chart: agentic-platform-connectivity
     repository: oci://gsoci.azurecr.io/charts/giantswarm
@@ -172,6 +184,18 @@ components:
     # off (in muster-direct mode neither renders, and connectivity's only CR then
     # is muster's public HTTPRoute, which needs the cluster-prereq Gateway API CRDs).
     dependsOn: [agentgateway, kagent]
+
+# === Agent avatars (DiceBear) ===
+# Forwarded verbatim to the dicebear component chart (see giantswarm/dicebear
+# values.yaml for the full surface). The renderer is force-enabled and its public
+# route is ON by default, so EVERY installation MUST set route.parentRefs (the
+# platform's public Gateway — typically the same one as ingress.parentRefs) and
+# route.hostnames (e.g. [avatars.<domain>]); the chart hard-fails otherwise, by design.
+dicebear:
+  route:
+    enabled: true
+    parentRefs: []    # REQUIRED per cluster: public Gateway parentRef(s)
+    hostnames: []      # REQUIRED per cluster: e.g. [avatars.example.com]
 
 # === Ingress topology ===
 # mode selects the whole request topology. What each mode renders/consumes:
