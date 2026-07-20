@@ -27,6 +27,11 @@
 # adds enableWeakerNestedSandbox while preserving all other keys the controller wrote,
 # and to_string() re-serialises. This survives controller upgrades that change
 # network.allowedDomains, filesystem.*, or add new keys.
+#
+# The existing JSON must be read from data, not stringData: the API server folds
+# stringData into data during v1-to-internal conversion (Convert_v1_Secret_To_core_Secret),
+# before admission webhooks run, so request.object.stringData is always empty here
+# even though the controller writes the Secret via stringData. 'e30=' is base64 for '{}'.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -53,7 +58,7 @@ spec:
     context:
       - name: currentSettings
         variable:
-          jmesPath: "parse_json(request.object.stringData.\"srt-settings.json\" || '{}')"
+          jmesPath: "parse_json(base64_decode(request.object.data.\"srt-settings.json\" || 'e30='))"
     mutate:
       patchStrategicMerge:
         stringData:
