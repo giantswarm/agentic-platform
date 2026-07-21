@@ -22,6 +22,12 @@ producing a silently-broken release.
     {{- fail "kagent.controllerRoute.jwtAuthentication.enabled is true but .issuer is empty. Set it to the dex issuer URL exactly as it appears in token iss claims (e.g. https://dex.<cluster>.<base-domain>)." }}
   {{- end }}
 
+  {{- /* The data plane can only fetch the JWKS from dex on 5556 when jwksEgress
+         is on; without it Strict/Optional validation fails closed on every token. */ -}}
+  {{- if and .Values.kagent.controllerRoute.enabled ((.Values.kagent.controllerRoute.jwtAuthentication).enabled) (not .Values.gateway.jwksEgress.enabled) }}
+    {{- fail "kagent.controllerRoute.jwtAuthentication.enabled is true but gateway.jwksEgress.enabled is false. The agentgateway data plane cannot reach dex on 5556 to fetch the JWKS, so signature validation fails closed. Set gateway.jwksEgress.enabled: true." }}
+  {{- end }}
+
   {{- /* The CNPG-generated DSN Secret lands in the Cluster's namespace; kagent
          mounts it by name, so the two namespaces must match. */ -}}
   {{- if .Values.postgres.enabled }}
