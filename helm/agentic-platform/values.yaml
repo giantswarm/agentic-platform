@@ -170,8 +170,6 @@ components:
     # Strict values.schema.json (additionalProperties:false); the chart consumes
     # registry.domain, not global — so do not inject global.
     injectGlobal: false
-    # Force-enabled (no enabledFrom/enabled): the avatar renderer ships on every
-    # cluster running the platform, like muster/connectivity.
   agentic-platform-connectivity:
     chart: agentic-platform-connectivity
     repository: oci://gsoci.azurecr.io/charts/giantswarm
