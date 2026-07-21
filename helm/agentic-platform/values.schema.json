@@ -676,6 +676,10 @@
               "type": "string",
               "description": "A2A base URL (without trailing agent name). Traffic is routed through the agentgateway data-plane to kagent. Required when a2a.enabled is true."
             },
+            "fallbackIconUrlTemplate": {
+              "type": "string",
+              "description": "Agent icon URL used when the AgentCard has no iconUrl. \"{agent}\" is replaced with the agentRef. Empty disables the fallback."
+            },
             "saToken": {
               "type": "object",
               "additionalProperties": true,

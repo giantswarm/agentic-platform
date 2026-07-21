@@ -1117,6 +1117,10 @@ klausGateway:
     # on the kagent-controller HTTPRoute before reaching kagent-controller:8083.
     # Adjust the namespace if the release is deployed outside agentic-platform.
     url: "http://agentgateway.agentic-platform.svc.cluster.local:8080/kagent/api/a2a/kagent"
+    # fallbackIconUrlTemplate supplies an agent icon URL when the AgentCard has no
+    # iconUrl. "{agent}" is replaced with the agentRef. Empty disables the fallback.
+    # Example: https://avatars.{codename}.{base}/v1/{agent}.png
+    fallbackIconUrlTemplate: ""
     saToken:
       enabled: false
       audience: kagent
