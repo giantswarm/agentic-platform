@@ -280,6 +280,39 @@
                   "type": "string"
                 }
               }
+            },
+            "jwtAuthentication": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "JWT validation on the inner kagent-controller HTTPRoute. Renders an AgentgatewayPolicy (validation mode set by .mode, dex issuer, no required audiences) plus a static AgentgatewayBackend for the JWKS endpoint.",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": ["Strict", "Optional", "Permissive"],
+                  "description": "AgentgatewayPolicy jwtAuthentication mode. Strict rejects requests with a missing or invalid token; Optional validates a token when present but allows requests with none; Permissive validates but never rejects. Defaults to Strict."
+                },
+                "issuer": {
+                  "type": "string"
+                },
+                "jwks": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "host": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "integer"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
             }
           }
         },
@@ -461,6 +494,37 @@
       "type": "object",
       "description": "agent-sandbox subchart values (pass-through). The chart nests the upstream controller under its own `agent-sandbox:` key. Usually empty \u2014 the chart defaults the gsoci-mirrored image.",
       "additionalProperties": true
+    },
+    "dicebear": {
+      "type": "object",
+      "description": "dicebear component values (pass-through to the giantswarm/dicebear chart). The renderer is force-enabled; only the umbrella-relevant route wiring is documented here \u2014 the chart's own values.schema.json validates the full surface.",
+      "additionalProperties": true,
+      "properties": {
+        "route": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Public avatar HTTPRoute. On by default, so every installation must supply parentRefs and hostnames; the chart hard-fails otherwise.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "parentRefs": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "Parent Gateway references the avatar HTTPRoute attaches to \u2014 typically the same public Gateway as ingress.parentRefs. Required."
+            },
+            "hostnames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Hostnames the avatar endpoint is served on, e.g. avatars.<domain>. Required."
+            }
+          }
+        }
+      }
     },
     "klausGateway": {
       "type": "object",

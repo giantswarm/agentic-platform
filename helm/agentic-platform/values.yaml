@@ -67,7 +67,7 @@ components:
   muster:
     chart: muster
     repository: oci://gsoci.azurecr.io/charts/giantswarm
-    versionRange: "0.x"
+    versionRange: "1.x"
     valuesFrom: muster
     # App-owned CRDs: muster ships its MCPServer/Workflow CRDs in its own chart
     # crds/ dir and owns their version. CreateReplace makes Flux upgrade them
@@ -160,6 +160,16 @@ components:
     # when enabled. It owns their version, so no CRD dependsOn.
     # No valuesKey: this component forwards no values (uses the chart's GS defaults).
     crds: CreateReplace
+  dicebear:
+    chart: dicebear
+    # Self-hosted DiceBear avatar API + the public avatar HTTPRoute. Lives in its
+    # own repo/chart (giantswarm/dicebear); pulled here by range like every component.
+    repository: oci://gsoci.azurecr.io/charts/giantswarm
+    versionRange: "0.x"
+    valuesFrom: dicebear
+    # Strict values.schema.json (additionalProperties:false); the chart consumes
+    # registry.domain, not global — so do not inject global.
+    injectGlobal: false
   agentic-platform-connectivity:
     chart: agentic-platform-connectivity
     repository: oci://gsoci.azurecr.io/charts/giantswarm
@@ -172,6 +182,18 @@ components:
     # off (in muster-direct mode neither renders, and connectivity's only CR then
     # is muster's public HTTPRoute, which needs the cluster-prereq Gateway API CRDs).
     dependsOn: [agentgateway, kagent]
+
+# === Agent avatars (DiceBear) ===
+# Forwarded verbatim to the dicebear component chart (see giantswarm/dicebear
+# values.yaml for the full surface). The renderer is force-enabled and its public
+# route is ON by default, so EVERY installation MUST set route.parentRefs (the
+# platform's public Gateway — typically the same one as ingress.parentRefs) and
+# route.hostnames (e.g. [avatars.<domain>]); the chart hard-fails otherwise, by design.
+dicebear:
+  route:
+    enabled: true
+    parentRefs: []    # REQUIRED per cluster: public Gateway parentRef(s)
+    hostnames: []      # REQUIRED per cluster: e.g. [avatars.example.com]
 
 # === Ingress topology ===
 # mode selects the whole request topology. What each mode renders/consumes:
@@ -570,7 +592,11 @@ kagent:
       # controller is never directly reachable. Use "unsecure" only for local dev
       # without any front proxy.
       mode: trusted-proxy
-      userIdClaim: sub
+      # email, not sub: dex subs are opaque connector-prefixed identifiers
+      # (connector-coupled and unreadable in session listings); email is the
+      # stable human identity and matches muster's trusted-issuer subjectClaim,
+      # so UI (oauth2-proxy) and A2A sessions key identically.
+      userIdClaim: email
     # Expose controller-runtime Prometheus metrics on :8080 (HTTP, no TLS).
     # The default --metrics-bind-address is "0" (disabled) and the chart never
     # sets it. We enable it here and wire a ServiceMonitor via extraObjects.
@@ -842,6 +868,32 @@ kagent:
     parentRef:
       name: giantswarm-default
       namespace: envoy-gateway-system
+    # JWT validation on the inner kagent-controller HTTPRoute. Renders an
+    # AgentgatewayPolicy (plus a static AgentgatewayBackend for the JWKS
+    # endpoint) so agentgateway verifies the bearer's signature, issuer, and
+    # expiry against dex before forwarding. The controller's trusted-proxy mode
+    # decodes claims without verification and depends on this boundary.
+    # Off by default: enabling it rejects every caller that does not present a
+    # dex-issued JWT (opaque muster tokens, Kubernetes ServiceAccount tokens).
+    # Enable gateway.jwksEgress alongside so the data plane can reach dex.
+    jwtAuthentication:
+      enabled: false
+      # Validation strictness. One of Strict, Optional, Permissive.
+      #   Strict     reject requests with a missing or invalid token.
+      #   Optional   validate the token when present, allow requests with none.
+      #   Permissive validate but never reject (observe only, enforces nothing).
+      # Permissive lets an install confirm real traffic carries valid dex tokens
+      # before enforcing; it does not close the gap on its own.
+      mode: Strict
+      # dex issuer URL exactly as it appears in the token iss claim.
+      # Example: https://dex.<cluster>.<base-domain>
+      issuer: ""
+      # In-cluster JWKS source for the issuer, rendered as a static
+      # AgentgatewayBackend in the release namespace.
+      jwks:
+        host: dex.giantswarm.svc.cluster.local
+        port: 5556
+        path: /keys
   # Expose kagent UI. Creates an HTTPRoute on the public Gateway pointing at
   # oauth2-proxy (when enabled) or the UI service directly (dev only).
   # Supply oauth2-proxy credentials and set uiRoute.enabled: true together.
