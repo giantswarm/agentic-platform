@@ -638,6 +638,23 @@
               "type": "boolean",
               "description": "Restrict the Slack adapter to direct messages (channel messages and @-mentions ignored)."
             },
+            "channelMode": {
+              "type": "string",
+              "enum": ["", "all", "allowlist", "none"],
+              "description": "How the Slack adapter handles channel messages and @-mentions."
+            },
+            "channelAllowlist": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Slack channel IDs the adapter serves when channelMode is allowlist."
+            },
+            "dmMode": {
+              "type": "string",
+              "enum": ["", "serve", "redirect", "ignore"],
+              "description": "How the Slack adapter handles direct messages."
+            },
             "botToken": {
               "type": "string",
               "description": "Slack bot token. When set, the klaus-gateway chart renders the secretName Secret from it; typically SOPS-encrypted."
