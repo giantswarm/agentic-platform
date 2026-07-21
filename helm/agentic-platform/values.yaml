@@ -67,7 +67,7 @@ components:
   muster:
     chart: muster
     repository: oci://gsoci.azurecr.io/charts/giantswarm
-    versionRange: "0.x"
+    versionRange: "1.x"
     valuesFrom: muster
     # App-owned CRDs: muster ships its MCPServer/Workflow CRDs in its own chart
     # crds/ dir and owns their version. CreateReplace makes Flux upgrade them
