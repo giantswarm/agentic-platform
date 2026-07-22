@@ -606,9 +606,22 @@
               "type": "string",
               "description": "Secret containing bot-token, signing-secret, and app-token. Required when slack.enabled is true."
             },
-            "dmOnly": {
-              "type": "boolean",
-              "description": "Forwarded to the klaus-gateway subchart (SLACK_DM_ONLY). Unused by this chart; accepted so the umbrella's forwardAllValues passes through."
+            "channelMode": {
+              "type": "string",
+              "enum": ["", "all", "allowlist", "none"],
+              "description": "Forwarded to the klaus-gateway subchart (SLACK_CHANNEL_MODE). Unused by this chart; accepted so the umbrella's forwardAllValues passes through."
+            },
+            "channelAllowlist": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Forwarded to the klaus-gateway subchart (SLACK_CHANNEL_ALLOWLIST). Unused by this chart; accepted so the umbrella's forwardAllValues passes through."
+            },
+            "dmMode": {
+              "type": "string",
+              "enum": ["", "serve", "redirect", "ignore"],
+              "description": "Forwarded to the klaus-gateway subchart (SLACK_DM_MODE). Unused by this chart; accepted so the umbrella's forwardAllValues passes through."
             },
             "botToken": {
               "type": "string",

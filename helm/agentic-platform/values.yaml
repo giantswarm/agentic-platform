@@ -1051,9 +1051,16 @@ klausGateway:
     enabled: false
     mode: events
     secretName: ""
-    # dmOnly restricts the adapter to direct messages: channel messages and
-    # @-mentions are ignored. Recommended for the OBO gateway (DM-only bot).
-    dmOnly: false
+    # dmMode selects how direct messages are handled: "serve", "redirect", or
+    # "ignore". Empty uses the binary default. Rendered as SLACK_DM_MODE.
+    dmMode: ""
+    # channelMode selects which channels are served: "all", "allowlist" (only
+    # channelAllowlist), or "none" (DM-only, e.g. the OBO gateway). Empty uses
+    # the binary default. Rendered as SLACK_CHANNEL_MODE.
+    channelMode: ""
+    # channelAllowlist lists the Slack channel IDs served when channelMode is
+    # "allowlist". Rendered as SLACK_CHANNEL_ALLOWLIST.
+    channelAllowlist: []
     # botToken / signingSecret / appToken: when set (SOPS-encrypted via the
     # per-cluster secret-values patch) the klaus-gateway chart renders the
     # secretName Secret from them. Leave empty to reference an externally-managed
