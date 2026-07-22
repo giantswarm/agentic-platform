@@ -634,9 +634,22 @@
               "type": "string",
               "description": "Secret containing bot-token, signing-secret, and app-token. Required when slack.enabled is true."
             },
-            "dmOnly": {
-              "type": "boolean",
-              "description": "Restrict the Slack adapter to direct messages (channel messages and @-mentions ignored)."
+            "channelMode": {
+              "type": "string",
+              "enum": ["", "all", "allowlist", "none"],
+              "description": "How the Slack adapter handles channel messages and @-mentions."
+            },
+            "channelAllowlist": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Slack channel IDs the adapter serves when channelMode is allowlist."
+            },
+            "dmMode": {
+              "type": "string",
+              "enum": ["", "serve", "redirect", "ignore"],
+              "description": "How the Slack adapter handles direct messages."
             },
             "channelMode": {
               "type": "string",
