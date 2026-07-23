@@ -557,7 +557,7 @@
         },
         "crd": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "install": {
               "type": "boolean",
@@ -612,7 +612,7 @@
         },
         "observability": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "otlpEndpoint": {
               "type": "string",
@@ -622,7 +622,7 @@
         },
         "slack": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -633,23 +633,6 @@
             "secretName": {
               "type": "string",
               "description": "Secret containing bot-token, signing-secret, and app-token. Required when slack.enabled is true."
-            },
-            "channelMode": {
-              "type": "string",
-              "enum": ["", "all", "allowlist", "none"],
-              "description": "How the Slack adapter handles channel messages and @-mentions."
-            },
-            "channelAllowlist": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "Slack channel IDs the adapter serves when channelMode is allowlist."
-            },
-            "dmMode": {
-              "type": "string",
-              "enum": ["", "serve", "redirect", "ignore"],
-              "description": "How the Slack adapter handles direct messages."
             },
             "channelMode": {
               "type": "string",
@@ -684,7 +667,7 @@
         },
         "cli": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -726,7 +709,7 @@
         },
         "agentgatewayRoute": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -738,7 +721,7 @@
         },
         "obo": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "description": "Slack on-behalf-of (OBO) muster account linking via CIMD. Forwarded to the klaus-gateway subchart; the connectivity chart also renders the public OBO route from callbackBaseUrl.",
           "properties": {
             "enabled": {
@@ -758,7 +741,7 @@
             },
             "persistence": {
               "type": "object",
-              "additionalProperties": false,
+              "additionalProperties": true,
               "description": "Back the link store with a PVC so links survive pod recreation (rollouts, node drains), not just in-process restarts. Forwarded to the klaus-gateway subchart.",
               "properties": {
                 "enabled": {
@@ -788,7 +771,7 @@
             },
             "connectors": {
               "type": "object",
-              "additionalProperties": false,
+              "additionalProperties": true,
               "description": "Reactive Slack connector UX: the gateway offers a \"Connect <backend>\" button from a core_auth_login challenge in the agent's response stream. Forwarded to the klaus-gateway subchart.",
               "properties": {
                 "enabled": {

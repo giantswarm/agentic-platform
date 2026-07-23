@@ -529,7 +529,7 @@
         },
         "crd": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "install": {
               "type": "boolean",
@@ -584,7 +584,7 @@
         },
         "observability": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "otlpEndpoint": {
               "type": "string",
@@ -594,7 +594,7 @@
         },
         "slack": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -639,7 +639,7 @@
         },
         "cli": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -677,7 +677,7 @@
         },
         "agentgatewayRoute": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -689,7 +689,7 @@
         },
         "obo": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "description": "Slack on-behalf-of (OBO) muster account linking via CIMD. Forwarded to the klaus-gateway subchart; this chart also renders the public OBO route from callbackBaseUrl.",
           "properties": {
             "enabled": {
@@ -709,7 +709,7 @@
             },
             "persistence": {
               "type": "object",
-              "additionalProperties": false,
+              "additionalProperties": true,
               "description": "Back the link store with a PVC so links survive pod recreation (rollouts, node drains), not just in-process restarts. Forwarded to the klaus-gateway subchart.",
               "properties": {
                 "enabled": {
@@ -739,7 +739,7 @@
             },
             "connectors": {
               "type": "object",
-              "additionalProperties": false,
+              "additionalProperties": true,
               "description": "Reactive Slack connector UX: the gateway offers a \"Connect <backend>\" button from a core_auth_login challenge in the agent's response stream. Forwarded to the klaus-gateway subchart.",
               "properties": {
                 "enabled": {
