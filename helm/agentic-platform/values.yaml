@@ -1107,6 +1107,12 @@ klausGateway:
     # SOPS-staged base64 value works directly). Provide SOPS-encrypted via
     # per-cluster secret values.
     storeKey: ""
+    # Reactive Slack connector UX: the gateway detects a core_auth_login
+    # challenge in the agent's response stream and offers a "Connect <backend>"
+    # button from the login link the agent relays. Forwarded to the
+    # klaus-gateway subchart.
+    connectors:
+      enabled: false
 
   # CLI channel adapter (remote klausctl users). Off by default.
   cli:

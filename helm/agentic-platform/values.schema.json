@@ -785,6 +785,16 @@
             "storeKey": {
               "type": "string",
               "description": "AES-256 key for the encrypted link store. Required only when storePath is set; provide SOPS-encrypted."
+            },
+            "connectors": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Reactive Slack connector UX: the gateway offers a \"Connect <backend>\" button from a core_auth_login challenge in the agent's response stream. Forwarded to the klaus-gateway subchart.",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         }
