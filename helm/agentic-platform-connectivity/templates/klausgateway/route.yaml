@@ -83,12 +83,14 @@ spec:
 {{- $fullname := .Values.klausGateway.fullnameOverride | default "klaus-gateway" }}
 {{- $oboHost := .Values.klausGateway.obo.callbackBaseUrl | default "" | trimPrefix "https://" | trimPrefix "http://" | trimSuffix "/" }}
 ---
-# OBO Slack-link + CIMD endpoints on the public hostname. These are the
-# unauthenticated OAuth-bootstrap paths: the linking browser hits
-# /auth/slack/link and /auth/slack/callback, and muster fetches the CIMD
-# document /auth/slack/client.json (whose client_id == that URL). They route
-# straight to the klaus-gateway Service — NOT through the agentgateway data-plane
-# — because they must not sit behind the JWT policy that guards the channel
+# OBO Slack-link + CIMD + connector-completion endpoints on the public
+# hostname. These are the unauthenticated OAuth-bootstrap paths: the linking
+# browser hits /auth/slack/link and /auth/slack/callback, muster fetches the
+# CIMD document /auth/slack/client.json (whose client_id == that URL), and
+# after a connector login muster redirects the browser to /connectors/complete
+# (the gateway's login-completion landing). They route straight to the
+# klaus-gateway Service, NOT through the agentgateway data-plane, because they
+# carry no JWT and must not sit behind the policy that guards the channel
 # paths. The public hostname is derived from obo.callbackBaseUrl so the route,
 # the redirect URI, and the CIMD client_id all stay in lockstep.
 apiVersion: gateway.networking.k8s.io/v1
@@ -110,6 +112,9 @@ spec:
         - path:
             type: PathPrefix
             value: /auth/slack/
+        - path:
+            type: PathPrefix
+            value: /connectors/complete
       backendRefs:
         - name: {{ $fullname }}
           port: 8080
